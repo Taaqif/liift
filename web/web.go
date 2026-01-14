@@ -1,3 +1,4 @@
+// Package web provides HTTP handlers for serving the frontend application.
 package web
 
 import (
@@ -69,3 +70,4 @@ func setupDevProxy(e *echo.Echo) {
 		},
 	}))
 }
+

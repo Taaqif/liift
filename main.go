@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 
+	"liift/api"
 	"liift/web"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -14,18 +15,15 @@ func main() {
 	e := echo.New()
 
 	// Add standard middleware
-	e.Use(middleware.Logger())
+	e.Use(middleware.RequestLogger())
 
-	// Setup the frontend handlers to service vite static assets
+	// Setup the web handlers to service vite static assets
 	web.RegisterHandlers(e)
 
-	// Setup the API Group
-	api := e.Group("/api")
+	// Setup the api handlers
+	api.RegisterHandlers(e)
 
-	// Basic APi endpoint
-	api.GET("/message", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"message": "Hello, from the golang World!"})
-	})
-
+	// Start the server on port 3000
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", 3000)))
 }
+
