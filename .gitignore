@@ -1,19 +1,9 @@
-# Go
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
+tmp
+build
+bin
+dist
 
-# Node
-node_modules/
-dist/
-build/
 .env
-.env.local
-*.log
 
 # IDE
 .vscode/
