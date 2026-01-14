@@ -55,7 +55,7 @@ func setupDevProxy(e *echo.Echo) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Setep a proxy to the vite dev server on localhost:5173
+	// This proxy handles both HTTP and WebSocket connections for HMR
 	balancer := middleware.NewRoundRobinBalancer([]*middleware.ProxyTarget{
 		{
 			URL: url,
