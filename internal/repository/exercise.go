@@ -68,27 +68,27 @@ func (r *ExerciseRepository) Delete(ctx context.Context, id uint) error {
 	return r.DBWithContext(ctx).Delete(&models.Exercise{}, id).Error
 }
 
-func (r *ExerciseRepository) FindByMuscleGroup(ctx context.Context, muscleGroupID uint) ([]models.Exercise, error) {
+func (r *ExerciseRepository) FindByMuscleGroup(ctx context.Context, muscleGroupName string) ([]models.Exercise, error) {
 	var exercises []models.Exercise
 	err := r.DBWithContext(ctx).
 		Preload("PrimaryMuscleGroups").
 		Preload("SecondaryMuscleGroups").
 		Preload("Equipment").
 		Joins("JOIN exercise_primary_muscle_groups ON exercises.id = exercise_primary_muscle_groups.exercise_id").
-		Where("exercise_primary_muscle_groups.muscle_group_id = ?", muscleGroupID).
-		Or("EXISTS (SELECT 1 FROM exercise_secondary_muscle_groups WHERE exercise_secondary_muscle_groups.exercise_id = exercises.id AND exercise_secondary_muscle_groups.muscle_group_id = ?)", muscleGroupID).
+		Where("exercise_primary_muscle_groups.muscle_group_name = ?", muscleGroupName).
+		Or("EXISTS (SELECT 1 FROM exercise_secondary_muscle_groups WHERE exercise_secondary_muscle_groups.exercise_id = exercises.id AND exercise_secondary_muscle_groups.muscle_group_name = ?)", muscleGroupName).
 		Find(&exercises).Error
 	return exercises, err
 }
 
-func (r *ExerciseRepository) FindByEquipment(ctx context.Context, equipmentID uint) ([]models.Exercise, error) {
+func (r *ExerciseRepository) FindByEquipment(ctx context.Context, equipmentName string) ([]models.Exercise, error) {
 	var exercises []models.Exercise
 	err := r.DBWithContext(ctx).
 		Preload("PrimaryMuscleGroups").
 		Preload("SecondaryMuscleGroups").
 		Preload("Equipment").
 		Joins("JOIN exercise_equipment ON exercises.id = exercise_equipment.exercise_id").
-		Where("exercise_equipment.equipment_id = ?", equipmentID).
+		Where("exercise_equipment.equipment_name = ?", equipmentName).
 		Find(&exercises).Error
 	return exercises, err
 }

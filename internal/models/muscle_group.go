@@ -8,8 +8,7 @@ import (
 
 // MuscleGroup represents a muscle group for exercises
 type MuscleGroup struct {
-	BaseModel
-	Name string `gorm:"type:varchar(50);uniqueIndex;not null" json:"name"`
+	Name string `gorm:"type:varchar(50);primaryKey" json:"name"`
 }
 
 func (MuscleGroup) TableName() string {

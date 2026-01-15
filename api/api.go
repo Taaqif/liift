@@ -2,13 +2,16 @@
 package api
 
 import (
+	"liift/api/handlers"
+
 	"github.com/labstack/echo/v4"
 )
 
 func RegisterHandlers(e *echo.Echo) {
-	// Setup the API Group
 	apiGroup := e.Group("/api")
 
-	// Register all API routes
-	RegisterRoutes(apiGroup)
+	handlers.RegisterSystemRoutes(apiGroup)
+	handlers.RegisterEquipmentRoutes(apiGroup)
+	handlers.RegisterMuscleGroupRoutes(apiGroup)
+	handlers.RegisterExerciseRoutes(apiGroup)
 }
