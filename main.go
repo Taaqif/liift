@@ -40,6 +40,11 @@ func main() {
 		log.Fatalf("Failed to run database migrations: %v", err)
 	}
 
+	// Seed enum tables with valid values
+	if err := database.SeedAll(database.DB); err != nil {
+		log.Fatalf("Failed to seed database: %v", err)
+	}
+
 	// Create a new echo server
 	e := echo.New()
 

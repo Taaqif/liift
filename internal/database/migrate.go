@@ -4,34 +4,29 @@ package database
 import (
 	"log"
 
+	"liift/internal/models"
+
 	"gorm.io/gorm"
 )
 
 // Migrate runs database migrations for all models
-// Add your models here as you create them
 func Migrate(db *gorm.DB) error {
 	log.Println("Running database migrations...")
 
-	// Example: Add your models here
-	// Uncomment and modify as needed:
-	// err := db.AutoMigrate(
-	// 	&models.ExampleModel{},
-	// 	&models.User{},
-	// 	&models.Workout{},
-	// 	&models.Exercise{},
-	// )
-	// if err != nil {
-	// 	return err
-	// }
+	err := db.AutoMigrate(
+		&models.Equipment{},
+		&models.MuscleGroup{},
+	)
+	if err != nil {
+		return err
+	}
 
-	// For now, return nil since we don't have models yet
-	// Uncomment and add models when you create them
 	log.Println("Database migrations completed successfully")
 	return nil
 }
 
 // MigrateModels runs migrations for specific models
-func MigrateModels(db *gorm.DB, models ...interface{}) error {
+func MigrateModels(db *gorm.DB, models ...any) error {
 	if len(models) == 0 {
 		return nil
 	}
