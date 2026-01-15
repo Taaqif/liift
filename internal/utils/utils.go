@@ -2,14 +2,19 @@
 package utils
 
 import (
+	"fmt"
+	"log"
 	"os"
 	"strconv"
 )
 
-// GetEnv gets an environment variable or returns a default value
 func GetEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	if defaultValue == "" {
+		log.Printf("ERROR: Required environment variable '%s' is not set and no default value provided", key)
+		panic(fmt.Sprintf("required environment variable '%s' is not set", key))
 	}
 	return defaultValue
 }
