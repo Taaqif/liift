@@ -1,4 +1,3 @@
-// Package database provides database migration functionality.
 package database
 
 import (
@@ -16,6 +15,7 @@ func Migrate(db *gorm.DB) error {
 	err := db.AutoMigrate(
 		&models.Equipment{},
 		&models.MuscleGroup{},
+		&models.Exercise{},
 	)
 	if err != nil {
 		return err

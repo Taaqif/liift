@@ -1,4 +1,3 @@
-// Package database provides database connection management.
 package database
 
 import (
@@ -33,7 +32,7 @@ func Connect(config *Config) error {
 		// Ensure the directory exists for SQLite database
 		dbDir := filepath.Dir(config.SQLitePath)
 		if dbDir != "." && dbDir != "" {
-			if err := os.MkdirAll(dbDir, 0755); err != nil {
+			if err := os.MkdirAll(dbDir, 0o755); err != nil {
 				return fmt.Errorf("failed to create database directory: %w", err)
 			}
 		}
@@ -51,10 +50,9 @@ func Connect(config *Config) error {
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
 		},
-		PrepareStmt: true, // Enable prepared statement cache
+		PrepareStmt: true,
 	}
 
-	// Open connection
 	DB, err = gorm.Open(dialector, gormConfig)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
@@ -83,7 +81,6 @@ func Connect(config *Config) error {
 	return nil
 }
 
-// Close closes the database connection
 func Close() error {
 	if SQLDB != nil {
 		return SQLDB.Close()
@@ -91,7 +88,6 @@ func Close() error {
 	return nil
 }
 
-// Health checks the health of the database connection
 func Health(ctx context.Context) error {
 	if SQLDB == nil {
 		return fmt.Errorf("database connection not initialized")

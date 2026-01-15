@@ -1,4 +1,3 @@
-// Package models contains database models for the application.
 package models
 
 import (
