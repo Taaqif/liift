@@ -1,43 +1,37 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+} from "@/components/ui/navigation-menu";
+</script>
 
 <template>
-  <nav>
-    <router-link to="/">Home</router-link>
-    <router-link to="/about">About</router-link>
-  </nav>
-  <main>
+  <div class="px-8 py-4 shadow">
+    <NavigationMenu>
+      <NavigationMenuList>
+        <NavigationMenuItem>
+          <NavigationMenuLink as-child>
+            <router-link to="/" active-class="text-accent-foreground bg-accent">
+              Home
+            </router-link>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuLink as-child>
+            <router-link
+              to="/workouts"
+              active-class="text-accent-foreground bg-accent"
+            >
+              Workouts
+            </router-link>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+      </NavigationMenuList>
+    </NavigationMenu>
+  </div>
+  <main class="p-8">
     <router-view />
   </main>
 </template>
-
-<style scoped>
-nav {
-  padding: 1rem 2rem;
-  background-color: #f3f4f6;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  gap: 1rem;
-}
-
-nav a {
-  color: #374151;
-  text-decoration: none;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  transition: background-color 0.2s;
-}
-
-nav a:hover {
-  background-color: #e5e7eb;
-}
-
-nav a.router-link-active {
-  color: #3b82f6;
-  background-color: #dbeafe;
-}
-
-main {
-  padding: 2rem;
-}
-</style>

@@ -3,5 +3,20 @@
   "currency": "USD",
   "number": "Number",
   "date": "Date",
-  "workout": "Workout"
+  "workout": "Workout",
+  "commingSoon": "Coming Soon",
+  "featureUnderConstruction": "This feature is under construction",
+  "calendar": {
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "dayNames": {
+      "monday": "Mon",
+      "tuesday": "Tue",
+      "wednesday": "Wed",
+      "thursday": "Thu",
+      "friday": "Fri",
+      "saturday": "Sat",
+      "sunday": "Sun"
+    }
+  }
 }
