@@ -5,6 +5,12 @@ dist
 
 .env
 
+# Database files
+data/
+*.db
+*.db-shm
+*.db-wal
+
 # IDE
 .vscode/
 .idea/
