@@ -8,8 +8,7 @@ import {
   type RegisterRequest,
 } from "@/lib/api";
 import { decodeJWT } from "@/lib/jwt";
-
-const AUTH_QUERY_KEY = ["auth", "user"] as const;
+import { authKeys } from "@/lib/queryKeys";
 
 async function fetchUser(): Promise<User | null> {
   const token = apiClient.getToken();
@@ -34,7 +33,7 @@ export function useAuth() {
   const queryClient = useQueryClient();
 
   const { data: user, refetch: refetchUser } = useQuery({
-    queryKey: AUTH_QUERY_KEY,
+    queryKey: authKeys.user(),
     queryFn: fetchUser,
     staleTime: Infinity,
     gcTime: Infinity,
@@ -47,7 +46,7 @@ export function useAuth() {
     onSuccess: (response) => {
       apiClient.setToken(response.token);
 
-      queryClient.setQueryData<User | null>(AUTH_QUERY_KEY, response.user);
+      queryClient.setQueryData<User | null>(authKeys.user(), response.user);
       router.push("/");
     },
     onError: (err) => {
@@ -60,7 +59,7 @@ export function useAuth() {
     onSuccess: (response) => {
       apiClient.setToken(response.token);
 
-      queryClient.setQueryData<User | null>(AUTH_QUERY_KEY, response.user);
+      queryClient.setQueryData<User | null>(authKeys.user(), response.user);
       router.push("/");
     },
     onError: (err) => {
@@ -79,7 +78,7 @@ export function useAuth() {
   const logout = () => {
     apiClient.setToken(null);
 
-    queryClient.setQueryData<User | null>(AUTH_QUERY_KEY, null);
+    queryClient.setQueryData<User | null>(authKeys.user(), null);
     router.push("/login");
   };
 
