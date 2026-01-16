@@ -1,12 +1,13 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
-import {
-  apiClient,
-  type User,
-  type LoginRequest,
-  type RegisterRequest,
-} from "@/lib/api";
+import { apiClient } from "@/lib/api";
+import type {
+  User,
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+} from "@/lib/auth/types";
 import { decodeJWT } from "@/lib/jwt";
 import { authKeys } from "@/lib/queryKeys";
 
@@ -35,14 +36,16 @@ export function useAuth() {
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: authKeys.user(),
     queryFn: fetchUser,
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 0, // Always consider data stale so it can be updated
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     retry: false,
     initialData: null,
   });
 
   const loginMutation = useMutation({
-    mutationFn: (credentials: LoginRequest) => apiClient.login(credentials),
+    mutationFn: (credentials: LoginRequest) => {
+      return apiClient.post<AuthResponse>("/auth/login", credentials);
+    },
     onSuccess: (response) => {
       apiClient.setToken(response.token);
 
@@ -55,7 +58,9 @@ export function useAuth() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (data: RegisterRequest) => apiClient.register(data),
+    mutationFn: (data: RegisterRequest) => {
+      return apiClient.post<AuthResponse>("/auth/register", data);
+    },
     onSuccess: (response) => {
       apiClient.setToken(response.token);
 
@@ -87,7 +92,7 @@ export function useAuth() {
   };
 
   const isAuthenticated = computed(() => {
-    return !!apiClient.getToken() && !!user.value;
+    return !!user.value;
   });
 
   const loading = computed(() => {
@@ -95,7 +100,7 @@ export function useAuth() {
   });
 
   return {
-    user: computed(() => user.value ?? null),
+    user: computed(() => user.value),
     loading,
     isAuthenticated,
     login,

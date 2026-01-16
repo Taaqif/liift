@@ -6,30 +6,6 @@ export interface ApiError {
   error: string;
 }
 
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  username: string;
-  password: string;
-  email?: string;
-}
-
-export interface User {
-  id: number;
-  username: string;
-  email?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
 class ApiClient {
   private token: string | null = null;
 
@@ -100,15 +76,6 @@ class ApiClient {
 
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: "DELETE" });
-  }
-
-  // Auth methods
-  async login(credentials: LoginRequest): Promise<AuthResponse> {
-    return this.post<AuthResponse>("/auth/login", credentials);
-  }
-
-  async register(data: RegisterRequest): Promise<AuthResponse> {
-    return this.post<AuthResponse>("/auth/register", data);
   }
 }
 
