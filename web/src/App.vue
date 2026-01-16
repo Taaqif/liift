@@ -83,5 +83,5 @@ onMounted(() => {
   <main class="p-8">
     <router-view />
   </main>
-  <VueQueryDevtools />
+  <VueQueryDevtools v-if="import.meta.env.DEV" />
 </template>

@@ -1,5 +1,6 @@
-import { ref, computed } from "vue";
+import { computed } from "vue";
 import { useRouter } from "vue-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import {
   apiClient,
   type User,
@@ -8,73 +9,95 @@ import {
 } from "@/lib/api";
 import { decodeJWT } from "@/lib/jwt";
 
-const user = ref<User | null>(null);
-const loading = ref(false);
+const AUTH_QUERY_KEY = ["auth", "user"] as const;
+
+async function fetchUser(): Promise<User | null> {
+  const token = apiClient.getToken();
+  if (!token) {
+    return null;
+  }
+
+  const payload = decodeJWT(token);
+  if (!payload) {
+    apiClient.setToken(null);
+    return null;
+  }
+
+  return {
+    id: payload.user_id,
+    username: payload.username,
+  };
+}
 
 export function useAuth() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  // Initialize auth state from localStorage
-  const initAuth = () => {
-    const token = apiClient.getToken();
-    if (token) {
-      const payload = decodeJWT(token);
-      if (payload) {
-        // Create user object from JWT payload
-        user.value = {
-          id: payload.user_id,
-          username: payload.username,
-        };
-      } else {
-        // Token is invalid or expired, remove it
-        apiClient.setToken(null);
-      }
-    }
-  };
+  const { data: user, refetch: refetchUser } = useQuery({
+    queryKey: AUTH_QUERY_KEY,
+    queryFn: fetchUser,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+    initialData: null,
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: (credentials: LoginRequest) => apiClient.login(credentials),
+    onSuccess: (response) => {
+      apiClient.setToken(response.token);
+
+      queryClient.setQueryData<User | null>(AUTH_QUERY_KEY, response.user);
+      router.push("/");
+    },
+    onError: (err) => {
+      console.error(err);
+    },
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: (data: RegisterRequest) => apiClient.register(data),
+    onSuccess: (response) => {
+      apiClient.setToken(response.token);
+
+      queryClient.setQueryData<User | null>(AUTH_QUERY_KEY, response.user);
+      router.push("/");
+    },
+    onError: (err) => {
+      console.error(err);
+    },
+  });
 
   const login = async (credentials: LoginRequest) => {
-    loading.value = true;
-    try {
-      const response = await apiClient.login(credentials);
-      apiClient.setToken(response.token);
-      user.value = response.user;
-      router.push("/");
-    } catch (err) {
-      console.error(err);
-      throw err;
-    } finally {
-      loading.value = false;
-    }
+    await loginMutation.mutateAsync(credentials);
   };
 
   const register = async (data: RegisterRequest) => {
-    loading.value = true;
-    try {
-      const response = await apiClient.register(data);
-      apiClient.setToken(response.token);
-      user.value = response.user;
-      router.push("/");
-    } catch (err) {
-      console.error(err);
-      throw err;
-    } finally {
-      loading.value = false;
-    }
+    await registerMutation.mutateAsync(data);
   };
 
   const logout = () => {
     apiClient.setToken(null);
-    user.value = null;
+
+    queryClient.setQueryData<User | null>(AUTH_QUERY_KEY, null);
     router.push("/login");
+  };
+
+  const initAuth = () => {
+    refetchUser();
   };
 
   const isAuthenticated = computed(() => {
     return !!apiClient.getToken() && !!user.value;
   });
 
+  const loading = computed(() => {
+    return loginMutation.isPending.value || registerMutation.isPending.value;
+  });
+
   return {
-    user: computed(() => user.value),
-    loading: computed(() => loading.value),
+    user: computed(() => user.value ?? null),
+    loading,
     isAuthenticated,
     login,
     register,
