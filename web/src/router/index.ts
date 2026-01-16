@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import CommingSoon from "../views/ComingSoon.vue";
-import { useAuth } from "@/composables/useAuth";
+import { useAuth } from "@/lib/auth/composables/useAuth";
 
 const router = createRouter({
   history: createWebHistory(),

@@ -1,11 +1,10 @@
-import { ref, computed, nextTick } from "vue";
+import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import {
   apiClient,
   type User,
   type LoginRequest,
   type RegisterRequest,
-  type AuthResponse,
 } from "@/lib/api";
 import { decodeJWT } from "@/lib/jwt";
 
@@ -14,18 +13,6 @@ const loading = ref(false);
 
 export function useAuth() {
   const router = useRouter();
-
-  // Set user details from auth response
-  const setUserFromResponse = (response: AuthResponse) => {
-    apiClient.setToken(response.token);
-    user.value = {
-      id: response.user.id,
-      username: response.user.username,
-      email: response.user.email,
-      created_at: response.user.created_at,
-      updated_at: response.user.updated_at,
-    };
-  };
 
   // Initialize auth state from localStorage
   const initAuth = () => {
@@ -49,9 +36,9 @@ export function useAuth() {
     loading.value = true;
     try {
       const response = await apiClient.login(credentials);
-      setUserFromResponse(response);
-      await nextTick();
-      await router.push("/");
+      apiClient.setToken(response.token);
+      user.value = response.user;
+      router.push("/");
     } catch (err) {
       console.error(err);
       throw err;
@@ -64,9 +51,9 @@ export function useAuth() {
     loading.value = true;
     try {
       const response = await apiClient.register(data);
-      setUserFromResponse(response);
-      await nextTick();
-      await router.push("/");
+      apiClient.setToken(response.token);
+      user.value = response.user;
+      router.push("/");
     } catch (err) {
       console.error(err);
       throw err;
@@ -82,8 +69,7 @@ export function useAuth() {
   };
 
   const isAuthenticated = computed(() => {
-    // Only check user.value since it's reactive and gets set when token is valid
-    return !!user.value;
+    return !!apiClient.getToken() && !!user.value;
   });
 
   return {

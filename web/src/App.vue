@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
+import { VueQueryDevtools } from "@tanstack/vue-query-devtools";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -15,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/composables/useAuth";
+import { useAuth } from "@/lib/auth/composables/useAuth";
 
 const { user, isAuthenticated, logout, initAuth } = useAuth();
 
@@ -82,4 +83,5 @@ onMounted(() => {
   <main class="p-8">
     <router-view />
   </main>
+  <VueQueryDevtools />
 </template>
