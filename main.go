@@ -56,7 +56,7 @@ func main() {
 	web.RegisterHandlers(e)
 
 	// Setup the api handlers
-	api.RegisterHandlers(e)
+	api.RegisterHandlers(e, database.DB)
 
 	// Start server in a goroutine
 	port := utils.GetEnv("PORT", "3000")

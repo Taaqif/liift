@@ -4,15 +4,25 @@ import (
 	"net/http"
 
 	"liift/api/types"
-	"liift/internal/database"
 	"liift/internal/models"
 
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
 
-func GetEquipment(c echo.Context) error {
+// EquipmentHandler handles equipment-related HTTP requests
+type EquipmentHandler struct {
+	db *gorm.DB
+}
+
+// NewEquipmentHandler creates a new EquipmentHandler with the given database connection
+func NewEquipmentHandler(db *gorm.DB) *EquipmentHandler {
+	return &EquipmentHandler{db: db}
+}
+
+func (h *EquipmentHandler) GetEquipment(c echo.Context) error {
 	var equipment []models.Equipment
-	if err := database.DB.Find(&equipment).Error; err != nil {
+	if err := h.db.Find(&equipment).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
 			Error: "Failed to fetch equipment",
 		})
@@ -26,6 +36,7 @@ func GetEquipment(c echo.Context) error {
 	return c.JSON(http.StatusOK, names)
 }
 
-func RegisterEquipmentRoutes(api *echo.Group) {
-	api.GET("/equipment", GetEquipment)
+// RegisterEquipmentRoutes registers equipment routes with the given handler
+func RegisterEquipmentRoutes(api *echo.Group, handler *EquipmentHandler) {
+	api.GET("/equipment", handler.GetEquipment)
 }

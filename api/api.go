@@ -4,18 +4,30 @@ package api
 import (
 	"liift/api/handlers"
 	"liift/api/middleware"
+	"liift/internal/repository"
 
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
 
-func RegisterHandlers(e *echo.Echo) {
+func RegisterHandlers(e *echo.Echo, db *gorm.DB) {
 	apiGroup := e.Group("/api")
 
 	handlers.RegisterSystemRoutes(apiGroup)
-	handlers.RegisterAuthRoutes(apiGroup)
+
+	authHandler := handlers.NewAuthHandler(db)
+	handlers.RegisterAuthRoutes(apiGroup, authHandler)
 
 	protected := apiGroup.Group("", middleware.RequireAuth)
-	handlers.RegisterEquipmentRoutes(protected)
-	handlers.RegisterMuscleGroupRoutes(protected)
-	handlers.RegisterExerciseRoutes(protected)
+
+	// Create handlers with dependencies
+	equipmentHandler := handlers.NewEquipmentHandler(db)
+	handlers.RegisterEquipmentRoutes(protected, equipmentHandler)
+
+	muscleGroupHandler := handlers.NewMuscleGroupHandler(db)
+	handlers.RegisterMuscleGroupRoutes(protected, muscleGroupHandler)
+
+	exerciseRepo := repository.NewExerciseRepository(db)
+	exerciseHandler := handlers.NewExerciseHandler(exerciseRepo)
+	handlers.RegisterExerciseRoutes(protected, exerciseHandler)
 }

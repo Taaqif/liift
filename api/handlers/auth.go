@@ -5,20 +5,13 @@ import (
 	"time"
 
 	"liift/api/types"
-	"liift/internal/database"
 	"liift/internal/models"
 	"liift/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
-
-var jwtSecret []byte
-
-func init() {
-	secret := utils.GetEnv("JWT_SECRET", "")
-	jwtSecret = []byte(secret)
-}
 
 type LoginRequest struct {
 	Username string `json:"username" validate:"required"`
@@ -36,7 +29,22 @@ type AuthResponse struct {
 	User  models.User `json:"user"`
 }
 
-func Login(c echo.Context) error {
+// AuthHandler handles authentication-related HTTP requests
+type AuthHandler struct {
+	db         *gorm.DB
+	jwtSecret  []byte
+}
+
+// NewAuthHandler creates a new AuthHandler with the given database connection
+func NewAuthHandler(db *gorm.DB) *AuthHandler {
+	secret := utils.GetEnv("JWT_SECRET", "")
+	return &AuthHandler{
+		db:        db,
+		jwtSecret: []byte(secret),
+	}
+}
+
+func (h *AuthHandler) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
@@ -45,7 +53,7 @@ func Login(c echo.Context) error {
 	}
 
 	var user models.User
-	if err := database.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
+	if err := h.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
 			Error: "Invalid credentials",
 		})
@@ -57,7 +65,7 @@ func Login(c echo.Context) error {
 		})
 	}
 
-	token, err := generateToken(user.ID, user.Username)
+	token, err := h.generateToken(user.ID, user.Username)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
 			Error: "Failed to generate token",
@@ -70,7 +78,7 @@ func Login(c echo.Context) error {
 	})
 }
 
-func Register(c echo.Context) error {
+func (h *AuthHandler) Register(c echo.Context) error {
 	var req RegisterRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
@@ -79,7 +87,7 @@ func Register(c echo.Context) error {
 	}
 
 	var existingUser models.User
-	if err := database.DB.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
+	if err := h.db.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
 		return c.JSON(http.StatusConflict, types.ErrorResponse{
 			Error: "Username or email already exists",
 		})
@@ -96,13 +104,13 @@ func Register(c echo.Context) error {
 		})
 	}
 
-	if err := database.DB.Create(&user).Error; err != nil {
+	if err := h.db.Create(&user).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
 			Error: "Failed to create user",
 		})
 	}
 
-	token, err := generateToken(user.ID, user.Username)
+	token, err := h.generateToken(user.ID, user.Username)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
 			Error: "Failed to generate token",
@@ -115,7 +123,7 @@ func Register(c echo.Context) error {
 	})
 }
 
-func generateToken(userID uint, username string) (string, error) {
+func (h *AuthHandler) generateToken(userID uint, username string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":  userID,
 		"username": username,
@@ -124,10 +132,11 @@ func generateToken(userID uint, username string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(h.jwtSecret)
 }
 
-func RegisterAuthRoutes(api *echo.Group) {
-	api.POST("/auth/login", Login)
-	api.POST("/auth/register", Register)
+// RegisterAuthRoutes registers auth routes with the given handler
+func RegisterAuthRoutes(api *echo.Group, handler *AuthHandler) {
+	api.POST("/auth/login", handler.Login)
+	api.POST("/auth/register", handler.Register)
 }
