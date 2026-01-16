@@ -5,6 +5,7 @@
 
 const baseKeys = {
   auth: ["auth"] as const,
+  reference: ["reference"] as const,
 } as const;
 
 export const authKeys = {
@@ -12,6 +13,13 @@ export const authKeys = {
   user: () => [...baseKeys.auth, "user"] as const,
 } as const;
 
+export const referenceKeys = {
+  all: baseKeys.reference,
+  equipment: () => [...baseKeys.reference, "equipment"] as const,
+  muscleGroup: () => [...baseKeys.reference, "muscleGroup"] as const,
+} as const;
+
 export const queryKeys = {
   auth: authKeys,
+  reference: referenceKeys,
 } as const;
