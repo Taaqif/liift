@@ -10,12 +10,19 @@ import (
 
 const Version = "1.0.0"
 
+type SystemInfoResponse struct {
+	Version   string `json:"version"`
+	GoVersion string `json:"go_version"`
+	OS        string `json:"os"`
+	Arch      string `json:"arch"`
+}
+
 func GetSystemInfo(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]any{
-		"version":    Version,
-		"go_version": runtime.Version(),
-		"os":         runtime.GOOS,
-		"arch":       runtime.GOARCH,
+	return c.JSON(http.StatusOK, SystemInfoResponse{
+		Version:   Version,
+		GoVersion: runtime.Version(),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
 	})
 }
 

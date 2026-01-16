@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"liift/api/types"
 	"liift/internal/database"
 	"liift/internal/models"
 
@@ -12,8 +13,8 @@ import (
 func GetMuscleGroups(c echo.Context) error {
 	var muscleGroups []models.MuscleGroup
 	if err := database.DB.Find(&muscleGroups).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to fetch muscle groups",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to fetch muscle groups",
 		})
 	}
 

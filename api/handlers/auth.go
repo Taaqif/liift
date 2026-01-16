@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"liift/api/types"
 	"liift/internal/database"
 	"liift/internal/models"
 	"liift/internal/utils"
@@ -38,28 +39,28 @@ type AuthResponse struct {
 func Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
 	var user models.User
 	if err := database.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "Invalid credentials",
+		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
+			Error: "Invalid credentials",
 		})
 	}
 
 	if !user.CheckPassword(req.Password) {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "Invalid credentials",
+		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
+			Error: "Invalid credentials",
 		})
 	}
 
 	token, err := generateToken(user.ID, user.Username)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to generate token",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to generate token",
 		})
 	}
 
@@ -72,15 +73,15 @@ func Login(c echo.Context) error {
 func Register(c echo.Context) error {
 	var req RegisterRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
 	var existingUser models.User
 	if err := database.DB.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
-		return c.JSON(http.StatusConflict, map[string]string{
-			"error": "Username or email already exists",
+		return c.JSON(http.StatusConflict, types.ErrorResponse{
+			Error: "Username or email already exists",
 		})
 	}
 
@@ -90,21 +91,21 @@ func Register(c echo.Context) error {
 	}
 
 	if err := user.SetPassword(req.Password); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to hash password",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to hash password",
 		})
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to create user",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to create user",
 		})
 	}
 
 	token, err := generateToken(user.ID, user.Username)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to generate token",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to generate token",
 		})
 	}
 

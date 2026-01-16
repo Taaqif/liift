@@ -4,6 +4,7 @@ package middleware
 import (
 	"net/http"
 
+	"liift/api/types"
 	"liift/internal/database"
 	"liift/internal/models"
 	"liift/internal/utils"
@@ -23,8 +24,8 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		tokenString := c.Request().Header.Get("Authorization")
 		if tokenString == "" {
-			return c.JSON(http.StatusUnauthorized, map[string]string{
-				"error": "Authorization header required",
+			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
+				Error: "Authorization header required",
 			})
 		}
 
@@ -40,22 +41,22 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			return c.JSON(http.StatusUnauthorized, map[string]string{
-				"error": "Invalid or expired token",
+			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
+				Error: "Invalid or expired token",
 			})
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			return c.JSON(http.StatusUnauthorized, map[string]string{
-				"error": "Invalid token claims",
+			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
+				Error: "Invalid token claims",
 			})
 		}
 
 		userIDFloat, ok := claims["user_id"].(float64)
 		if !ok {
-			return c.JSON(http.StatusUnauthorized, map[string]string{
-				"error": "Invalid user ID in token",
+			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
+				Error: "Invalid user ID in token",
 			})
 		}
 
@@ -63,8 +64,8 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		var user models.User
 		if err := database.DB.First(&user, userID).Error; err != nil {
-			return c.JSON(http.StatusUnauthorized, map[string]string{
-				"error": "User not found",
+			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
+				Error: "User not found",
 			})
 		}
 

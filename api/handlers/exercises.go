@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"liift/api/types"
 	"liift/internal/database"
 	"liift/internal/models"
 	"liift/internal/repository"
@@ -15,6 +16,13 @@ var exerciseRepo *repository.ExerciseRepository
 
 func init() {
 	exerciseRepo = repository.NewExerciseRepository(database.DB)
+}
+
+type ExercisesListResponse struct {
+	Data   []models.Exercise `json:"data"`
+	Total  int64             `json:"total"`
+	Limit  int               `json:"limit"`
+	Offset int               `json:"offset"`
 }
 
 func GetExercises(c echo.Context) error {
@@ -30,31 +38,31 @@ func GetExercises(c echo.Context) error {
 
 	exercises, total, err := exerciseRepo.List(c.Request().Context(), limit, offset)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to fetch exercises",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to fetch exercises",
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"data":  exercises,
-		"total": total,
-		"limit": limit,
-		"offset": offset,
+	return c.JSON(http.StatusOK, ExercisesListResponse{
+		Data:   exercises,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
 	})
 }
 
 func GetExercise(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid exercise ID",
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "Invalid exercise ID",
 		})
 	}
 
 	exercise, err := exerciseRepo.GetByID(c.Request().Context(), uint(id))
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": "Exercise not found",
+		return c.JSON(http.StatusNotFound, types.ErrorResponse{
+			Error: "Exercise not found",
 		})
 	}
 
@@ -64,14 +72,14 @@ func GetExercise(c echo.Context) error {
 func CreateExercise(c echo.Context) error {
 	var exercise models.Exercise
 	if err := c.Bind(&exercise); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
 	if err := exerciseRepo.Create(c.Request().Context(), &exercise); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to create exercise",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to create exercise",
 		})
 	}
 
@@ -81,30 +89,30 @@ func CreateExercise(c echo.Context) error {
 func UpdateExercise(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid exercise ID",
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "Invalid exercise ID",
 		})
 	}
 
 	var exercise models.Exercise
 	if err := c.Bind(&exercise); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
 	exercise.ID = uint(id)
 
 	if err := exerciseRepo.Update(c.Request().Context(), &exercise); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to update exercise",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to update exercise",
 		})
 	}
 
 	updated, err := exerciseRepo.GetByID(c.Request().Context(), uint(id))
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to fetch updated exercise",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to fetch updated exercise",
 		})
 	}
 
@@ -114,14 +122,14 @@ func UpdateExercise(c echo.Context) error {
 func DeleteExercise(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid exercise ID",
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "Invalid exercise ID",
 		})
 	}
 
 	if err := exerciseRepo.Delete(c.Request().Context(), uint(id)); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to delete exercise",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to delete exercise",
 		})
 	}
 
@@ -131,8 +139,8 @@ func DeleteExercise(c echo.Context) error {
 func SearchExercises(c echo.Context) error {
 	query := c.QueryParam("q")
 	if query == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Search query is required",
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "Search query is required",
 		})
 	}
 
@@ -148,16 +156,16 @@ func SearchExercises(c echo.Context) error {
 
 	exercises, total, err := exerciseRepo.SearchByName(c.Request().Context(), query, limit, offset)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to search exercises",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to search exercises",
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"data":  exercises,
-		"total": total,
-		"limit": limit,
-		"offset": offset,
+	return c.JSON(http.StatusOK, ExercisesListResponse{
+		Data:   exercises,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
 	})
 }
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"liift/api/types"
 	"liift/internal/database"
 	"liift/internal/models"
 
@@ -12,8 +13,8 @@ import (
 func GetEquipment(c echo.Context) error {
 	var equipment []models.Equipment
 	if err := database.DB.Find(&equipment).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to fetch equipment",
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "Failed to fetch equipment",
 		})
 	}
 
