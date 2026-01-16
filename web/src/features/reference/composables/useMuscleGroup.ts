@@ -5,7 +5,7 @@ import type { MuscleGroupResponse } from "@/features/reference/types";
 import { referenceKeys } from "@/lib/queryKeys";
 
 async function fetchMuscleGroup() {
-  return apiClient.get<MuscleGroupResponse>("/");
+  return apiClient.get<MuscleGroupResponse>("/muscle-groups");
 }
 
 export function useMuscleGroup() {
