@@ -6,6 +6,35 @@
   "workout": "Workout",
   "commingSoon": "Coming Soon",
   "featureUnderConstruction": "This feature is under construction",
+  "nav": {
+    "home": "Home",
+    "workouts": "Workouts"
+  },
+  "auth": {
+    "register": "Register",
+    "login": "Login",
+    "logOut": "Log Out",
+    "loggingIn": "Logging In...",
+    "registering": "Registering...",
+    "username": "Username",
+    "password": "Password",
+    "email": "Email",
+    "emailOptional": "Email (Optional)",
+    "dontHaveAccount": "Dont have an account?",
+    "alreadyHaveAccount": "Already have an account?",
+    "enterCredentials": "Enter your credentials to access your account",
+    "createAccount": "Create a new account to get started",
+    "registrationFailed": "Registration failed",
+    "loginFailed": "Login failed",
+    "validation": {
+      "usernameMin": "Username must be at least 3 characters",
+      "usernameMax": "Username must be less than 100 characters",
+      "usernameRequired": "Username is required",
+      "passwordMin": "Password must be at least 8 characters",
+      "passwordRequired": "Password is required",
+      "emailInvalid": "Invalid email address"
+    }
+  },
   "calendar": {
     "previousWeek": "Previous week",
     "nextWeek": "Next week",
