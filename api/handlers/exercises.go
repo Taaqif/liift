@@ -26,6 +26,14 @@ type ExercisesListResponse struct {
 	Offset int               `json:"offset"`
 }
 
+type CreateExerciseRequest struct {
+	Name                  string   `json:"name"`
+	Description           string   `json:"description,omitempty"`
+	PrimaryMuscleGroups   []string `json:"primary_muscle_groups"`
+	SecondaryMuscleGroups []string `json:"secondary_muscle_groups,omitempty"`
+	Equipment             []string `json:"equipment"`
+}
+
 func (h *ExerciseHandler) GetExercises(c echo.Context) error {
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 	offset, _ := strconv.Atoi(c.QueryParam("offset"))
@@ -40,7 +48,7 @@ func (h *ExerciseHandler) GetExercises(c echo.Context) error {
 	exercises, total, err := h.repo.List(c.Request().Context(), limit, offset)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to fetch exercises",
+			Error: "failed_to_fetch_exercises",
 		})
 	}
 
@@ -56,14 +64,14 @@ func (h *ExerciseHandler) GetExercise(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "Invalid exercise ID",
+			Error: "invalid_id",
 		})
 	}
 
 	exercise, err := h.repo.GetByID(c.Request().Context(), uint(id))
 	if err != nil {
 		return c.JSON(http.StatusNotFound, types.ErrorResponse{
-			Error: "Exercise not found",
+			Error: "exercises_not_found",
 		})
 	}
 
@@ -71,34 +79,89 @@ func (h *ExerciseHandler) GetExercise(c echo.Context) error {
 }
 
 func (h *ExerciseHandler) CreateExercise(c echo.Context) error {
-	var exercise models.Exercise
-	if err := c.Bind(&exercise); err != nil {
+	var req CreateExerciseRequest
+	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "Invalid request body",
+			Error: "invalid_request_body",
 		})
 	}
+
+	// Validate required fields
+	if req.Name == "" {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "name_required",
+		})
+	}
+
+	if len(req.PrimaryMuscleGroups) == 0 {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "primary_muscle_group_required",
+		})
+	}
+
+	if len(req.Equipment) == 0 {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: "equipment_required",
+		})
+	}
+
+	// Convert request to Exercise model
+	exercise := models.Exercise{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	// Convert muscle group names to MuscleGroup models
+	primaryMuscleGroups := make([]models.MuscleGroup, len(req.PrimaryMuscleGroups))
+	for i, name := range req.PrimaryMuscleGroups {
+		primaryMuscleGroups[i] = models.MuscleGroup{Name: name}
+	}
+	exercise.PrimaryMuscleGroups = primaryMuscleGroups
+
+	if len(req.SecondaryMuscleGroups) > 0 {
+		secondaryMuscleGroups := make([]models.MuscleGroup, len(req.SecondaryMuscleGroups))
+		for i, name := range req.SecondaryMuscleGroups {
+			secondaryMuscleGroups[i] = models.MuscleGroup{Name: name}
+		}
+		exercise.SecondaryMuscleGroups = secondaryMuscleGroups
+	}
+
+	// Convert equipment names to Equipment models
+	equipment := make([]models.Equipment, len(req.Equipment))
+	for i, name := range req.Equipment {
+		equipment[i] = models.Equipment{Name: name}
+	}
+	exercise.Equipment = equipment
 
 	if err := h.repo.Create(c.Request().Context(), &exercise); err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to create exercise",
+			Error: "exercise_creation_failed",
 		})
 	}
 
-	return c.JSON(http.StatusCreated, exercise)
+	// Reload the exercise with associations to return complete data
+	created, err := h.repo.GetByID(c.Request().Context(), exercise.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
+			Error: "exercise_fetch_failed",
+		})
+	}
+
+	return c.JSON(http.StatusCreated, created)
 }
 
 func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "Invalid exercise ID",
+			Error: "invalid_exercise_id",
 		})
 	}
 
 	var exercise models.Exercise
 	if err := c.Bind(&exercise); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "Invalid request body",
+			Error: "invalid_request_body",
 		})
 	}
 
@@ -106,14 +169,14 @@ func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
 
 	if err := h.repo.Update(c.Request().Context(), &exercise); err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to update exercise",
+			Error: "exercise_update_failed",
 		})
 	}
 
 	updated, err := h.repo.GetByID(c.Request().Context(), uint(id))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to fetch updated exercise",
+			Error: "exercise_fetch_failed",
 		})
 	}
 
@@ -124,13 +187,13 @@ func (h *ExerciseHandler) DeleteExercise(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "Invalid exercise ID",
+			Error: "invalid_exercise_id",
 		})
 	}
 
 	if err := h.repo.Delete(c.Request().Context(), uint(id)); err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to delete exercise",
+			Error: "exercise_deletion_failed",
 		})
 	}
 
@@ -141,7 +204,7 @@ func (h *ExerciseHandler) SearchExercises(c echo.Context) error {
 	query := c.QueryParam("q")
 	if query == "" {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "Search query is required",
+			Error: "search_query_required",
 		})
 	}
 
@@ -158,7 +221,7 @@ func (h *ExerciseHandler) SearchExercises(c echo.Context) error {
 	exercises, total, err := h.repo.SearchByName(c.Request().Context(), query, limit, offset)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to search exercises",
+			Error: "search_failed",
 		})
 	}
 

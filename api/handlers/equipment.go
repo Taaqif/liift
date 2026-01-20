@@ -5,6 +5,7 @@ import (
 
 	"liift/api/types"
 	"liift/internal/models"
+	"liift/internal/utils"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -18,20 +19,25 @@ func NewEquipmentHandler(db *gorm.DB) *EquipmentHandler {
 	return &EquipmentHandler{db: db}
 }
 
+type GetEquipmentResponse struct {
+	Name string `json:"name"`
+}
+
 func (h *EquipmentHandler) GetEquipment(c echo.Context) error {
 	var equipment []models.Equipment
 	if err := h.db.Find(&equipment).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to fetch equipment",
+			Error: "equipment_fetch_failed",
 		})
 	}
 
-	names := make([]string, len(equipment))
-	for i, e := range equipment {
-		names[i] = e.Name
-	}
+	equipmentResponse := utils.Map(equipment, func(u models.Equipment) GetEquipmentResponse {
+		return GetEquipmentResponse{
+			Name: u.Name,
+		}
+	})
 
-	return c.JSON(http.StatusOK, names)
+	return c.JSON(http.StatusOK, equipmentResponse)
 }
 
 func RegisterEquipmentRoutes(api *echo.Group, handler *EquipmentHandler) {

@@ -46,27 +46,27 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "Invalid request body",
+			Error: "invalid_request_body",
 		})
 	}
 
 	var user models.User
 	if err := h.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
-			Error: "Invalid credentials",
+			Error: "invalid_credentials",
 		})
 	}
 
 	if !user.CheckPassword(req.Password) {
 		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
-			Error: "Invalid credentials",
+			Error: "invalid_credentials",
 		})
 	}
 
 	token, err := h.generateToken(user.ID, user.Username)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to generate token",
+			Error: "token_generation_failed",
 		})
 	}
 
@@ -80,14 +80,14 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	var req RegisterRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "Invalid request body",
+			Error: "invalid_request_body",
 		})
 	}
 
 	var existingUser models.User
 	if err := h.db.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
 		return c.JSON(http.StatusConflict, types.ErrorResponse{
-			Error: "Username or email already exists",
+			Error: "user_already_exists",
 		})
 	}
 
@@ -104,14 +104,14 @@ func (h *AuthHandler) Register(c echo.Context) error {
 
 	if err := h.db.Create(&user).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to create user",
+			Error: "user_creation_failed",
 		})
 	}
 
 	token, err := h.generateToken(user.ID, user.Username)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to generate token",
+			Error: "token_generation_failed",
 		})
 	}
 

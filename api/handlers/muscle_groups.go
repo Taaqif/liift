@@ -5,6 +5,7 @@ import (
 
 	"liift/api/types"
 	"liift/internal/models"
+	"liift/internal/utils"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -18,20 +19,25 @@ func NewMuscleGroupHandler(db *gorm.DB) *MuscleGroupHandler {
 	return &MuscleGroupHandler{db: db}
 }
 
+type GetMuscleGroupsResponse struct {
+	Name string `json:"name"`
+}
+
 func (h *MuscleGroupHandler) GetMuscleGroups(c echo.Context) error {
 	var muscleGroups []models.MuscleGroup
 	if err := h.db.Find(&muscleGroups).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "Failed to fetch muscle groups",
+			Error: "muscle_groups_fetch_failed",
 		})
 	}
 
-	names := make([]string, len(muscleGroups))
-	for i, mg := range muscleGroups {
-		names[i] = mg.Name
-	}
+	muscleGroupsResponse := utils.Map(muscleGroups, func(u models.MuscleGroup) GetMuscleGroupsResponse {
+		return GetMuscleGroupsResponse{
+			Name: u.Name,
+		}
+	})
 
-	return c.JSON(http.StatusOK, names)
+	return c.JSON(http.StatusOK, muscleGroupsResponse)
 }
 
 func RegisterMuscleGroupRoutes(api *echo.Group, handler *MuscleGroupHandler) {
