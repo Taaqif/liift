@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useExercises } from "@/features/exercises/composables/useExercises";
 import ExerciseList from "@/features/exercises/components/ExerciseList.vue";
@@ -22,14 +22,14 @@ const router = useRouter();
 
 const limit = ref(20);
 const offset = ref(0);
-const isDrawerOpen = ref(false);
+
+const isCreateDrawerOpen = ref(false);
 const isEditDrawerOpen = ref(false);
 const selectedExercise = ref<Exercise | null>(null);
-const isEditFormDirty = ref(false);
-const isCreateFormDirty = ref(false);
+const isFormDirty = ref(false);
 const showUnsavedChangesDialog = ref(false);
-const pendingDrawerClose = ref(false);
-const isCreateDrawerPendingClose = ref(false);
+const pendingCreateDrawerClose = ref(false);
+const pendingEditDrawerClose = ref(false);
 
 const params = computed(() => ({
   limit: limit.value,
@@ -49,11 +49,9 @@ const goToPage = (page: number) => {
 const hasNextPage = computed(() => offset.value + limit.value < total.value);
 const hasPrevPage = computed(() => offset.value > 0);
 
-// Handle query parameter to open drawer
 const checkQueryParam = () => {
   if (route.query.action === "create") {
-    isDrawerOpen.value = true;
-    // Clean up the query parameter
+    isCreateDrawerOpen.value = true;
     router.replace({ query: {} });
   }
 };
@@ -62,36 +60,30 @@ onMounted(() => {
   checkQueryParam();
 });
 
-// Watch for route changes to handle query parameter
 watch(
   () => route.query.action,
   () => {
     checkQueryParam();
   },
 );
-
 const handleEditExercise = (exercise: Exercise) => {
   selectedExercise.value = exercise;
-  isEditFormDirty.value = false;
   isEditDrawerOpen.value = true;
+  nextTick(() => {
+    isFormDirty.value = false;
+  });
 };
 
 const handleExerciseCreated = () => {
-  isDrawerOpen.value = false;
-  isCreateFormDirty.value = false;
+  resetCreateDrawer();
 };
 
 const handleExerciseUpdated = () => {
-  isEditDrawerOpen.value = false;
-  selectedExercise.value = null;
-  isEditFormDirty.value = false;
+  resetEditDrawer();
 };
 
 const handleExerciseDeleted = async () => {
-  // Close drawer immediately
-  isEditDrawerOpen.value = false;
-  selectedExercise.value = null;
-  isEditFormDirty.value = false;
+  resetEditDrawer();
   try {
     await refetch();
   } catch (err) {
@@ -99,70 +91,79 @@ const handleExerciseDeleted = async () => {
   }
 };
 
-const handleFormDirty = (dirty: boolean) => {
-  if (!isEditDrawerOpen.value) return;
-  isEditFormDirty.value = dirty;
+const handleCreateDrawerOpenChange = (open: boolean) => {
+  if (open) {
+    isCreateDrawerOpen.value = true;
+    pendingCreateDrawerClose.value = false;
+    nextTick(() => {
+      isFormDirty.value = false;
+    });
+    return;
+  }
+
+  if (isFormDirty.value) {
+    pendingCreateDrawerClose.value = true;
+    showUnsavedChangesDialog.value = true;
+    isCreateDrawerOpen.value = true;
+    return;
+  }
+
+  resetCreateDrawer();
 };
 
 const handleEditDrawerOpenChange = (open: boolean) => {
   if (open) {
-    isEditFormDirty.value = false;
     isEditDrawerOpen.value = true;
+    pendingEditDrawerClose.value = false;
+    nextTick(() => {
+      isFormDirty.value = false;
+    });
     return;
   }
 
-  if (isEditFormDirty.value) {
-    pendingDrawerClose.value = true;
+  if (isFormDirty.value) {
+    pendingEditDrawerClose.value = true;
     showUnsavedChangesDialog.value = true;
     isEditDrawerOpen.value = true;
     return;
   }
 
+  resetEditDrawer();
+};
+
+const handleFormDirty = (dirty: boolean) => {
+  if (!isCreateDrawerOpen.value && !isEditDrawerOpen.value) {
+    isFormDirty.value = false;
+    return;
+  }
+  isFormDirty.value = dirty;
+};
+
+const resetCreateDrawer = () => {
+  isCreateDrawerOpen.value = false;
+  isFormDirty.value = false;
+  pendingCreateDrawerClose.value = false;
+};
+
+const resetEditDrawer = () => {
   isEditDrawerOpen.value = false;
   selectedExercise.value = null;
-  isEditFormDirty.value = false;
+  isFormDirty.value = false;
+  pendingEditDrawerClose.value = false;
 };
 
 const handleKeepEditing = () => {
   showUnsavedChangesDialog.value = false;
-  pendingDrawerClose.value = false;
-  isCreateDrawerPendingClose.value = false;
-};
-
-const handleCreateFormDirty = (dirty: boolean) => {
-  if (!isDrawerOpen.value) return;
-  isCreateFormDirty.value = dirty;
-};
-
-const handleCreateDrawerOpenChange = (open: boolean) => {
-  if (open) {
-    isCreateFormDirty.value = false;
-    isDrawerOpen.value = true;
-    return;
-  }
-
-  if (isCreateFormDirty.value) {
-    isCreateDrawerPendingClose.value = true;
-    showUnsavedChangesDialog.value = true;
-    isDrawerOpen.value = true;
-    return;
-  }
-
-  isDrawerOpen.value = false;
-  isCreateFormDirty.value = false;
+  pendingCreateDrawerClose.value = false;
+  pendingEditDrawerClose.value = false;
 };
 
 const handleDiscardChanges = () => {
   showUnsavedChangesDialog.value = false;
-  if (pendingDrawerClose.value) {
-    isEditDrawerOpen.value = false;
-    selectedExercise.value = null;
-    isEditFormDirty.value = false;
-    pendingDrawerClose.value = false;
-  } else if (isCreateDrawerPendingClose.value) {
-    isDrawerOpen.value = false;
-    isCreateFormDirty.value = false;
-    isCreateDrawerPendingClose.value = false;
+  if (pendingCreateDrawerClose.value) {
+    resetCreateDrawer();
+  } else if (pendingEditDrawerClose.value) {
+    resetEditDrawer();
   }
 };
 </script>
@@ -176,32 +177,17 @@ const handleDiscardChanges = () => {
           {{ $t("exercises.subtitle") }}
         </p>
       </div>
-      <Drawer
-        :open="isDrawerOpen"
-        :dismissible="true"
-        @update:open="handleCreateDrawerOpenChange"
-      >
+      <Drawer :open="isCreateDrawerOpen" :dismissible="true" @update:open="handleCreateDrawerOpenChange">
         <DrawerTrigger as-child>
           <Button>{{ $t("exercises.createNew") }}</Button>
         </DrawerTrigger>
-        <CreateExerciseDrawer
-          :open="isDrawerOpen"
-          @exercise-created="handleExerciseCreated"
-          @form-dirty="handleCreateFormDirty"
-        />
+        <CreateExerciseDrawer :open="isCreateDrawerOpen" @exercise-created="handleExerciseCreated"
+          @form-dirty="handleFormDirty" />
       </Drawer>
-      <Drawer
-        :open="isEditDrawerOpen"
-        :dismissible="true"
-        @update:open="handleEditDrawerOpenChange"
-      >
-        <EditExerciseDrawer
-          :open="isEditDrawerOpen"
-          :exercise="selectedExercise"
-          @exercise-updated="handleExerciseUpdated"
-          @exercise-deleted="handleExerciseDeleted"
-          @form-dirty="handleFormDirty"
-        />
+      <Drawer :open="isEditDrawerOpen" :dismissible="true" @update:open="handleEditDrawerOpenChange">
+        <EditExerciseDrawer :open="isEditDrawerOpen" :exercise="selectedExercise"
+          @exercise-updated="handleExerciseUpdated" @exercise-deleted="handleExerciseDeleted"
+          @form-dirty="handleFormDirty" />
       </Drawer>
       <Dialog v-model:open="showUnsavedChangesDialog">
         <DialogContent>
@@ -223,23 +209,13 @@ const handleDiscardChanges = () => {
       </Dialog>
     </div>
 
-    <div
-      v-if="error"
-      class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg"
-    >
+    <div v-if="error" class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
       <p>{{ $t("exercises.errorLoading", { message: error.message }) }}</p>
     </div>
 
-    <ExerciseList
-      :exercises="exercises"
-      :loading="loading"
-      @edit="handleEditExercise"
-    />
+    <ExerciseList :exercises="exercises" :loading="loading" @edit="handleEditExercise" />
 
-    <div
-      v-if="!loading && total > 0"
-      class="mt-8 flex items-center justify-between"
-    >
+    <div v-if="!loading && total > 0" class="mt-8 flex items-center justify-between">
       <div class="text-sm text-muted-foreground">
         {{
           $t("pagination.showingFromToOfTotal", {
@@ -251,18 +227,12 @@ const handleDiscardChanges = () => {
         {{ $t("exercises.titleLower") }}
       </div>
       <div class="flex gap-2">
-        <button
-          @click="goToPage(currentPage - 1)"
-          :disabled="!hasPrevPage"
-          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-        >
+        <button @click="goToPage(currentPage - 1)" :disabled="!hasPrevPage"
+          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent">
           {{ $t("pagination.previous") }}
         </button>
-        <button
-          @click="goToPage(currentPage + 1)"
-          :disabled="!hasNextPage"
-          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-        >
+        <button @click="goToPage(currentPage + 1)" :disabled="!hasNextPage"
+          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent">
           {{ $t("pagination.next") }}
         </button>
       </div>

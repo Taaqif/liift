@@ -115,7 +115,7 @@ const onSubmit = handleSubmit(async (values) => {
 watch(
   () => props.open,
   (newValue) => {
-    if (!newValue) {
+    if (newValue) {
       resetForm();
     }
   },
