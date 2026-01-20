@@ -26,6 +26,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <div class="min-h-screen flex flex-col">
   <div class="px-8 py-4 shadow flex items-center justify-between">
     <NavigationMenu>
       <NavigationMenuList>
@@ -46,6 +47,14 @@ onMounted(() => {
             </router-link>
           </NavigationMenuLink>
         </NavigationMenuItem>
+        <NavigationMenuLink as-child>
+          <router-link
+            to="/exercises"
+            active-class="text-accent-foreground bg-accent"
+          >
+            {{ $t("nav.exercises") }}
+          </router-link>
+        </NavigationMenuLink>
       </NavigationMenuList>
     </NavigationMenu>
     <div v-if="isAuthenticated && user" class="flex items-center gap-4">
@@ -80,8 +89,9 @@ onMounted(() => {
       </Button>
     </div>
   </div>
-  <main class="p-8">
+  <main class="p-8 flex-1">
     <router-view />
   </main>
   <VueQueryDevtools />
+  </div>
 </template>
