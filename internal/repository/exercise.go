@@ -20,12 +20,12 @@ func NewExerciseRepository(db *gorm.DB) *ExerciseRepository {
 }
 
 func (r *ExerciseRepository) Create(ctx context.Context, exercise *models.Exercise) error {
-	return r.DBWithContext(ctx).Create(exercise).Error
+	return r.DB().WithContext(ctx).Create(exercise).Error
 }
 
 func (r *ExerciseRepository) GetByID(ctx context.Context, id uint) (*models.Exercise, error) {
 	var exercise models.Exercise
-	err := r.DBWithContext(ctx).
+	err := r.DB().WithContext(ctx).
 		Preload("PrimaryMuscleGroups").
 		Preload("SecondaryMuscleGroups").
 		Preload("Equipment").
@@ -40,7 +40,7 @@ func (r *ExerciseRepository) List(ctx context.Context, limit, offset int) ([]mod
 	var exercises []models.Exercise
 	var total int64
 
-	db := r.DBWithContext(ctx).Model(&models.Exercise{})
+	db := r.DB().WithContext(ctx).Model(&models.Exercise{})
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -60,7 +60,7 @@ func (r *ExerciseRepository) List(ctx context.Context, limit, offset int) ([]mod
 }
 
 func (r *ExerciseRepository) Update(ctx context.Context, exercise *models.Exercise) error {
-	return r.DBWithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return r.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&models.Exercise{}).Where("id = ?", exercise.ID).
 			Updates(models.Exercise{
 				Name:        exercise.Name,
@@ -104,7 +104,7 @@ func (r *ExerciseRepository) Update(ctx context.Context, exercise *models.Exerci
 }
 
 func (r *ExerciseRepository) Delete(ctx context.Context, id uint) error {
-	return r.DBWithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return r.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		target := models.Exercise{BaseModel: models.BaseModel{ID: id}}
 
 		if err := tx.Model(&target).Association("Equipment").Clear(); err != nil {
@@ -123,7 +123,7 @@ func (r *ExerciseRepository) Delete(ctx context.Context, id uint) error {
 
 func (r *ExerciseRepository) FindByMuscleGroup(ctx context.Context, muscleGroupName string) ([]models.Exercise, error) {
 	var exercises []models.Exercise
-	err := r.DBWithContext(ctx).
+	err := r.DB().WithContext(ctx).
 		Preload("PrimaryMuscleGroups").
 		Preload("SecondaryMuscleGroups").
 		Preload("Equipment").
@@ -136,7 +136,7 @@ func (r *ExerciseRepository) FindByMuscleGroup(ctx context.Context, muscleGroupN
 
 func (r *ExerciseRepository) FindByEquipment(ctx context.Context, equipmentName string) ([]models.Exercise, error) {
 	var exercises []models.Exercise
-	err := r.DBWithContext(ctx).
+	err := r.DB().WithContext(ctx).
 		Preload("PrimaryMuscleGroups").
 		Preload("SecondaryMuscleGroups").
 		Preload("Equipment").
@@ -150,7 +150,7 @@ func (r *ExerciseRepository) SearchByName(ctx context.Context, query string, lim
 	var exercises []models.Exercise
 	var total int64
 
-	db := r.DBWithContext(ctx).Model(&models.Exercise{}).
+	db := r.DB().WithContext(ctx).Model(&models.Exercise{}).
 		Where("LOWER(name) LIKE LOWER(?)", "%"+query+"%")
 
 	if err := db.Count(&total).Error; err != nil {
