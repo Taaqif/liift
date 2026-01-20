@@ -5,7 +5,7 @@ import { apiClient } from "@/lib/api";
 import type { Exercise } from "@/features/exercises/types";
 import { exerciseKeys } from "@/lib/queryKeys";
 
-export type CreateExerciseRequest = {
+export type UpdateExerciseRequest = {
   name: string;
   description?: string;
   primary_muscle_groups?: string[];
@@ -13,24 +13,28 @@ export type CreateExerciseRequest = {
   equipment?: string[];
 };
 
-async function createExercise(data: CreateExerciseRequest): Promise<Exercise> {
-  return apiClient.post<Exercise>("/exercises", data);
+async function updateExercise(
+  id: number,
+  data: UpdateExerciseRequest,
+): Promise<Exercise> {
+  return apiClient.put<Exercise>(`/exercises/${id}`, data);
 }
 
-export function useCreateExercise() {
+export function useUpdateExercise() {
   const queryClient = useQueryClient();
   const { t } = useI18n();
 
   const mutation = useMutation({
-    mutationFn: createExercise,
+    mutationFn: ({ id, data }: { id: number; data: UpdateExerciseRequest }) =>
+      updateExercise(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
-      toast.success(t("exercises.toasts.created"));
+      toast.success(t("exercises.toasts.updated"));
     },
   });
 
   return {
-    createExercise: mutation.mutateAsync,
+    updateExercise: mutation.mutateAsync,
     isPending: mutation.isPending,
     error: mutation.error,
     isSuccess: mutation.isSuccess,

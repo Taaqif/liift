@@ -4,11 +4,23 @@
   "number": "Number",
   "date": "Date",
   "workout": "Workout",
+  "error": "Error",
+  "edit": "Edit",
+  "cancel": "Cancel",
+  "creating": "Creating...",
+  "updating": "Updating...",
+  "deleting": "Deleting...",
+  "areYouSure": "Are you sure?",
+  "previous": "Previous",
+  "next": "Next",
+
+  "delete": "Delete",
   "commingSoon": "Coming Soon",
   "featureUnderConstruction": "This feature is under construction",
   "nav": {
     "home": "Home",
-    "workouts": "Workouts"
+    "workouts": "Workouts",
+    "exercises": "Exercises"
   },
   "auth": {
     "register": "Register",
@@ -46,6 +58,49 @@
       "friday": "Fri",
       "saturday": "Sat",
       "sunday": "Sun"
+    }
+  },
+  "pagination": {
+    "next": "Next",
+    "previous": "Previous",
+    "showingFromToOfTotal": "Showing {from} to {to} of {total}"
+  },
+  "exercises": {
+    "title": "Exercises",
+    "titleLower": "@.lower:{'exercises.title'}",
+    "subtitle": "Browse all available exercises in the library",
+    "create": "Create Exercise",
+    "createNew": "Create New Exercise",
+    "createDescription": "Add a new exercise to your library. Fill in the details below.",
+    "editTitle": "Edit Exercise",
+    "editDescription": "Update the exercise details or delete it from your library.",
+    "namePlaceholder": "e.g., Bench Press",
+    "name": "Exercise Name",
+    "description": "Exercise Description",
+    "descriptionPlaceholder": "Describe the exercise...",
+    "primaryMuscleGroups": "Primary Muscle Groups",
+    "primaryMuscleGroupsPlaceholder": "Select primary muscle groups...",
+    "secondaryMuscleGroups": "Secondary Muscle Groups",
+    "secondaryMuscleGroupsPlaceholder": "Select secondary muscle groups...",
+    "equipment": "Equipment",
+    "equipmentPlaceholder": "Select equipment...",
+    "deleteExercise": "Delete Exercise",
+    "deleteExerciseConfirmDescription": "This action cannot be undone. This will permanently delete the exercise \"{name}\" from your library.",
+    "updateExercise": "Update Exercise",
+    "errorLoading": "Error loading exercises: {message}",
+    "noExercises": "No exercises found.",
+    "primaryLabel": "Primary:",
+    "secondaryLabel": "Secondary:",
+    "equipmentLabel": "Equipment:",
+    "toasts": {
+      "created": "Exercise created successfully",
+      "updated": "Exercise updated successfully",
+      "deleted": "Exercise deleted successfully"
+    },
+    "validation": {
+      "nameRequired": "Exercise name is required",
+      "primaryMuscleGroupsRequired": "At least one primary muscle group is required",
+      "equipmentRequired": "At least one equipment is required"
     }
   }
 }

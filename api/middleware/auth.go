@@ -25,7 +25,7 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		tokenString := c.Request().Header.Get("Authorization")
 		if tokenString == "" {
 			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
-				Error: "Authorization header required",
+				Error: "authorization_header_missing",
 			})
 		}
 
@@ -42,21 +42,21 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		if err != nil || !token.Valid {
 			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
-				Error: "Invalid or expired token",
+				Error: "invalid_token",
 			})
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
-				Error: "Invalid token claims",
+				Error: "invalid_token_claims",
 			})
 		}
 
 		userIDFloat, ok := claims["user_id"].(float64)
 		if !ok {
 			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
-				Error: "Invalid user ID in token",
+				Error: "invalid_user_id_in_token",
 			})
 		}
 
@@ -65,7 +65,7 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		var user models.User
 		if err := database.DB.First(&user, userID).Error; err != nil {
 			return c.JSON(http.StatusUnauthorized, types.ErrorResponse{
-				Error: "User not found",
+				Error: "user_not_found",
 			})
 		}
 

@@ -5,4 +5,6 @@ export type NumberFormats = {
 export type DateTimeFormats = {
   short?: Intl.DateTimeFormatOptions;
   long?: Intl.DateTimeFormatOptions;
+  monthDay?: Intl.DateTimeFormatOptions;
+  monthDayYear?: Intl.DateTimeFormatOptions;
 };

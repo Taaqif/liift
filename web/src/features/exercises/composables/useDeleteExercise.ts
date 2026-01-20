@@ -2,35 +2,26 @@ import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { apiClient } from "@/lib/api";
-import type { Exercise } from "@/features/exercises/types";
 import { exerciseKeys } from "@/lib/queryKeys";
 
-export type CreateExerciseRequest = {
-  name: string;
-  description?: string;
-  primary_muscle_groups?: string[];
-  secondary_muscle_groups?: string[];
-  equipment?: string[];
-};
-
-async function createExercise(data: CreateExerciseRequest): Promise<Exercise> {
-  return apiClient.post<Exercise>("/exercises", data);
+async function deleteExercise(id: number): Promise<void> {
+  return apiClient.delete<void>(`/exercises/${id}`);
 }
 
-export function useCreateExercise() {
+export function useDeleteExercise() {
   const queryClient = useQueryClient();
   const { t } = useI18n();
 
   const mutation = useMutation({
-    mutationFn: createExercise,
+    mutationFn: deleteExercise,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
-      toast.success(t("exercises.toasts.created"));
+      toast.success(t("exercises.toasts.deleted"));
     },
   });
 
   return {
-    createExercise: mutation.mutateAsync,
+    deleteExercise: mutation.mutateAsync,
     isPending: mutation.isPending,
     error: mutation.error,
     isSuccess: mutation.isSuccess,

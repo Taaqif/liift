@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/lib/auth/composables/useAuth";
 
 const { user, isAuthenticated, logout, initAuth } = useAuth();
@@ -93,5 +94,6 @@ onMounted(() => {
     <router-view />
   </main>
   <VueQueryDevtools />
+  <Toaster />
   </div>
 </template>

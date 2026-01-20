@@ -53,7 +53,23 @@ class ApiClient {
       throw new Error(error.error || `HTTP error! status: ${response.status}`);
     }
 
-    return response.json();
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const contentType = response.headers.get("content-type");
+
+    if (!contentType || !contentType.includes("application/json")) {
+      await response.text().catch(() => { });
+      return undefined as T;
+    }
+
+    const text = await response.text();
+    if (!text || text.trim() === "") {
+      return undefined as T;
+    }
+
+    return JSON.parse(text);
   }
 
   async get<T>(endpoint: string): Promise<T> {

@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, watch, ref } from "vue";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
-import { useCreateExercise } from "../composables/useCreateExercise";
+import { useI18n } from "vue-i18n";
+import { useUpdateExercise } from "../composables/useUpdateExercise";
+import { useDeleteExercise } from "../composables/useDeleteExercise";
 import { useMuscleGroup } from "@/features/reference/composables/useMuscleGroup";
 import { useEquipment } from "@/features/reference/composables/useEquipment";
+import type { Exercise } from "../types";
 import {
   DrawerClose,
   DrawerContent,
@@ -25,20 +28,38 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { MultiSelectTags } from "@/components/ui/multi-select-tags";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const props = defineProps<{
   open?: boolean;
   modal?: boolean;
+  exercise: Exercise | null;
 }>();
 
 const emits = defineEmits<{
-  (e: "exercise-created"): void;
+  (e: "exercise-updated"): void;
+  (e: "exercise-deleted"): void;
 }>();
 
-import { useI18n } from "vue-i18n";
-
 const { t } = useI18n();
-const { createExercise, isPending, error } = useCreateExercise();
+const {
+  updateExercise,
+  isPending: isUpdating,
+  error: updateError,
+} = useUpdateExercise();
+const {
+  deleteExercise,
+  isPending: isDeleting,
+  error: deleteError,
+} = useDeleteExercise();
 const { muscleGroup } = useMuscleGroup();
 const { equipment } = useEquipment();
 
@@ -54,7 +75,7 @@ const formSchema = z.object({
     .min(1, t("exercises.validation.equipmentRequired")),
 });
 
-const { handleSubmit, resetForm } = useForm({
+const { handleSubmit, resetForm, setValues } = useForm({
   validationSchema: toTypedSchema(formSchema),
   initialValues: {
     name: "",
@@ -79,43 +100,87 @@ const equipmentOptions = computed(() =>
   })),
 );
 
+// Populate form when exercise changes
+watch(
+  () => props.exercise,
+  (exercise) => {
+    if (exercise) {
+      setValues({
+        name: exercise.name,
+        description: exercise.description || "",
+        primary_muscle_groups: exercise.primary_muscle_groups.map(
+          (mg) => mg.name,
+        ),
+        secondary_muscle_groups: exercise.secondary_muscle_groups.map(
+          (mg) => mg.name,
+        ),
+        equipment: exercise.equipment.map((eq) => eq.name),
+      });
+    }
+  },
+  { immediate: true },
+);
+
 const onSubmit = handleSubmit(async (values) => {
+  if (!props.exercise) return;
+
   try {
-    await createExercise({
-      name: values.name.trim(),
-      description: values.description?.trim() || undefined,
-      primary_muscle_groups: values.primary_muscle_groups,
-      secondary_muscle_groups:
-        values.secondary_muscle_groups &&
-        values.secondary_muscle_groups.length > 0
-          ? values.secondary_muscle_groups
-          : undefined,
-      equipment: values.equipment,
+    await updateExercise({
+      id: props.exercise.id,
+      data: {
+        name: values.name.trim(),
+        description: values.description?.trim() || undefined,
+        primary_muscle_groups: values.primary_muscle_groups,
+        secondary_muscle_groups:
+          values.secondary_muscle_groups &&
+          values.secondary_muscle_groups.length > 0
+            ? values.secondary_muscle_groups
+            : undefined,
+        equipment: values.equipment,
+      },
     });
     resetForm();
-    emits("exercise-created");
+    emits("exercise-updated");
   } catch (err) {
-    console.error("Failed to create exercise:", err);
+    console.error("Failed to update exercise:", err);
   }
 });
+
+const onDelete = async () => {
+  if (!props.exercise) return;
+
+  try {
+    await deleteExercise(props.exercise.id);
+    resetForm();
+    showDeleteDialog.value = false;
+    emits("exercise-deleted");
+  } catch (err) {
+    console.error("Failed to delete exercise:", err);
+  }
+};
 
 watch(
   () => props.open,
   (newValue) => {
     if (!newValue) {
       resetForm();
+      showDeleteDialog.value = false;
     }
   },
 );
+
+const error = computed(() => updateError.value || deleteError.value);
+const isPending = computed(() => isUpdating.value || isDeleting.value);
+const showDeleteDialog = ref(false);
 </script>
 
 <template>
   <DrawerContent class="max-h-[95vh]">
     <div class="mx-auto w-full max-w-2xl overflow-y-auto">
       <DrawerHeader>
-        <DrawerTitle>{{ $t("exercises.createNew") }}</DrawerTitle>
+        <DrawerTitle>{{ $t("exercises.editTitle") }}</DrawerTitle>
         <DrawerDescription>
-          {{ $t("exercises.createDescription") }}
+          {{ $t("exercises.editDescription") }}
         </DrawerDescription>
       </DrawerHeader>
       <div class="p-4 pb-0 space-y-6">
@@ -203,9 +268,44 @@ watch(
           </FormField>
         </form>
       </div>
-      <DrawerFooter>
-        <Button @click="onSubmit" :disabled="isPending">
-          {{ isPending ? $t("creating") : $t("exercises.create") }}
+      <DrawerFooter class="flex-col gap-2 justify-between">
+        <Dialog v-model:open="showDeleteDialog">
+          <DialogTrigger as-child>
+            <Button type="button" variant="destructive" :disabled="isPending">
+              {{ $t("exercises.deleteExercise") }}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{{ $t("exercises.deleteExercise") }}</DialogTitle>
+              <DialogDescription>
+                {{
+                  $t("exercises.deleteExerciseConfirmDescription", {
+                    name: exercise?.name,
+                  })
+                }}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                @click="showDeleteDialog = false"
+                :disabled="isDeleting"
+              >
+                {{ $t("cancel") }}
+              </Button>
+              <Button
+                variant="destructive"
+                @click="onDelete"
+                :disabled="isDeleting"
+              >
+                {{ isDeleting ? $t("deleting") : $t("delete") }}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Button @click="onSubmit" :disabled="isPending" class="flex-1">
+          {{ isUpdating ? $t("updating") : $t("exercises.updateExercise") }}
         </Button>
         <DrawerClose as-child>
           <Button variant="outline">{{ $t("cancel") }}</Button>
