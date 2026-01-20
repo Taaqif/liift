@@ -11,12 +11,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// ExerciseHandler handles exercise-related HTTP requests
 type ExerciseHandler struct {
 	repo *repository.ExerciseRepository
 }
 
-// NewExerciseHandler creates a new ExerciseHandler with the given repository
 func NewExerciseHandler(repo *repository.ExerciseRepository) *ExerciseHandler {
 	return &ExerciseHandler{repo: repo}
 }
@@ -172,7 +170,6 @@ func (h *ExerciseHandler) SearchExercises(c echo.Context) error {
 	})
 }
 
-// RegisterExerciseRoutes registers exercise routes with the given handler
 func RegisterExerciseRoutes(api *echo.Group, handler *ExerciseHandler) {
 	api.GET("/exercises", handler.GetExercises)
 	api.GET("/exercises/search", handler.SearchExercises)

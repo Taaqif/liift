@@ -10,12 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// EquipmentHandler handles equipment-related HTTP requests
 type EquipmentHandler struct {
 	db *gorm.DB
 }
 
-// NewEquipmentHandler creates a new EquipmentHandler with the given database connection
 func NewEquipmentHandler(db *gorm.DB) *EquipmentHandler {
 	return &EquipmentHandler{db: db}
 }
@@ -36,7 +34,6 @@ func (h *EquipmentHandler) GetEquipment(c echo.Context) error {
 	return c.JSON(http.StatusOK, names)
 }
 
-// RegisterEquipmentRoutes registers equipment routes with the given handler
 func RegisterEquipmentRoutes(api *echo.Group, handler *EquipmentHandler) {
 	api.GET("/equipment", handler.GetEquipment)
 }

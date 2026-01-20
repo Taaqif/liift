@@ -29,13 +29,11 @@ type AuthResponse struct {
 	User  models.User `json:"user"`
 }
 
-// AuthHandler handles authentication-related HTTP requests
 type AuthHandler struct {
-	db         *gorm.DB
-	jwtSecret  []byte
+	db        *gorm.DB
+	jwtSecret []byte
 }
 
-// NewAuthHandler creates a new AuthHandler with the given database connection
 func NewAuthHandler(db *gorm.DB) *AuthHandler {
 	secret := utils.GetEnv("JWT_SECRET", "")
 	return &AuthHandler{
@@ -135,7 +133,6 @@ func (h *AuthHandler) generateToken(userID uint, username string) (string, error
 	return token.SignedString(h.jwtSecret)
 }
 
-// RegisterAuthRoutes registers auth routes with the given handler
 func RegisterAuthRoutes(api *echo.Group, handler *AuthHandler) {
 	api.POST("/auth/login", handler.Login)
 	api.POST("/auth/register", handler.Register)

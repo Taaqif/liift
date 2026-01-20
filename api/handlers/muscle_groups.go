@@ -10,12 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// MuscleGroupHandler handles muscle group-related HTTP requests
 type MuscleGroupHandler struct {
 	db *gorm.DB
 }
 
-// NewMuscleGroupHandler creates a new MuscleGroupHandler with the given database connection
 func NewMuscleGroupHandler(db *gorm.DB) *MuscleGroupHandler {
 	return &MuscleGroupHandler{db: db}
 }
@@ -36,7 +34,6 @@ func (h *MuscleGroupHandler) GetMuscleGroups(c echo.Context) error {
 	return c.JSON(http.StatusOK, names)
 }
 
-// RegisterMuscleGroupRoutes registers muscle group routes with the given handler
 func RegisterMuscleGroupRoutes(api *echo.Group, handler *MuscleGroupHandler) {
 	api.GET("/muscle-groups", handler.GetMuscleGroups)
 }
