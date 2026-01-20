@@ -59,13 +59,66 @@ func (r *ExerciseRepository) List(ctx context.Context, limit, offset int) ([]mod
 	return exercises, total, nil
 }
 
-// Update uses FullSaveAssociations to ensure many-to-many relationships are properly updated
 func (r *ExerciseRepository) Update(ctx context.Context, exercise *models.Exercise) error {
-	return r.DBWithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Save(exercise).Error
+	return r.DBWithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Exercise{}).Where("id = ?", exercise.ID).
+			Updates(models.Exercise{
+				Name:        exercise.Name,
+				Description: exercise.Description,
+				Image:       exercise.Image,
+			}).Error; err != nil {
+			return err
+		}
+
+		target := models.Exercise{BaseModel: models.BaseModel{ID: exercise.ID}}
+
+		if err := tx.Model(&target).Association("Equipment").Clear(); err != nil {
+			return err
+		}
+		if len(exercise.Equipment) > 0 {
+			if err := tx.Model(&target).Association("Equipment").Append(exercise.Equipment); err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Model(&target).Association("PrimaryMuscleGroups").Clear(); err != nil {
+			return err
+		}
+		if len(exercise.PrimaryMuscleGroups) > 0 {
+			if err := tx.Model(&target).Association("PrimaryMuscleGroups").Append(exercise.PrimaryMuscleGroups); err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Model(&target).Association("SecondaryMuscleGroups").Clear(); err != nil {
+			return err
+		}
+		if len(exercise.SecondaryMuscleGroups) > 0 {
+			if err := tx.Model(&target).Association("SecondaryMuscleGroups").Append(exercise.SecondaryMuscleGroups); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (r *ExerciseRepository) Delete(ctx context.Context, id uint) error {
-	return r.DBWithContext(ctx).Delete(&models.Exercise{}, id).Error
+	return r.DBWithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		target := models.Exercise{BaseModel: models.BaseModel{ID: id}}
+
+		if err := tx.Model(&target).Association("Equipment").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&target).Association("PrimaryMuscleGroups").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&target).Association("SecondaryMuscleGroups").Clear(); err != nil {
+			return err
+		}
+
+		return tx.Delete(&models.Exercise{}, id).Error
+	})
 }
 
 func (r *ExerciseRepository) FindByMuscleGroup(ctx context.Context, muscleGroupName string) ([]models.Exercise, error) {
