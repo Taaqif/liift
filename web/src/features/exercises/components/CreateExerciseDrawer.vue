@@ -33,6 +33,7 @@ const props = defineProps<{
 
 const emits = defineEmits<{
   (e: "exercise-created"): void;
+  (e: "form-dirty", value: boolean): void;
 }>();
 
 import { useI18n } from "vue-i18n";
@@ -54,7 +55,7 @@ const formSchema = z.object({
     .min(1, t("exercises.validation.equipmentRequired")),
 });
 
-const { handleSubmit, resetForm } = useForm({
+const { handleSubmit, resetForm, meta } = useForm({
   validationSchema: toTypedSchema(formSchema),
   initialValues: {
     name: "",
@@ -64,6 +65,18 @@ const { handleSubmit, resetForm } = useForm({
     equipment: [] as string[],
   },
 });
+
+const isFormDirty = computed(() => meta.value.dirty);
+
+watch(
+  [isFormDirty, () => props.open],
+  ([dirty, isOpen]) => {
+    if (isOpen) {
+      emits("form-dirty", dirty);
+    }
+  },
+  { immediate: true },
+);
 
 const muscleGroupOptions = computed(() =>
   muscleGroup.value.map((group) => ({

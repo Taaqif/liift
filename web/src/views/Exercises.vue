@@ -8,6 +8,14 @@ import EditExerciseDrawer from "@/features/exercises/components/EditExerciseDraw
 import type { Exercise } from "@/features/exercises/types";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger } from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const route = useRoute();
 const router = useRouter();
@@ -17,6 +25,11 @@ const offset = ref(0);
 const isDrawerOpen = ref(false);
 const isEditDrawerOpen = ref(false);
 const selectedExercise = ref<Exercise | null>(null);
+const isEditFormDirty = ref(false);
+const isCreateFormDirty = ref(false);
+const showUnsavedChangesDialog = ref(false);
+const pendingDrawerClose = ref(false);
+const isCreateDrawerPendingClose = ref(false);
 
 const params = computed(() => ({
   limit: limit.value,
@@ -59,23 +72,97 @@ watch(
 
 const handleEditExercise = (exercise: Exercise) => {
   selectedExercise.value = exercise;
+  isEditFormDirty.value = false;
   isEditDrawerOpen.value = true;
+};
+
+const handleExerciseCreated = () => {
+  isDrawerOpen.value = false;
+  isCreateFormDirty.value = false;
 };
 
 const handleExerciseUpdated = () => {
   isEditDrawerOpen.value = false;
   selectedExercise.value = null;
+  isEditFormDirty.value = false;
 };
 
 const handleExerciseDeleted = async () => {
   // Close drawer immediately
   isEditDrawerOpen.value = false;
   selectedExercise.value = null;
-  // Explicitly refetch to ensure data is updated
+  isEditFormDirty.value = false;
   try {
     await refetch();
   } catch (err) {
     console.error("Failed to refetch exercises:", err);
+  }
+};
+
+const handleFormDirty = (dirty: boolean) => {
+  if (!isEditDrawerOpen.value) return;
+  isEditFormDirty.value = dirty;
+};
+
+const handleEditDrawerOpenChange = (open: boolean) => {
+  if (open) {
+    isEditFormDirty.value = false;
+    isEditDrawerOpen.value = true;
+    return;
+  }
+
+  if (isEditFormDirty.value) {
+    pendingDrawerClose.value = true;
+    showUnsavedChangesDialog.value = true;
+    isEditDrawerOpen.value = true;
+    return;
+  }
+
+  isEditDrawerOpen.value = false;
+  selectedExercise.value = null;
+  isEditFormDirty.value = false;
+};
+
+const handleKeepEditing = () => {
+  showUnsavedChangesDialog.value = false;
+  pendingDrawerClose.value = false;
+  isCreateDrawerPendingClose.value = false;
+};
+
+const handleCreateFormDirty = (dirty: boolean) => {
+  if (!isDrawerOpen.value) return;
+  isCreateFormDirty.value = dirty;
+};
+
+const handleCreateDrawerOpenChange = (open: boolean) => {
+  if (open) {
+    isCreateFormDirty.value = false;
+    isDrawerOpen.value = true;
+    return;
+  }
+
+  if (isCreateFormDirty.value) {
+    isCreateDrawerPendingClose.value = true;
+    showUnsavedChangesDialog.value = true;
+    isDrawerOpen.value = true;
+    return;
+  }
+
+  isDrawerOpen.value = false;
+  isCreateFormDirty.value = false;
+};
+
+const handleDiscardChanges = () => {
+  showUnsavedChangesDialog.value = false;
+  if (pendingDrawerClose.value) {
+    isEditDrawerOpen.value = false;
+    selectedExercise.value = null;
+    isEditFormDirty.value = false;
+    pendingDrawerClose.value = false;
+  } else if (isCreateDrawerPendingClose.value) {
+    isDrawerOpen.value = false;
+    isCreateFormDirty.value = false;
+    isCreateDrawerPendingClose.value = false;
   }
 };
 </script>
@@ -89,23 +176,51 @@ const handleExerciseDeleted = async () => {
           {{ $t("exercises.subtitle") }}
         </p>
       </div>
-      <Drawer v-model:open="isDrawerOpen" :dismissible="false">
+      <Drawer
+        :open="isDrawerOpen"
+        :dismissible="true"
+        @update:open="handleCreateDrawerOpenChange"
+      >
         <DrawerTrigger as-child>
           <Button>{{ $t("exercises.createNew") }}</Button>
         </DrawerTrigger>
         <CreateExerciseDrawer
           :open="isDrawerOpen"
-          @exercise-created="isDrawerOpen = false"
+          @exercise-created="handleExerciseCreated"
+          @form-dirty="handleCreateFormDirty"
         />
       </Drawer>
-      <Drawer v-model:open="isEditDrawerOpen" :dismissible="false">
+      <Drawer
+        :open="isEditDrawerOpen"
+        :dismissible="true"
+        @update:open="handleEditDrawerOpenChange"
+      >
         <EditExerciseDrawer
           :open="isEditDrawerOpen"
           :exercise="selectedExercise"
           @exercise-updated="handleExerciseUpdated"
           @exercise-deleted="handleExerciseDeleted"
+          @form-dirty="handleFormDirty"
         />
       </Drawer>
+      <Dialog v-model:open="showUnsavedChangesDialog">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Are you sure you want to close?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" @click="handleKeepEditing">
+              Keep editing
+            </Button>
+            <Button variant="destructive" @click="handleDiscardChanges">
+              Discard changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
 
     <div

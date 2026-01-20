@@ -47,6 +47,7 @@ const props = defineProps<{
 const emits = defineEmits<{
   (e: "exercise-updated"): void;
   (e: "exercise-deleted"): void;
+  (e: "form-dirty", value: boolean): void;
 }>();
 
 const { t } = useI18n();
@@ -75,7 +76,7 @@ const formSchema = z.object({
     .min(1, t("exercises.validation.equipmentRequired")),
 });
 
-const { handleSubmit, resetForm, setValues } = useForm({
+const { handleSubmit, resetForm, setValues, meta } = useForm({
   validationSchema: toTypedSchema(formSchema),
   initialValues: {
     name: "",
@@ -85,6 +86,18 @@ const { handleSubmit, resetForm, setValues } = useForm({
     equipment: [] as string[],
   },
 });
+
+const isFormDirty = computed(() => meta.value.dirty);
+
+watch(
+  [isFormDirty, () => props.open],
+  ([dirty, isOpen]) => {
+    if (isOpen) {
+      emits("form-dirty", dirty);
+    }
+  },
+  { immediate: true },
+);
 
 const muscleGroupOptions = computed(() =>
   muscleGroup.value.map((group) => ({
@@ -102,16 +115,19 @@ const equipmentOptions = computed(() =>
 
 const populateForm = (exercise: Exercise | null) => {
   if (exercise) {
-    setValues({
-      name: exercise.name,
-      description: exercise.description || "",
-      primary_muscle_groups: exercise.primary_muscle_groups.map(
-        (mg) => mg.name,
-      ),
-      secondary_muscle_groups: exercise.secondary_muscle_groups.map(
-        (mg) => mg.name,
-      ),
-      equipment: exercise.equipment.map((eq) => eq.name),
+    // Use resetForm with values to set the form values AND reset the dirty state
+    resetForm({
+      values: {
+        name: exercise.name,
+        description: exercise.description || "",
+        primary_muscle_groups: exercise.primary_muscle_groups.map(
+          (mg) => mg.name,
+        ),
+        secondary_muscle_groups: exercise.secondary_muscle_groups.map(
+          (mg) => mg.name,
+        ),
+        equipment: exercise.equipment.map((eq) => eq.name),
+      },
     });
   }
 };
@@ -153,7 +169,7 @@ const onSubmit = handleSubmit(async (values) => {
         primary_muscle_groups: values.primary_muscle_groups,
         secondary_muscle_groups:
           values.secondary_muscle_groups &&
-            values.secondary_muscle_groups.length > 0
+          values.secondary_muscle_groups.length > 0
             ? values.secondary_muscle_groups
             : undefined,
         equipment: values.equipment,
@@ -194,7 +210,10 @@ const showDeleteDialog = ref(false);
         </DrawerDescription>
       </DrawerHeader>
       <div class="p-4 pb-0 space-y-6">
-        <div v-if="error" class="p-4 bg-destructive/10 text-destructive rounded-lg">
+        <div
+          v-if="error"
+          class="p-4 bg-destructive/10 text-destructive rounded-lg"
+        >
           <p>{{ $t("exercises.error") }}: {{ error.message }}</p>
         </div>
 
@@ -203,7 +222,11 @@ const showDeleteDialog = ref(false);
             <FormItem>
               <FormLabel>{{ $t("exercises.name") }}</FormLabel>
               <FormControl>
-                <Input :placeholder="$t('exercises.namePlaceholder')" v-bind="componentField" required />
+                <Input
+                  :placeholder="$t('exercises.namePlaceholder')"
+                  v-bind="componentField"
+                  required
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -213,7 +236,11 @@ const showDeleteDialog = ref(false);
             <FormItem>
               <FormLabel>{{ $t("exercises.description") }}</FormLabel>
               <FormControl>
-                <Textarea :placeholder="$t('exercises.descriptionPlaceholder')" rows="3" v-bind="componentField" />
+                <Textarea
+                  :placeholder="$t('exercises.descriptionPlaceholder')"
+                  rows="3"
+                  v-bind="componentField"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -223,9 +250,12 @@ const showDeleteDialog = ref(false);
             <FormItem>
               <FormLabel>{{ $t("exercises.primaryMuscleGroups") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']" :options="muscleGroupOptions"
-                  :placeholder="$t('exercises.primaryMuscleGroupsPlaceholder')" />
+                <MultiSelectTags
+                  :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']"
+                  :options="muscleGroupOptions"
+                  :placeholder="$t('exercises.primaryMuscleGroupsPlaceholder')"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -235,10 +265,14 @@ const showDeleteDialog = ref(false);
             <FormItem>
               <FormLabel>{{ $t("exercises.secondaryMuscleGroups") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']" :options="muscleGroupOptions"
-                  :placeholder="$t('exercises.secondaryMuscleGroupsPlaceholder')
-                    " />
+                <MultiSelectTags
+                  :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']"
+                  :options="muscleGroupOptions"
+                  :placeholder="
+                    $t('exercises.secondaryMuscleGroupsPlaceholder')
+                  "
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -248,9 +282,12 @@ const showDeleteDialog = ref(false);
             <FormItem>
               <FormLabel>{{ $t("exercises.equipment") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']" :options="equipmentOptions"
-                  :placeholder="$t('exercises.equipmentPlaceholder')" />
+                <MultiSelectTags
+                  :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']"
+                  :options="equipmentOptions"
+                  :placeholder="$t('exercises.equipmentPlaceholder')"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -276,10 +313,18 @@ const showDeleteDialog = ref(false);
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" @click="showDeleteDialog = false" :disabled="isDeleting">
+              <Button
+                variant="outline"
+                @click="showDeleteDialog = false"
+                :disabled="isDeleting"
+              >
                 {{ $t("cancel") }}
               </Button>
-              <Button variant="destructive" @click="onDelete" :disabled="isDeleting">
+              <Button
+                variant="destructive"
+                @click="onDelete"
+                :disabled="isDeleting"
+              >
                 {{ isDeleting ? $t("deleting") : $t("delete") }}
               </Button>
             </DialogFooter>
