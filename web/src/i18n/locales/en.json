@@ -63,11 +63,14 @@
   "pagination": {
     "next": "Next",
     "previous": "Previous",
-    "showingFromToOfTotal": "Showing {from} to {to} of {total}"
+    "showingFromToOfTotal": "Showing {from} to {to} of {total}",
+    "itemCount": "item | items",
+    "showingItems": "Showing {count} {itemLabel}"
   },
   "exercises": {
     "title": "Exercises",
     "titleLower": "@.lower:{'exercises.title'}",
+    "titlePlural": "exercise | exercises",
     "subtitle": "Browse all available exercises in the library",
     "create": "Create Exercise",
     "createNew": "Create New Exercise",
@@ -104,3 +107,4 @@
     }
   }
 }
+

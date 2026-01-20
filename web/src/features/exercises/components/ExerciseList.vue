@@ -66,7 +66,7 @@ const handleEdit = (exercise: Exercise) => {
           <div class="flex flex-wrap gap-4 text-sm">
             <div v-if="exercise.primary_muscle_groups.length > 0">
               <span class="font-medium text-muted-foreground">{{
-                $t("exercises.primaryMuscleGroups")
+                $t("exercises.primaryLabel")
               }}</span>
               <span class="ml-2">
                 {{
@@ -79,7 +79,7 @@ const handleEdit = (exercise: Exercise) => {
               class="text-muted-foreground"
             >
               <span class="font-medium">{{
-                $t("exercises.secondaryMuscleGroups")
+                $t("exercises.secondaryLabel")
               }}</span>
               <span class="ml-2">
                 {{
