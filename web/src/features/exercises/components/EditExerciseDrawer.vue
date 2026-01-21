@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, watch, ref } from "vue";
-import { useForm } from "vee-validate";
+import { computed, watch, ref, onUnmounted } from "vue";
+import { useForm, useField } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
 import { useI18n } from "vue-i18n";
@@ -9,6 +9,7 @@ import { useDeleteExercise } from "../composables/useDeleteExercise";
 import { useMuscleGroup } from "@/features/reference/composables/useMuscleGroup";
 import { useEquipment } from "@/features/reference/composables/useEquipment";
 import type { Exercise } from "../types";
+import { getImageUrl, revokeImageUrl } from "@/lib/api";
 import {
   DrawerClose,
   DrawerContent,
@@ -71,12 +72,13 @@ const formSchema = z.object({
     .array(z.string())
     .min(1, t("exercises.validation.primaryMuscleGroupsRequired")),
   secondary_muscle_groups: z.array(z.string()).optional(),
+  image: z.union([z.instanceof(File), z.null()]).optional(),
   equipment: z
     .array(z.string())
     .min(1, t("exercises.validation.equipmentRequired")),
 });
 
-const { handleSubmit, resetForm, setValues, meta } = useForm({
+const { handleSubmit, resetForm, meta, setFieldValue } = useForm({
   validationSchema: toTypedSchema(formSchema),
   initialValues: {
     name: "",
@@ -88,6 +90,50 @@ const { handleSubmit, resetForm, setValues, meta } = useForm({
 });
 
 const isFormDirty = computed(() => meta.value.dirty);
+
+const imageUrl = ref<string | null>(null);
+
+// Load existing image when exercise changes
+const loadExistingImage = async (imagePath: string | null | undefined) => {
+  if (!imagePath) {
+    imageUrl.value = null;
+    return;
+  }
+
+  const fullPath = imagePath.startsWith("http")
+    ? imagePath
+    : `${window.location.origin}${imagePath}`;
+
+  const blobUrl = await getImageUrl(fullPath);
+  imageUrl.value = blobUrl ?? null;
+};
+
+watch(
+  () => props.exercise?.image,
+  async (imagePath) => {
+    await loadExistingImage(imagePath ?? null);
+  },
+  { immediate: true },
+);
+
+const { value: imageValue } = useField<File | null | undefined>("image");
+
+watch(imageValue, (file) => {
+  if (file instanceof File) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imageUrl.value = (e.target?.result as string) ?? null;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    imageUrl.value = null;
+  }
+});
+
+const clearImage = () => {
+  imageUrl.value = null;
+  setFieldValue("image", null);
+};
 
 watch(
   [isFormDirty, () => props.open],
@@ -173,6 +219,7 @@ const onSubmit = handleSubmit(async (values) => {
             ? values.secondary_muscle_groups
             : undefined,
         equipment: values.equipment,
+        image: values.image,
       },
     });
     resetForm();
@@ -198,6 +245,15 @@ const onDelete = async () => {
 const error = computed(() => updateError.value || deleteError.value);
 const isPending = computed(() => isUpdating.value || isDeleting.value);
 const showDeleteDialog = ref(false);
+
+onUnmounted(() => {
+  if (props.exercise?.image) {
+    const fullPath = props.exercise.image.startsWith("http")
+      ? props.exercise.image
+      : `${window.location.origin}${props.exercise.image}`;
+    revokeImageUrl(fullPath);
+  }
+});
 </script>
 
 <template>
@@ -234,6 +290,33 @@ const showDeleteDialog = ref(false);
               <FormMessage />
             </FormItem>
           </FormField>
+
+          <div class="space-y-2">
+            <FormField v-slot="{ handleChange }" name="image">
+              <FormItem>
+                <FormLabel>{{ $t("exercises.image") }}</FormLabel>
+                <FormControl>
+                  <Input @change="
+                    (e) => {
+                      const target = e.target as HTMLInputElement;
+                      const file = target.files?.[0];
+                      handleChange(file ?? undefined);
+                    }
+                  " type="file" accept="image/*" class="cursor-pointer" />
+                </FormControl>
+                <FormMessage />
+                <div class="flex items-center gap-3 mt-2">
+                  <div v-if="imageUrl">
+                    <img :src="imageUrl" :alt="exercise?.name" class="h-32 w-32 rounded-lg object-cover border" />
+                  </div>
+                  <Button v-if="imageUrl" type="button" variant="outline" size="sm" @click="clearImage"
+                    :disabled="!imageUrl">
+                    {{ $t("exercises.clearImage") }}
+                  </Button>
+                </div>
+              </FormItem>
+            </FormField>
+          </div>
 
           <FormField v-slot="{ componentField }" name="primary_muscle_groups">
             <FormItem>

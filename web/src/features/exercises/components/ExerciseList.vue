@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch, onUnmounted } from "vue";
 import type { Exercise } from "@/features/exercises/types";
 import Card from "@/components/ui/card/Card.vue";
 import CardHeader from "@/components/ui/card/CardHeader.vue";
@@ -6,8 +7,10 @@ import CardTitle from "@/components/ui/card/CardTitle.vue";
 import CardDescription from "@/components/ui/card/CardDescription.vue";
 import CardContent from "@/components/ui/card/CardContent.vue";
 import { Button } from "@/components/ui/button";
+import { Dumbbell } from "lucide-vue-next";
+import { getImageUrl, revokeImageUrl } from "@/lib/api";
 
-defineProps<{
+const props = defineProps<{
   exercises: Exercise[];
   loading?: boolean;
 }>();
@@ -18,6 +21,71 @@ const emits = defineEmits<{
 
 const handleEdit = (exercise: Exercise) => {
   emits("edit", exercise);
+};
+
+type ImageCacheEntry = { url: string; path: string };
+const imageCache = ref<Map<number, ImageCacheEntry>>(new Map());
+
+const setCache = (id: number, entry: ImageCacheEntry) => {
+  const next = new Map(imageCache.value);
+  next.set(id, entry);
+  imageCache.value = next;
+};
+
+const deleteCache = (id: number) => {
+  const next = new Map(imageCache.value);
+  next.delete(id);
+  imageCache.value = next;
+};
+
+const getFullImagePath = (image: string) =>
+  image.startsWith("http") ? image : `${window.location.origin}${image}`;
+
+const loadImage = async (exercise: Exercise) => {
+  if (!exercise.image) {
+    const cached = imageCache.value.get(exercise.id);
+    if (cached) {
+      revokeImageUrl(cached.path);
+      deleteCache(exercise.id);
+    }
+    return;
+  }
+
+  const imagePath = getFullImagePath(exercise.image);
+  const cached = imageCache.value.get(exercise.id);
+
+  // If unchanged, keep current blob URL
+  if (cached && cached.path === imagePath) return;
+
+  // If changed, revoke old and reload
+  if (cached && cached.path !== imagePath) {
+    revokeImageUrl(cached.path);
+    deleteCache(exercise.id);
+  }
+
+  const blobUrl = await getImageUrl(imagePath);
+  if (blobUrl) {
+    setCache(exercise.id, { url: blobUrl, path: imagePath });
+  }
+};
+
+const loadAllImages = async () => {
+  for (const exercise of props.exercises) {
+    await loadImage(exercise);
+  }
+};
+
+watch(() => props.exercises, loadAllImages, { immediate: true });
+
+onUnmounted(() => {
+  imageCache.value.forEach((entry) => {
+    revokeImageUrl(entry.path);
+  });
+  imageCache.value = new Map();
+});
+
+const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
+  return imageCache.value.get(exercise.id)?.url;
 };
 </script>
 
@@ -30,9 +98,7 @@ const handleEdit = (exercise: Exercise) => {
             <div class="h-6 w-48 bg-gray-200 animate-pulse rounded"></div>
           </CardTitle>
           <CardDescription>
-            <div
-              class="h-4 w-full bg-gray-200 animate-pulse rounded mt-2"
-            ></div>
+            <div class="h-4 w-full bg-gray-200 animate-pulse rounded mt-2"></div>
           </CardDescription>
         </CardHeader>
       </Card>
@@ -43,44 +109,43 @@ const handleEdit = (exercise: Exercise) => {
     </div>
 
     <div v-else class="space-y-4">
-      <Card v-for="exercise in exercises" :key="exercise.id">
+      <Card v-for="exercise in exercises" :key="exercise.id" class="gap-2">
         <CardHeader>
-          <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <CardTitle>{{ exercise.name }}</CardTitle>
-              <CardDescription v-if="exercise.description">
-                {{ exercise.description }}
-              </CardDescription>
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex gap-4 flex-1">
+              <div class="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                <img v-if="getImageUrlForExercise(exercise)" :src="getImageUrlForExercise(exercise)"
+                  :alt="exercise.name" class="w-full h-full object-cover" />
+                <Dumbbell v-else class="w-10 h-10 text-muted-foreground" />
+              </div>
+              <div class="flex-1">
+                <CardTitle>{{ exercise.name }}</CardTitle>
+                <CardDescription v-if="exercise.description">
+                  {{ exercise.description }}
+                </CardDescription>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="handleEdit(exercise)"
-              class="ml-4"
-            >
+            <Button variant="outline" size="sm" @click="handleEdit(exercise)" class="shrink-0">
               {{ $t("edit") }}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div class="flex flex-wrap gap-4 text-sm">
+          <div class="flex flex-col gap-1 text-sm">
             <div v-if="exercise.primary_muscle_groups.length > 0">
               <span class="font-medium text-muted-foreground">{{
                 $t("exercises.primaryLabel")
-              }}</span>
+                }}</span>
               <span class="ml-2">
                 {{
                   exercise.primary_muscle_groups.map((mg) => mg.name).join(", ")
                 }}
               </span>
             </div>
-            <div
-              v-if="exercise.secondary_muscle_groups.length > 0"
-              class="text-muted-foreground"
-            >
-              <span class="font-medium">{{
+            <div v-if="exercise.secondary_muscle_groups.length > 0">
+              <span class="font-medium text-muted-foreground">{{
                 $t("exercises.secondaryLabel")
-              }}</span>
+                }}</span>
               <span class="ml-2">
                 {{
                   exercise.secondary_muscle_groups
@@ -92,9 +157,9 @@ const handleEdit = (exercise: Exercise) => {
             <div v-if="exercise.equipment.length > 0">
               <span class="font-medium text-muted-foreground">{{
                 $t("exercises.equipmentLabel")
-              }}</span>
+                }}</span>
               <span class="ml-2">
-                {{ exercise.equipment.map((eq) => eq.name).join(", ") }}
+                {{exercise.equipment.map((eq) => eq.name).join(", ")}}
               </span>
             </div>
           </div>
@@ -103,4 +168,3 @@ const handleEdit = (exercise: Exercise) => {
     </div>
   </div>
 </template>
-

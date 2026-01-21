@@ -13,7 +13,6 @@
   "areYouSure": "Are you sure?",
   "previous": "Previous",
   "next": "Next",
-
   "delete": "Delete",
   "search": "Search",
   "clear": "Clear",
@@ -97,6 +96,8 @@
     "primaryLabel": "Primary:",
     "secondaryLabel": "Secondary:",
     "equipmentLabel": "Equipment:",
+    "clearImage": "Clear image",
+    "image": "Exercise Image",
     "toasts": {
       "created": "Exercise created successfully",
       "updated": "Exercise updated successfully",
@@ -116,4 +117,3 @@
     }
   }
 }
-

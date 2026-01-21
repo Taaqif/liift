@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
-import { useForm } from "vee-validate";
+import { computed, watch, ref } from "vue";
+import { useForm, useField } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
 import { useCreateExercise } from "../composables/useCreateExercise";
@@ -50,18 +50,20 @@ const formSchema = z.object({
     .array(z.string())
     .min(1, t("exercises.validation.primaryMuscleGroupsRequired")),
   secondary_muscle_groups: z.array(z.string()).optional(),
+  image: z.union([z.instanceof(File), z.null()]).optional(),
   equipment: z
     .array(z.string())
     .min(1, t("exercises.validation.equipmentRequired")),
 });
 
-const { handleSubmit, resetForm, meta } = useForm({
+const { handleSubmit, resetForm, meta, setFieldValue } = useForm({
   validationSchema: toTypedSchema(formSchema),
   initialValues: {
     name: "",
     description: "",
     primary_muscle_groups: [] as string[],
     secondary_muscle_groups: [] as string[],
+    image: null as File | null,
     equipment: [] as string[],
   },
 });
@@ -92,6 +94,26 @@ const equipmentOptions = computed(() =>
   })),
 );
 
+const imageUrl = ref<string | null>(null);
+const { value: imageValue } = useField<File | null | undefined>("image");
+
+watch(imageValue, (file) => {
+  if (file instanceof File) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imageUrl.value = (e.target?.result as string) ?? null;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    imageUrl.value = null;
+  }
+});
+
+const clearImage = () => {
+  imageUrl.value = null;
+  setFieldValue("image", null);
+};
+
 const onSubmit = handleSubmit(async (values) => {
   try {
     await createExercise({
@@ -100,12 +122,14 @@ const onSubmit = handleSubmit(async (values) => {
       primary_muscle_groups: values.primary_muscle_groups,
       secondary_muscle_groups:
         values.secondary_muscle_groups &&
-        values.secondary_muscle_groups.length > 0
+          values.secondary_muscle_groups.length > 0
           ? values.secondary_muscle_groups
           : undefined,
       equipment: values.equipment,
+      image: values.image ?? null,
     });
     resetForm();
+    imageUrl.value = null;
     emits("exercise-created");
   } catch (err) {
     console.error("Failed to create exercise:", err);
@@ -117,6 +141,7 @@ watch(
   (newValue) => {
     if (newValue) {
       resetForm();
+      imageUrl.value = null;
     }
   },
 );
@@ -132,10 +157,7 @@ watch(
         </DrawerDescription>
       </DrawerHeader>
       <div class="p-4 pb-0 space-y-6">
-        <div
-          v-if="error"
-          class="p-4 bg-destructive/10 text-destructive rounded-lg"
-        >
+        <div v-if="error" class="p-4 bg-destructive/10 text-destructive rounded-lg">
           <p>{{ $t("exercises.error") }}: {{ error.message }}</p>
         </div>
 
@@ -144,11 +166,7 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.name") }}</FormLabel>
               <FormControl>
-                <Input
-                  :placeholder="$t('exercises.namePlaceholder')"
-                  v-bind="componentField"
-                  required
-                />
+                <Input :placeholder="$t('exercises.namePlaceholder')" v-bind="componentField" required />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -158,26 +176,46 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.description") }}</FormLabel>
               <FormControl>
-                <Textarea
-                  :placeholder="$t('exercises.descriptionPlaceholder')"
-                  rows="3"
-                  v-bind="componentField"
-                />
+                <Textarea :placeholder="$t('exercises.descriptionPlaceholder')" rows="3" v-bind="componentField" />
               </FormControl>
               <FormMessage />
             </FormItem>
           </FormField>
 
+          <div class="space-y-2">
+            <FormField v-slot="{ handleChange }" name="image">
+              <FormItem>
+                <FormLabel>{{ $t("exercises.image") }}</FormLabel>
+                <FormControl>
+                  <Input type="file" accept="image/*" class="cursor-pointer" @change="
+                    (e) => {
+                      const target = e.target as HTMLInputElement;
+                      const file = target.files?.[0];
+                      handleChange(file ?? null);
+                    }
+                  " />
+                </FormControl>
+                <FormMessage />
+                <div class="flex items-center gap-3 mt-2">
+                  <div v-if="imageUrl">
+                    <img :src="imageUrl" alt="Preview" class="h-32 w-32 rounded-lg object-cover border" />
+                  </div>
+                  <Button v-if="imageUrl" type="button" variant="outline" size="sm" @click="clearImage"
+                    :disabled="!imageUrl">
+                    {{ $t("exercises.clearImage") }}
+                  </Button>
+                </div>
+              </FormItem>
+            </FormField>
+          </div>
+
           <FormField v-slot="{ componentField }" name="primary_muscle_groups">
             <FormItem>
               <FormLabel>{{ $t("exercises.primaryMuscleGroups") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags
-                  :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']"
-                  :options="muscleGroupOptions"
-                  :placeholder="$t('exercises.primaryMuscleGroupsPlaceholder')"
-                />
+                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']" :options="muscleGroupOptions"
+                  :placeholder="$t('exercises.primaryMuscleGroupsPlaceholder')" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -187,14 +225,10 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.secondaryMuscleGroups") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags
-                  :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']"
-                  :options="muscleGroupOptions"
-                  :placeholder="
-                    $t('exercises.secondaryMuscleGroupsPlaceholder')
-                  "
-                />
+                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']" :options="muscleGroupOptions"
+                  :placeholder="$t('exercises.secondaryMuscleGroupsPlaceholder')
+                    " />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -204,12 +238,9 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.equipment") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags
-                  :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']"
-                  :options="equipmentOptions"
-                  :placeholder="$t('exercises.equipmentPlaceholder')"
-                />
+                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']" :options="equipmentOptions"
+                  :placeholder="$t('exercises.equipmentPlaceholder')" />
               </FormControl>
               <FormMessage />
             </FormItem>

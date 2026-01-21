@@ -11,9 +11,31 @@ export type CreateExerciseRequest = {
   primary_muscle_groups?: string[];
   secondary_muscle_groups?: string[];
   equipment?: string[];
+  image?: File | null;
 };
 
 async function createExercise(data: CreateExerciseRequest): Promise<Exercise> {
+  // If image is provided, send as FormData
+  if (data.image) {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    if (data.description) {
+      formData.append("description", data.description);
+    }
+    data.primary_muscle_groups?.forEach((mg) => {
+      formData.append("primary_muscle_groups", mg);
+    });
+    data.secondary_muscle_groups?.forEach((mg) => {
+      formData.append("secondary_muscle_groups", mg);
+    });
+    data.equipment?.forEach((eq) => {
+      formData.append("equipment", eq);
+    });
+    formData.append("image", data.image);
+    return apiClient.post<Exercise>("/exercises", formData);
+  }
+
+  // Otherwise send as JSON
   return apiClient.post<Exercise>("/exercises", data);
 }
 
