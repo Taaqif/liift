@@ -120,52 +120,54 @@ func (h *ExerciseHandler) CreateExercise(c echo.Context) error {
 		})
 	}
 
-	// Validate required fields
-	if req.Name == "" {
-		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "name_required",
-		})
-	}
-
-	if len(req.PrimaryMuscleGroups) == 0 {
-		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "primary_muscle_group_required",
-		})
-	}
-
-	if len(req.Equipment) == 0 {
-		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "equipment_required",
-		})
-	}
-
-	// Convert request to Exercise model
 	exercise := models.Exercise{
 		Name:        req.Name,
 		Description: req.Description,
 	}
 
-	// Convert muscle group names to MuscleGroup models
 	primaryMuscleGroups := make([]models.MuscleGroup, len(req.PrimaryMuscleGroups))
 	for i, name := range req.PrimaryMuscleGroups {
-		primaryMuscleGroups[i] = models.MuscleGroup{Name: name}
+		mg := models.MuscleGroup{Name: name}
+		if err := mg.Validate(); err != nil {
+			return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+				Error: err.Error(),
+			})
+		}
+		primaryMuscleGroups[i] = mg
 	}
 	exercise.PrimaryMuscleGroups = primaryMuscleGroups
 
 	if len(req.SecondaryMuscleGroups) > 0 {
 		secondaryMuscleGroups := make([]models.MuscleGroup, len(req.SecondaryMuscleGroups))
 		for i, name := range req.SecondaryMuscleGroups {
-			secondaryMuscleGroups[i] = models.MuscleGroup{Name: name}
+			mg := models.MuscleGroup{Name: name}
+			if err := mg.Validate(); err != nil {
+				return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+					Error: err.Error(),
+				})
+			}
+			secondaryMuscleGroups[i] = mg
 		}
 		exercise.SecondaryMuscleGroups = secondaryMuscleGroups
 	}
 
-	// Convert equipment names to Equipment models
 	equipment := make([]models.Equipment, len(req.Equipment))
 	for i, name := range req.Equipment {
-		equipment[i] = models.Equipment{Name: name}
+		eq := models.Equipment{Name: name}
+		if err := eq.Validate(); err != nil {
+			return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+				Error: err.Error(),
+			})
+		}
+		equipment[i] = eq
 	}
 	exercise.Equipment = equipment
+
+	if err := exercise.Validate(); err != nil {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: err.Error(),
+		})
+	}
 
 	if err := h.repo.Create(c.Request().Context(), &exercise); err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
@@ -173,7 +175,6 @@ func (h *ExerciseHandler) CreateExercise(c echo.Context) error {
 		})
 	}
 
-	// Reload the exercise with associations to return complete data
 	created, err := h.repo.GetByID(c.Request().Context(), exercise.ID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
@@ -199,53 +200,55 @@ func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
 		})
 	}
 
-	// Validate required fields
-	if req.Name == "" {
-		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "name_required",
-		})
-	}
-
-	if len(req.PrimaryMuscleGroups) == 0 {
-		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "primary_muscle_group_required",
-		})
-	}
-
-	if len(req.Equipment) == 0 {
-		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "equipment_required",
-		})
-	}
-
-	// Convert request to Exercise model
 	exercise := models.Exercise{
 		Name:        req.Name,
 		Description: req.Description,
 	}
 	exercise.ID = uint(id)
 
-	// Convert muscle group names to MuscleGroup models
 	primaryMuscleGroups := make([]models.MuscleGroup, len(req.PrimaryMuscleGroups))
 	for i, name := range req.PrimaryMuscleGroups {
-		primaryMuscleGroups[i] = models.MuscleGroup{Name: name}
+		mg := models.MuscleGroup{Name: name}
+		if err := mg.Validate(); err != nil {
+			return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+				Error: err.Error(),
+			})
+		}
+		primaryMuscleGroups[i] = mg
 	}
 	exercise.PrimaryMuscleGroups = primaryMuscleGroups
 
 	if len(req.SecondaryMuscleGroups) > 0 {
 		secondaryMuscleGroups := make([]models.MuscleGroup, len(req.SecondaryMuscleGroups))
 		for i, name := range req.SecondaryMuscleGroups {
-			secondaryMuscleGroups[i] = models.MuscleGroup{Name: name}
+			mg := models.MuscleGroup{Name: name}
+			if err := mg.Validate(); err != nil {
+				return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+					Error: err.Error(),
+				})
+			}
+			secondaryMuscleGroups[i] = mg
 		}
 		exercise.SecondaryMuscleGroups = secondaryMuscleGroups
 	}
 
-	// Convert equipment names to Equipment models
 	equipment := make([]models.Equipment, len(req.Equipment))
 	for i, name := range req.Equipment {
-		equipment[i] = models.Equipment{Name: name}
+		eq := models.Equipment{Name: name}
+		if err := eq.Validate(); err != nil {
+			return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+				Error: err.Error(),
+			})
+		}
+		equipment[i] = eq
 	}
 	exercise.Equipment = equipment
+
+	if err := exercise.Validate(); err != nil {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+			Error: err.Error(),
+		})
+	}
 
 	if err := h.repo.Update(c.Request().Context(), &exercise); err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{

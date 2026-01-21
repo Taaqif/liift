@@ -2,8 +2,6 @@ package models
 
 import (
 	"fmt"
-
-	"gorm.io/gorm"
 )
 
 // MuscleGroup represents a muscle group for exercises
@@ -77,20 +75,6 @@ func IsValidMuscleGroup(name string) bool {
 func (mg *MuscleGroup) Validate() error {
 	if !IsValidMuscleGroup(mg.Name) {
 		return fmt.Errorf("invalid muscle group name: %s", mg.Name)
-	}
-	return nil
-}
-
-func (mg *MuscleGroup) BeforeCreate(tx *gorm.DB) error {
-	if err := mg.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (mg *MuscleGroup) BeforeUpdate(tx *gorm.DB) error {
-	if err := mg.Validate(); err != nil {
-		return err
 	}
 	return nil
 }

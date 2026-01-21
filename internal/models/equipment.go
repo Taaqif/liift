@@ -2,8 +2,6 @@ package models
 
 import (
 	"fmt"
-
-	"gorm.io/gorm"
 )
 
 // Equipment represents a piece of exercise equipment
@@ -61,20 +59,6 @@ func IsValidEquipment(name string) bool {
 func (e *Equipment) Validate() error {
 	if !IsValidEquipment(e.Name) {
 		return fmt.Errorf("invalid equipment name: %s", e.Name)
-	}
-	return nil
-}
-
-func (e *Equipment) BeforeCreate(tx *gorm.DB) error {
-	if err := e.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (e *Equipment) BeforeUpdate(tx *gorm.DB) error {
-	if err := e.Validate(); err != nil {
-		return err
 	}
 	return nil
 }

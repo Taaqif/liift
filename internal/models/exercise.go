@@ -2,8 +2,6 @@ package models
 
 import (
 	"errors"
-
-	"gorm.io/gorm"
 )
 
 // Exercise represents a workout exercise with many-to-many relationships for muscle groups and equipment
@@ -19,20 +17,6 @@ type Exercise struct {
 
 func (Exercise) TableName() string {
 	return "exercises"
-}
-
-func (e *Exercise) BeforeCreate(tx *gorm.DB) error {
-	if err := e.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (e *Exercise) BeforeUpdate(tx *gorm.DB) error {
-	if err := e.Validate(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (e *Exercise) Validate() error {
