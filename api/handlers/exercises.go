@@ -397,7 +397,15 @@ func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
 		}
 		imageGUID = imageGUIDFromFile
 	} else {
-		if req.ImageGUID != nil && *req.ImageGUID != "" {
+		if req.ImageGUID != nil && *req.ImageGUID == "" {
+			// Clear the image
+			if existingExercise.ImageGUID != nil {
+				if err = h.deleteImageIfExists(c, existingExercise.ImageGUID); err != nil {
+					c.Logger().Warnf("Failed to delete existing image during update (exercise ID: %d): %v", id, err)
+				}
+			}
+			imageGUID = nil
+		} else if req.ImageGUID != nil && *req.ImageGUID != "" {
 			imageGUID = req.ImageGUID
 			if existingExercise.ImageGUID != nil && *existingExercise.ImageGUID != *req.ImageGUID {
 				if err = h.deleteImageIfExists(c, existingExercise.ImageGUID); err != nil {
