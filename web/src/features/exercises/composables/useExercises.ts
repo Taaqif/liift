@@ -18,6 +18,22 @@ async function fetchExercises(
     queryParams.append("offset", params.offset.toString());
   }
 
+  if (params?.search) {
+    queryParams.append("q", params.search);
+  }
+
+  if (params?.muscleGroup && params.muscleGroup.length > 0) {
+    for (const mg of params.muscleGroup) {
+      queryParams.append("muscle_group", mg);
+    }
+  }
+
+  if (params?.equipment && params.equipment.length > 0) {
+    for (const eq of params.equipment) {
+      queryParams.append("equipment", eq);
+    }
+  }
+
   const queryString = queryParams.toString();
   const url = `/exercises${queryString ? `?${queryString}` : ""}`;
 
@@ -31,7 +47,7 @@ export function useExercises(params?: MaybeRefOrGetter<ExercisesListParams>) {
     error,
     refetch,
   } = useQuery({
-    queryKey: exerciseKeys.list(toValue(params)),
+    queryKey: computed(() => exerciseKeys.list(toValue(params))),
     queryFn: () => fetchExercises(toValue(params)),
   });
 
@@ -45,4 +61,3 @@ export function useExercises(params?: MaybeRefOrGetter<ExercisesListParams>) {
     refetch,
   };
 }
-

@@ -7,6 +7,7 @@ import (
 	"liift/api/types"
 	"liift/internal/models"
 	"liift/internal/repository"
+	"liift/internal/utils"
 
 	"github.com/labstack/echo/v4"
 )
@@ -19,11 +20,20 @@ func NewExerciseHandler(repo *repository.ExerciseRepository) *ExerciseHandler {
 	return &ExerciseHandler{repo: repo}
 }
 
+type ExerciseDataResponse struct {
+	ID                    uint                 `json:"id"`
+	Name                  string               `json:"name"`
+	Description           string               `json:"description"`
+	PrimaryMuscleGroups   []models.MuscleGroup `json:"primary_muscle_groups"`
+	SecondaryMuscleGroups []models.MuscleGroup `json:"secondary_muscle_groups"`
+	Equipment             []models.Equipment   `json:"equipment"`
+}
+
 type ExercisesListResponse struct {
-	Data   []models.Exercise `json:"data"`
-	Total  int64             `json:"total"`
-	Limit  int               `json:"limit"`
-	Offset int               `json:"offset"`
+	Data   []ExerciseDataResponse `json:"data"`
+	Total  int64                  `json:"total"`
+	Limit  int                    `json:"limit"`
+	Offset int                    `json:"offset"`
 }
 
 type CreateExerciseRequest struct {
@@ -53,15 +63,31 @@ func (h *ExerciseHandler) GetExercises(c echo.Context) error {
 		limit = 100
 	}
 
-	exercises, total, err := h.repo.List(c.Request().Context(), limit, offset)
+	// Optional filters
+	search := c.QueryParam("q")
+	muscleGroups := c.QueryParams()["muscle_group"]
+	equipment := c.QueryParams()["equipment"]
+
+	exercises, total, err := h.repo.List(c.Request().Context(), limit, offset, search, muscleGroups, equipment)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
 			Error: "failed_to_fetch_exercises",
 		})
 	}
 
+	data := utils.Map(exercises, func(exercise models.Exercise) ExerciseDataResponse {
+		return ExerciseDataResponse{
+			ID:                    exercise.ID,
+			Name:                  exercise.Name,
+			Description:           exercise.Description,
+			PrimaryMuscleGroups:   exercise.PrimaryMuscleGroups,
+			SecondaryMuscleGroups: exercise.SecondaryMuscleGroups,
+			Equipment:             exercise.Equipment,
+		}
+	})
+
 	return c.JSON(http.StatusOK, ExercisesListResponse{
-		Data:   exercises,
+		Data:   data,
 		Total:  total,
 		Limit:  limit,
 		Offset: offset,
@@ -254,42 +280,8 @@ func (h *ExerciseHandler) DeleteExercise(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (h *ExerciseHandler) SearchExercises(c echo.Context) error {
-	query := c.QueryParam("q")
-	if query == "" {
-		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
-			Error: "search_query_required",
-		})
-	}
-
-	limit, _ := strconv.Atoi(c.QueryParam("limit"))
-	offset, _ := strconv.Atoi(c.QueryParam("offset"))
-
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
-
-	exercises, total, err := h.repo.SearchByName(c.Request().Context(), query, limit, offset)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
-			Error: "search_failed",
-		})
-	}
-
-	return c.JSON(http.StatusOK, ExercisesListResponse{
-		Data:   exercises,
-		Total:  total,
-		Limit:  limit,
-		Offset: offset,
-	})
-}
-
 func RegisterExerciseRoutes(api *echo.Group, handler *ExerciseHandler) {
 	api.GET("/exercises", handler.GetExercises)
-	api.GET("/exercises/search", handler.SearchExercises)
 	api.GET("/exercises/:id", handler.GetExercise)
 	api.POST("/exercises", handler.CreateExercise)
 	api.PUT("/exercises/:id", handler.UpdateExercise)

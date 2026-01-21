@@ -15,6 +15,8 @@
   "next": "Next",
 
   "delete": "Delete",
+  "search": "Search",
+  "clear": "Clear",
   "commingSoon": "Coming Soon",
   "featureUnderConstruction": "This feature is under construction",
   "nav": {
@@ -104,6 +106,13 @@
       "nameRequired": "Exercise name is required",
       "primaryMuscleGroupsRequired": "At least one primary muscle group is required",
       "equipmentRequired": "At least one equipment is required"
+    },
+    "filter": {
+      "searchPlaceholder": "Search exercises...",
+      "muscleGroupPlaceholder": "All Muscle Groups",
+      "equipmentPlaceholder": "All Equipment",
+      "allMuscleGroups": "All Muscle Groups",
+      "allEquipment": "All Equipment"
     }
   }
 }

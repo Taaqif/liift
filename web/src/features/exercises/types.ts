@@ -22,6 +22,9 @@ export type Exercise = {
 export type ExercisesListParams = {
   limit?: number;
   offset?: number;
+  search?: string;
+  muscleGroup?: string[];
+  equipment?: string[];
 };
 
 export type ExercisesListResponse = {
@@ -30,3 +33,4 @@ export type ExercisesListResponse = {
   limit: number;
   offset: number;
 };
+

@@ -5,7 +5,9 @@ import { useExercises } from "@/features/exercises/composables/useExercises";
 import ExerciseList from "@/features/exercises/components/ExerciseList.vue";
 import CreateExerciseDrawer from "@/features/exercises/components/CreateExerciseDrawer.vue";
 import EditExerciseDrawer from "@/features/exercises/components/EditExerciseDrawer.vue";
+import ExerciseFilter from "@/features/exercises/components/ExerciseFilter.vue";
 import type { Exercise } from "@/features/exercises/types";
+import type { ExerciseFilter as ExerciseFilterType } from "@/features/exercises/components/ExerciseFilter.vue";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger } from "@/components/ui/drawer";
 import {
@@ -31,10 +33,26 @@ const showUnsavedDialog = ref(false);
 const pendingCreateClose = ref(false);
 const pendingEditClose = ref(false);
 
-const params = computed(() => ({
-  limit: limit.value,
-  offset: offset.value,
-}));
+const filter = ref<ExerciseFilterType>({
+  search: "",
+  muscleGroup: [],
+  equipment: [],
+});
+
+const params = computed(() => {
+  // Explicitly access all filter properties to ensure reactivity
+  const search = filter.value.search;
+  const muscleGroups = filter.value.muscleGroup;
+  const equipment = filter.value.equipment;
+
+  return {
+    limit: limit.value,
+    offset: offset.value,
+    search: search || undefined,
+    muscleGroup: muscleGroups.length > 0 ? muscleGroups : undefined,
+    equipment: equipment.length > 0 ? equipment : undefined,
+  };
+});
 
 const { exercises, total, loading, error, refetch } = useExercises(params);
 
@@ -170,6 +188,17 @@ const handleDiscardChanges = () => {
     pendingEditClose.value = false;
   }
 };
+
+const handleFilter = (newFilter: ExerciseFilterType) => {
+  // Update filter - this will trigger params computed to update
+  filter.value = {
+    search: newFilter.search,
+    muscleGroup: [...newFilter.muscleGroup],
+    equipment: [...newFilter.equipment],
+  };
+  // Reset to first page when filtering; params computed will trigger refetch
+  offset.value = 0;
+};
 </script>
 
 <template>
@@ -181,32 +210,17 @@ const handleDiscardChanges = () => {
           {{ $t("exercises.subtitle") }}
         </p>
       </div>
-      <Drawer
-        :open="createDrawerOpen"
-        :dismissible="true"
-        @update:open="handleCreateDrawerOpenChange"
-      >
+      <Drawer :open="createDrawerOpen" :dismissible="true" @update:open="handleCreateDrawerOpenChange">
         <DrawerTrigger as-child>
           <Button>{{ $t("exercises.createNew") }}</Button>
         </DrawerTrigger>
-        <CreateExerciseDrawer
-          :open="createDrawerOpen"
-          @exercise-created="handleExerciseCreated"
-          @form-dirty="handleFormDirty"
-        />
+        <CreateExerciseDrawer :open="createDrawerOpen" @exercise-created="handleExerciseCreated"
+          @form-dirty="handleFormDirty" />
       </Drawer>
-      <Drawer
-        :open="editDrawerOpen"
-        :dismissible="true"
-        @update:open="handleEditDrawerOpenChange"
-      >
-        <EditExerciseDrawer
-          :open="editDrawerOpen"
-          :exercise="selectedExercise"
-          @exercise-updated="handleExerciseUpdated"
-          @exercise-deleted="handleExerciseDeleted"
-          @form-dirty="handleFormDirty"
-        />
+      <Drawer :open="editDrawerOpen" :dismissible="true" @update:open="handleEditDrawerOpenChange">
+        <EditExerciseDrawer :open="editDrawerOpen" :exercise="selectedExercise"
+          @exercise-updated="handleExerciseUpdated" @exercise-deleted="handleExerciseDeleted"
+          @form-dirty="handleFormDirty" />
       </Drawer>
       <Dialog v-model:open="showUnsavedDialog">
         <DialogContent>
@@ -228,23 +242,17 @@ const handleDiscardChanges = () => {
       </Dialog>
     </div>
 
-    <div
-      v-if="error"
-      class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg"
-    >
+    <div v-if="error" class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
       <p>{{ $t("exercises.errorLoading", { message: error.message }) }}</p>
     </div>
 
-    <ExerciseList
-      :exercises="exercises"
-      :loading="loading"
-      @edit="handleEditExercise"
-    />
+    <div class="mb-6">
+      <ExerciseFilter :model-value="filter" @update:model-value="handleFilter" />
+    </div>
 
-    <div
-      v-if="!loading && total > 0"
-      class="mt-8 flex items-center justify-between"
-    >
+    <ExerciseList :exercises="exercises" :loading="loading" @edit="handleEditExercise" />
+
+    <div v-if="!loading && total > 0" class="mt-8 flex items-center justify-between">
       <div class="text-sm text-muted-foreground">
         {{
           $t("pagination.showingFromToOfTotal", {
@@ -256,18 +264,12 @@ const handleDiscardChanges = () => {
         {{ $t("exercises.titleLower") }}
       </div>
       <div class="flex gap-2">
-        <button
-          @click="goToPage(currentPage - 1)"
-          :disabled="!hasPrevPage"
-          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-        >
+        <button @click="goToPage(currentPage - 1)" :disabled="!hasPrevPage"
+          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent">
           {{ $t("pagination.previous") }}
         </button>
-        <button
-          @click="goToPage(currentPage + 1)"
-          :disabled="!hasNextPage"
-          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent"
-        >
+        <button @click="goToPage(currentPage + 1)" :disabled="!hasNextPage"
+          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent">
           {{ $t("pagination.next") }}
         </button>
       </div>

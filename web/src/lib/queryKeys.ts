@@ -22,12 +22,21 @@ export const referenceKeys = {
 
 export const exerciseKeys = {
   all: baseKeys.exercises,
-  list: (params?: { limit?: number; offset?: number }) =>
+  list: (params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    muscleGroup?: string[];
+    equipment?: string[];
+  }) =>
     [
       ...baseKeys.exercises,
       "list",
       params?.limit ?? 20,
       params?.offset ?? 0,
+      params?.search ?? "",
+      params?.muscleGroup?.sort().join(",") ?? "",
+      params?.equipment?.sort().join(",") ?? "",
     ] as const,
   detail: (id: number) => [...baseKeys.exercises, "detail", id] as const,
 } as const;

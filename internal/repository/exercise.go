@@ -36,11 +36,47 @@ func (r *ExerciseRepository) GetByID(ctx context.Context, id uint) (*models.Exer
 	return &exercise, nil
 }
 
-func (r *ExerciseRepository) List(ctx context.Context, limit, offset int) ([]models.Exercise, int64, error) {
+func (r *ExerciseRepository) List(
+	ctx context.Context,
+	limit, offset int,
+	search string,
+	muscleGroups []string,
+	equipment []string,
+) ([]models.Exercise, int64, error) {
 	var exercises []models.Exercise
 	var total int64
 
 	db := r.DB().WithContext(ctx).Model(&models.Exercise{})
+
+	if search != "" {
+		db = db.Where("LOWER(name) LIKE LOWER(?)", "%"+search+"%")
+	}
+
+	if len(muscleGroups) > 0 {
+		primarySubquery := r.DB().WithContext(ctx).
+			Table("exercise_primary_muscle_groups").
+			Select("1").
+			Where("exercise_primary_muscle_groups.exercise_id = exercises.id").
+			Where("muscle_group_name IN ?", muscleGroups)
+
+		secondarySubquery := r.DB().WithContext(ctx).
+			Table("exercise_secondary_muscle_groups").
+			Select("1").
+			Where("exercise_secondary_muscle_groups.exercise_id = exercises.id").
+			Where("muscle_group_name IN ?", muscleGroups)
+
+		db = db.Where("EXISTS (?) OR EXISTS (?)", primarySubquery, secondarySubquery)
+	}
+
+	if len(equipment) > 0 {
+		equipmentSubquery := r.DB().WithContext(ctx).
+			Table("exercise_equipment").
+			Select("1").
+			Where("exercise_equipment.exercise_id = exercises.id").
+			Where("equipment_name IN ?", equipment)
+
+		db = db.Where("EXISTS (?)", equipmentSubquery)
+	}
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -119,53 +155,4 @@ func (r *ExerciseRepository) Delete(ctx context.Context, id uint) error {
 
 		return tx.Delete(&models.Exercise{}, id).Error
 	})
-}
-
-func (r *ExerciseRepository) FindByMuscleGroup(ctx context.Context, muscleGroupName string) ([]models.Exercise, error) {
-	var exercises []models.Exercise
-	err := r.DB().WithContext(ctx).
-		Preload("PrimaryMuscleGroups").
-		Preload("SecondaryMuscleGroups").
-		Preload("Equipment").
-		Joins("JOIN exercise_primary_muscle_groups ON exercises.id = exercise_primary_muscle_groups.exercise_id").
-		Where("exercise_primary_muscle_groups.muscle_group_name = ?", muscleGroupName).
-		Or("EXISTS (SELECT 1 FROM exercise_secondary_muscle_groups WHERE exercise_secondary_muscle_groups.exercise_id = exercises.id AND exercise_secondary_muscle_groups.muscle_group_name = ?)", muscleGroupName).
-		Find(&exercises).Error
-	return exercises, err
-}
-
-func (r *ExerciseRepository) FindByEquipment(ctx context.Context, equipmentName string) ([]models.Exercise, error) {
-	var exercises []models.Exercise
-	err := r.DB().WithContext(ctx).
-		Preload("PrimaryMuscleGroups").
-		Preload("SecondaryMuscleGroups").
-		Preload("Equipment").
-		Joins("JOIN exercise_equipment ON exercises.id = exercise_equipment.exercise_id").
-		Where("exercise_equipment.equipment_name = ?", equipmentName).
-		Find(&exercises).Error
-	return exercises, err
-}
-
-func (r *ExerciseRepository) SearchByName(ctx context.Context, query string, limit, offset int) ([]models.Exercise, int64, error) {
-	var exercises []models.Exercise
-	var total int64
-
-	db := r.DB().WithContext(ctx).Model(&models.Exercise{}).
-		Where("LOWER(name) LIKE LOWER(?)", "%"+query+"%")
-
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	if err := db.
-		Preload("PrimaryMuscleGroups").
-		Preload("SecondaryMuscleGroups").
-		Preload("Equipment").
-		Limit(limit).
-		Offset(offset).
-		Find(&exercises).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return exercises, total, nil
 }
