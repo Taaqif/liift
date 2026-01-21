@@ -48,6 +48,8 @@ func main() {
 	// Create a new echo server
 	e := echo.New()
 
+	e.Logger.SetLevel(0) // DEBUG level (0=DEBUG, 1=INFO, 2=WARN, 3=ERROR, 4=OFF)
+
 	// Add standard middleware
 	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())

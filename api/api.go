@@ -5,6 +5,7 @@ import (
 	"liift/api/handlers"
 	"liift/api/middleware"
 	"liift/internal/repository"
+	"liift/internal/utils"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -27,7 +28,12 @@ func RegisterHandlers(e *echo.Echo, db *gorm.DB) {
 	muscleGroupHandler := handlers.NewMuscleGroupHandler(db)
 	handlers.RegisterMuscleGroupRoutes(protected, muscleGroupHandler)
 
+	imageStoragePath := utils.GetEnv("IMAGE_STORAGE_PATH", "./storage/images")
+	imageRepo := repository.NewImageRepository(db)
+	imageHandler := handlers.NewImageHandler(imageRepo, imageStoragePath)
+	handlers.RegisterImageRoutes(protected, imageHandler)
+
 	exerciseRepo := repository.NewExerciseRepository(db)
-	exerciseHandler := handlers.NewExerciseHandler(exerciseRepo)
+	exerciseHandler := handlers.NewExerciseHandler(exerciseRepo, imageRepo, imageStoragePath)
 	handlers.RegisterExerciseRoutes(protected, exerciseHandler)
 }
