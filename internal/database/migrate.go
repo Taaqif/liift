@@ -17,6 +17,7 @@ func Migrate(db *gorm.DB) error {
 		&models.MuscleGroup{},
 		&models.Image{},
 		&models.Exercise{},
+		&models.ExerciseFeature{},
 		&models.User{},
 	)
 	if err != nil {

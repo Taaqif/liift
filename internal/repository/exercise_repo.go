@@ -29,6 +29,7 @@ func (r *ExerciseRepository) GetByID(ctx context.Context, id uint) (*models.Exer
 		Preload("PrimaryMuscleGroups").
 		Preload("SecondaryMuscleGroups").
 		Preload("Equipment").
+		Preload("ExerciseFeatures").
 		First(&exercise, id).Error
 	if err != nil {
 		return nil, err
@@ -86,6 +87,7 @@ func (r *ExerciseRepository) List(
 		Preload("PrimaryMuscleGroups").
 		Preload("SecondaryMuscleGroups").
 		Preload("Equipment").
+		Preload("ExerciseFeatures").
 		Limit(limit).
 		Offset(offset).
 		Find(&exercises).Error; err != nil {
@@ -137,6 +139,15 @@ func (r *ExerciseRepository) Update(ctx context.Context, exercise *models.Exerci
 			}
 		}
 
+		if err := tx.Model(&target).Association("ExerciseFeatures").Clear(); err != nil {
+			return err
+		}
+		if len(exercise.ExerciseFeatures) > 0 {
+			if err := tx.Model(&target).Association("ExerciseFeatures").Append(exercise.ExerciseFeatures); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 }
@@ -152,6 +163,9 @@ func (r *ExerciseRepository) Delete(ctx context.Context, id uint) error {
 			return err
 		}
 		if err := tx.Model(&target).Association("SecondaryMuscleGroups").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&target).Association("ExerciseFeatures").Clear(); err != nil {
 			return err
 		}
 

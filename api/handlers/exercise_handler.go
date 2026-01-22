@@ -31,13 +31,14 @@ func NewExerciseHandler(repo *repository.ExerciseRepository, imageRepo *reposito
 }
 
 type ExerciseDataResponse struct {
-	ID                    uint                 `json:"id"`
-	Name                  string               `json:"name"`
-	Description           string               `json:"description"`
-	Image                 string               `json:"image,omitempty"`
-	PrimaryMuscleGroups   []models.MuscleGroup `json:"primary_muscle_groups"`
-	SecondaryMuscleGroups []models.MuscleGroup `json:"secondary_muscle_groups"`
-	Equipment             []models.Equipment   `json:"equipment"`
+	ID                    uint                     `json:"id"`
+	Name                  string                   `json:"name"`
+	Description           string                   `json:"description"`
+	Image                 string                   `json:"image,omitempty"`
+	PrimaryMuscleGroups   []models.MuscleGroup     `json:"primary_muscle_groups"`
+	SecondaryMuscleGroups []models.MuscleGroup     `json:"secondary_muscle_groups"`
+	Equipment             []models.Equipment       `json:"equipment"`
+	ExerciseFeatures      []models.ExerciseFeature `json:"exercise_features"`
 }
 
 type ExercisesListResponse struct {
@@ -54,6 +55,7 @@ type CreateExerciseRequest struct {
 	PrimaryMuscleGroups   []string `form:"primary_muscle_groups" json:"primary_muscle_groups"`
 	SecondaryMuscleGroups []string `form:"secondary_muscle_groups" json:"secondary_muscle_groups,omitempty"`
 	Equipment             []string `form:"equipment" json:"equipment"`
+	ExerciseFeatures      []string `form:"exercise_features" json:"exercise_features"`
 }
 
 type UpdateExerciseRequest struct {
@@ -63,6 +65,7 @@ type UpdateExerciseRequest struct {
 	PrimaryMuscleGroups   []string `form:"primary_muscle_groups" json:"primary_muscle_groups"`
 	SecondaryMuscleGroups []string `form:"secondary_muscle_groups" json:"secondary_muscle_groups,omitempty"`
 	Equipment             []string `form:"equipment" json:"equipment"`
+	ExerciseFeatures      []string `form:"exercise_features" json:"exercise_features"`
 }
 
 func (h *ExerciseHandler) handleImageUpload(c echo.Context, formFieldName string) (*string, error) {
@@ -230,6 +233,7 @@ func (h *ExerciseHandler) GetExercises(c echo.Context) error {
 			PrimaryMuscleGroups:   exercise.PrimaryMuscleGroups,
 			SecondaryMuscleGroups: exercise.SecondaryMuscleGroups,
 			Equipment:             exercise.Equipment,
+			ExerciseFeatures:      exercise.ExerciseFeatures,
 		}
 	})
 
@@ -326,6 +330,18 @@ func (h *ExerciseHandler) CreateExercise(c echo.Context) error {
 		equipment[i] = eq
 	}
 	exercise.Equipment = equipment
+
+	exerciseFeatures := make([]models.ExerciseFeature, len(req.ExerciseFeatures))
+	for i, name := range req.ExerciseFeatures {
+		ef := models.ExerciseFeature{Name: name}
+		if err := ef.Validate(); err != nil {
+			return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+				Error: err.Error(),
+			})
+		}
+		exerciseFeatures[i] = ef
+	}
+	exercise.ExerciseFeatures = exerciseFeatures
 
 	if err := exercise.Validate(); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{
@@ -461,6 +477,18 @@ func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
 		equipment[i] = eq
 	}
 	exercise.Equipment = equipment
+
+	exerciseFeatures := make([]models.ExerciseFeature, len(req.ExerciseFeatures))
+	for i, name := range req.ExerciseFeatures {
+		ef := models.ExerciseFeature{Name: name}
+		if err := ef.Validate(); err != nil {
+			return c.JSON(http.StatusBadRequest, types.ErrorResponse{
+				Error: err.Error(),
+			})
+		}
+		exerciseFeatures[i] = ef
+	}
+	exercise.ExerciseFeatures = exerciseFeatures
 
 	if err := exercise.Validate(); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{

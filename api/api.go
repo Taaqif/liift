@@ -25,6 +25,9 @@ func RegisterHandlers(e *echo.Echo, db *gorm.DB) {
 	equipmentHandler := handlers.NewEquipmentHandler(db)
 	handlers.RegisterEquipmentRoutes(protected, equipmentHandler)
 
+	exerciseFeatureHandler := handlers.NewExerciseFeatureHandler(db)
+	handlers.RegisterExerciseFeatureRoutes(protected, exerciseFeatureHandler)
+
 	muscleGroupHandler := handlers.NewMuscleGroupHandler(db)
 	handlers.RegisterMuscleGroupRoutes(protected, muscleGroupHandler)
 
