@@ -28,72 +28,75 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen flex flex-col">
-  <div class="px-8 py-4 shadow flex items-center justify-between">
-    <NavigationMenu>
-      <NavigationMenuList>
-        <NavigationMenuItem>
-          <NavigationMenuLink as-child>
-            <router-link to="/" active-class="text-accent-foreground bg-accent">
-              {{ $t("nav.home") }}
-            </router-link>
-          </NavigationMenuLink>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
+    <div class="px-8 py-4 shadow flex items-center justify-between">
+      <NavigationMenu>
+        <NavigationMenuList>
+          <NavigationMenuItem>
+            <NavigationMenuLink as-child>
+              <router-link
+                to="/"
+                active-class="text-accent-foreground bg-accent"
+              >
+                {{ $t("nav.home") }}
+              </router-link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
+          <NavigationMenuItem>
+            <NavigationMenuLink as-child>
+              <router-link
+                to="/workouts"
+                active-class="text-accent-foreground bg-accent"
+              >
+                {{ $t("nav.workouts") }}
+              </router-link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
           <NavigationMenuLink as-child>
             <router-link
-              to="/workouts"
+              to="/exercises"
               active-class="text-accent-foreground bg-accent"
             >
-              {{ $t("nav.workouts") }}
+              {{ $t("nav.exercises") }}
             </router-link>
           </NavigationMenuLink>
-        </NavigationMenuItem>
-        <NavigationMenuLink as-child>
-          <router-link
-            to="/exercises"
-            active-class="text-accent-foreground bg-accent"
-          >
-            {{ $t("nav.exercises") }}
-          </router-link>
-        </NavigationMenuLink>
-      </NavigationMenuList>
-    </NavigationMenu>
-    <div v-if="isAuthenticated && user" class="flex items-center gap-4">
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <Button variant="ghost" class="gap-2">
-            <span>{{ user.username }}</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>
-            <div class="flex flex-col">
+        </NavigationMenuList>
+      </NavigationMenu>
+      <div v-if="isAuthenticated && user" class="flex items-center gap-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" class="gap-2">
               <span>{{ user.username }}</span>
-              <span v-if="user.email" class="text-xs text-muted-foreground">
-                {{ user.email }}
-              </span>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem @click="logout">
-            {{ $t("auth.logOut") }}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>
+              <div class="flex flex-col">
+                <span>{{ user.username }}</span>
+                <span v-if="user.email" class="text-xs text-muted-foreground">
+                  {{ user.email }}
+                </span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem @click="logout">
+              {{ $t("auth.logOut") }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div v-else class="flex items-center gap-2">
+        <Button variant="ghost" as-child>
+          <router-link to="/login">{{ $t("auth.login") }}</router-link>
+        </Button>
+        <Button as-child>
+          <router-link to="/register">{{ $t("auth.register") }}</router-link>
+        </Button>
+      </div>
     </div>
-    <div v-else class="flex items-center gap-2">
-      <Button variant="ghost" as-child>
-        <router-link to="/login">{{ $t("auth.login") }}</router-link>
-      </Button>
-      <Button as-child>
-        <router-link to="/register">{{ $t("auth.register") }}</router-link>
-      </Button>
-    </div>
-  </div>
-  <main class="p-8 flex-1">
-    <router-view />
-  </main>
-  <VueQueryDevtools />
-  <Toaster />
+    <main class="p-2 md:p-8 flex-1">
+      <router-view />
+    </main>
+    <VueQueryDevtools />
+    <Toaster />
   </div>
 </template>
