@@ -470,8 +470,6 @@ func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
 
 	if err := h.repo.Update(c.Request().Context(), &exercise); err != nil {
 		c.Logger().Errorf("Failed to update exercise (ID: %d): %v", id, err)
-		c.Logger().Errorf("Exercise data: Name=%s, ImageGUID=%v, PrimaryGroups=%d, Equipment=%d",
-			exercise.Name, exercise.ImageGUID, len(exercise.PrimaryMuscleGroups), len(exercise.Equipment))
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
 			Error: "exercise_update_failed",
 		})
