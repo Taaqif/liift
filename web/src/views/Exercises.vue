@@ -18,11 +18,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const route = useRoute();
 const router = useRouter();
 
-const limit = ref(20);
+const limit = ref(10);
 const offset = ref(0);
 
 const createDrawerOpen = ref(false);
@@ -40,7 +48,6 @@ const filter = ref<ExerciseFilterType>({
 });
 
 const params = computed(() => {
-  // Explicitly access all filter properties to ensure reactivity
   const search = filter.value.search;
   const muscleGroups = filter.value.muscleGroup;
   const equipment = filter.value.equipment;
@@ -56,16 +63,19 @@ const params = computed(() => {
 
 const { exercises, total, loading, error, refetch } = useExercises(params);
 
-const totalPages = computed(() => Math.ceil(total.value / limit.value));
-const currentPage = computed(() => Math.floor(offset.value / limit.value) + 1);
+const currentPage = ref(1);
 
-const goToPage = (page: number) => {
-  if (page < 1 || page > totalPages.value) return;
+watch(
+  () => offset.value,
+  () => {
+    currentPage.value = Math.floor(offset.value / limit.value) + 1;
+  },
+  { immediate: true },
+);
+
+watch(currentPage, (page) => {
   offset.value = (page - 1) * limit.value;
-};
-
-const hasNextPage = computed(() => offset.value + limit.value < total.value);
-const hasPrevPage = computed(() => offset.value > 0);
+});
 
 onMounted(() => {
   if (route.query.action === "create") {
@@ -210,17 +220,32 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
           {{ $t("exercises.subtitle") }}
         </p>
       </div>
-      <Drawer :open="createDrawerOpen" :dismissible="true" @update:open="handleCreateDrawerOpenChange">
+      <Drawer
+        :open="createDrawerOpen"
+        :dismissible="true"
+        @update:open="handleCreateDrawerOpenChange"
+      >
         <DrawerTrigger as-child>
           <Button>{{ $t("exercises.createNew") }}</Button>
         </DrawerTrigger>
-        <CreateExerciseDrawer :open="createDrawerOpen" @exercise-created="handleExerciseCreated"
-          @form-dirty="handleFormDirty" />
+        <CreateExerciseDrawer
+          :open="createDrawerOpen"
+          @exercise-created="handleExerciseCreated"
+          @form-dirty="handleFormDirty"
+        />
       </Drawer>
-      <Drawer :open="editDrawerOpen" :dismissible="true" @update:open="handleEditDrawerOpenChange">
-        <EditExerciseDrawer :open="editDrawerOpen" :exercise="selectedExercise"
-          @exercise-updated="handleExerciseUpdated" @exercise-deleted="handleExerciseDeleted"
-          @form-dirty="handleFormDirty" />
+      <Drawer
+        :open="editDrawerOpen"
+        :dismissible="true"
+        @update:open="handleEditDrawerOpenChange"
+      >
+        <EditExerciseDrawer
+          :open="editDrawerOpen"
+          :exercise="selectedExercise"
+          @exercise-updated="handleExerciseUpdated"
+          @exercise-deleted="handleExerciseDeleted"
+          @form-dirty="handleFormDirty"
+        />
       </Drawer>
       <Dialog v-model:open="showUnsavedDialog">
         <DialogContent>
@@ -242,37 +267,54 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
       </Dialog>
     </div>
 
-    <div v-if="error" class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
+    <div
+      v-if="error"
+      class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg"
+    >
       <p>{{ $t("exercises.errorLoading", { message: error.message }) }}</p>
     </div>
 
     <div class="mb-6">
-      <ExerciseFilter :model-value="filter" @update:model-value="handleFilter" />
+      <ExerciseFilter
+        :model-value="filter"
+        @update:model-value="handleFilter"
+      />
     </div>
 
-    <ExerciseList :exercises="exercises" :loading="loading" @edit="handleEditExercise" />
+    <ExerciseList
+      :exercises="exercises"
+      :loading="loading"
+      @edit="handleEditExercise"
+    />
 
-    <div v-if="!loading && total > 0" class="mt-8 flex items-center justify-between">
-      <div class="text-sm text-muted-foreground">
-        {{
-          $t("pagination.showingFromToOfTotal", {
-            from: offset + 1,
-            to: Math.min(offset + limit, total),
-            total: total,
-          })
-        }}
-        {{ $t("exercises.titleLower") }}
-      </div>
-      <div class="flex gap-2">
-        <button @click="goToPage(currentPage - 1)" :disabled="!hasPrevPage"
-          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent">
-          {{ $t("pagination.previous") }}
-        </button>
-        <button @click="goToPage(currentPage + 1)" :disabled="!hasNextPage"
-          class="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent">
-          {{ $t("pagination.next") }}
-        </button>
-      </div>
+    <div
+      v-if="!loading && total > 0"
+      class="mt-8 flex items-center justify-between"
+    >
+      <Pagination
+        v-slot="{ page }"
+        v-model:page="currentPage"
+        :items-per-page="limit"
+        :total="total"
+        :default-page="currentPage"
+      >
+        <PaginationContent v-slot="{ items }">
+          <PaginationPrevious />
+
+          <template v-for="(item, index) in items" :key="index">
+            <PaginationItem
+              v-if="item.type === 'page'"
+              :value="item.value"
+              :is-active="item.value === page"
+            >
+              {{ item.value }}
+            </PaginationItem>
+            <PaginationEllipsis v-else :key="item.type" :index="index" />
+          </template>
+
+          <PaginationNext />
+        </PaginationContent>
+      </Pagination>
     </div>
   </div>
 </template>
