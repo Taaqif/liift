@@ -142,14 +142,15 @@ func (r *ExerciseRepository) Update(ctx context.Context, exercise *models.Exerci
 func (r *ExerciseRepository) Delete(ctx context.Context, id uint) error {
 	return r.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		target := models.Exercise{BaseModel: models.BaseModel{ID: id}}
-		model := tx.Model(&target)
 
-		// Clear all associations in a batch
-		associations := []string{"Equipment", "PrimaryMuscleGroups", "SecondaryMuscleGroups"}
-		for _, assoc := range associations {
-			if err := model.Association(assoc).Clear(); err != nil {
-				return err
-			}
+		if err := tx.Model(&target).Association("Equipment").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&target).Association("PrimaryMuscleGroups").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&target).Association("SecondaryMuscleGroups").Clear(); err != nil {
+			return err
 		}
 
 		return tx.Delete(&models.Exercise{}, id).Error
