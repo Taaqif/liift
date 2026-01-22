@@ -98,7 +98,9 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
             <div class="h-6 w-48 bg-gray-200 animate-pulse rounded"></div>
           </CardTitle>
           <CardDescription>
-            <div class="h-4 w-full bg-gray-200 animate-pulse rounded mt-2"></div>
+            <div
+              class="h-4 w-full bg-gray-200 animate-pulse rounded mt-2"
+            ></div>
           </CardDescription>
         </CardHeader>
       </Card>
@@ -110,58 +112,69 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
 
     <div v-else class="space-y-4">
       <Card v-for="exercise in exercises" :key="exercise.id" class="gap-2">
-        <CardHeader>
+        <CardContent>
           <div class="flex items-start justify-between gap-4">
-            <div class="flex gap-4 flex-1">
-              <div class="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                <img v-if="getImageUrlForExercise(exercise)" :src="getImageUrlForExercise(exercise)"
-                  :alt="exercise.name" class="w-full h-full object-cover" />
+            <div class="flex gap-4 flex-1 items-center">
+              <div
+                class="shrink-0 w-20 h-20 rounded-lg border overflow-hidden bg-muted flex items-center justify-center"
+              >
+                <img
+                  v-if="getImageUrlForExercise(exercise)"
+                  :src="getImageUrlForExercise(exercise)"
+                  :alt="exercise.name"
+                  class="w-full h-full object-cover"
+                />
                 <Dumbbell v-else class="w-10 h-10 text-muted-foreground" />
               </div>
-              <div class="flex-1">
+              <div class="flex-1 gap-2 flex flex-col">
                 <CardTitle>{{ exercise.name }}</CardTitle>
                 <CardDescription v-if="exercise.description">
                   {{ exercise.description }}
                 </CardDescription>
+                <div class="flex flex-col gap-1 text-sm">
+                  <div v-if="exercise.primary_muscle_groups.length > 0">
+                    <span class="font-medium text-muted-foreground">{{
+                      $t("exercises.primaryLabel")
+                    }}</span>
+                    <span class="ml-2">
+                      {{
+                        exercise.primary_muscle_groups
+                          .map((mg) => mg.name)
+                          .join(", ")
+                      }}
+                    </span>
+                  </div>
+                  <div v-if="exercise.secondary_muscle_groups.length > 0">
+                    <span class="font-medium text-muted-foreground">{{
+                      $t("exercises.secondaryLabel")
+                    }}</span>
+                    <span class="ml-2">
+                      {{
+                        exercise.secondary_muscle_groups
+                          .map((mg) => mg.name)
+                          .join(", ")
+                      }}
+                    </span>
+                  </div>
+                  <div v-if="exercise.equipment.length > 0">
+                    <span class="font-medium text-muted-foreground">{{
+                      $t("exercises.equipmentLabel")
+                    }}</span>
+                    <span class="ml-2">
+                      {{ exercise.equipment.map((eq) => eq.name).join(", ") }}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-            <Button variant="outline" size="sm" @click="handleEdit(exercise)" class="shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              @click="handleEdit(exercise)"
+              class="shrink-0"
+            >
               {{ $t("edit") }}
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div class="flex flex-col gap-1 text-sm">
-            <div v-if="exercise.primary_muscle_groups.length > 0">
-              <span class="font-medium text-muted-foreground">{{
-                $t("exercises.primaryLabel")
-                }}</span>
-              <span class="ml-2">
-                {{
-                  exercise.primary_muscle_groups.map((mg) => mg.name).join(", ")
-                }}
-              </span>
-            </div>
-            <div v-if="exercise.secondary_muscle_groups.length > 0">
-              <span class="font-medium text-muted-foreground">{{
-                $t("exercises.secondaryLabel")
-                }}</span>
-              <span class="ml-2">
-                {{
-                  exercise.secondary_muscle_groups
-                    .map((mg) => mg.name)
-                    .join(", ")
-                }}
-              </span>
-            </div>
-            <div v-if="exercise.equipment.length > 0">
-              <span class="font-medium text-muted-foreground">{{
-                $t("exercises.equipmentLabel")
-                }}</span>
-              <span class="ml-2">
-                {{exercise.equipment.map((eq) => eq.name).join(", ")}}
-              </span>
-            </div>
           </div>
         </CardContent>
       </Card>

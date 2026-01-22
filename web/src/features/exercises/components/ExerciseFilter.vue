@@ -86,14 +86,14 @@ const handleClear = () => {
         />
       </div>
 
-      <div class="w-full sm:w-[200px]">
+      <div class="flex-1">
         <MultiSelectTags
           v-model="selectedMuscleGroups"
           :options="muscleGroupOptions"
           :placeholder="$t('exercises.filter.muscleGroupPlaceholder')"
         />
       </div>
-      <div class="w-full sm:w-[200px]">
+      <div class="flex-1">
         <MultiSelectTags
           v-model="selectedEquipment"
           :options="equipmentOptions"
