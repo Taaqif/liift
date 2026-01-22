@@ -19,6 +19,10 @@ func Migrate(db *gorm.DB) error {
 		&models.Exercise{},
 		&models.ExerciseFeature{},
 		&models.User{},
+		&models.Workout{},
+		&models.WorkoutExercise{},
+		&models.WorkoutSet{},
+		&models.WorkoutSetFeature{},
 	)
 	if err != nil {
 		return err
