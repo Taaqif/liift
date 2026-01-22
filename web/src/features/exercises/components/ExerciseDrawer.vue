@@ -4,6 +4,7 @@ import { useForm, useField } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
 import { useI18n } from "vue-i18n";
+import { useCreateExercise } from "../composables/useCreateExercise";
 import { useUpdateExercise } from "../composables/useUpdateExercise";
 import { useDeleteExercise } from "../composables/useDeleteExercise";
 import { useMuscleGroup } from "@/features/reference/composables/useMuscleGroup";
@@ -53,16 +54,24 @@ import {
 const props = defineProps<{
   open?: boolean;
   modal?: boolean;
-  exercise: Exercise | null;
+  exercise?: Exercise | null;
 }>();
 
 const emits = defineEmits<{
+  (e: "exercise-created"): void;
   (e: "exercise-updated"): void;
   (e: "exercise-deleted"): void;
   (e: "form-dirty", value: boolean): void;
 }>();
 
 const { t } = useI18n();
+const isEditMode = computed(() => !!props.exercise);
+
+const {
+  createExercise,
+  isPending: isCreating,
+  error: createError,
+} = useCreateExercise();
 const {
   updateExercise,
   isPending: isUpdating,
@@ -73,6 +82,7 @@ const {
   isPending: isDeleting,
   error: deleteError,
 } = useDeleteExercise();
+
 const { muscleGroup } = useMuscleGroup();
 const { equipment } = useEquipment();
 const { exerciseFeatures } = useExerciseFeature();
@@ -109,7 +119,7 @@ const isFormDirty = computed(() => meta.value.dirty);
 
 const imageUrl = ref<string | null>(null);
 
-// Load existing image when exercise changes
+// Load existing image when exercise changes (edit mode only)
 const loadExistingImage = async (imagePath: string | null | undefined) => {
   if (!imagePath) {
     imageUrl.value = null;
@@ -127,7 +137,9 @@ const loadExistingImage = async (imagePath: string | null | undefined) => {
 watch(
   () => props.exercise?.image,
   async (imagePath) => {
-    await loadExistingImage(imagePath ?? null);
+    if (isEditMode.value) {
+      await loadExistingImage(imagePath ?? null);
+    }
   },
   { immediate: true },
 );
@@ -141,9 +153,12 @@ watch(imageValue, (file) => {
       imageUrl.value = (e.target?.result as string) ?? null;
     };
     reader.readAsDataURL(file);
-  } else {
+  } else if (!isEditMode.value) {
+    // In create mode, clear image if no file selected
     imageUrl.value = null;
   }
+  // In edit mode, if file is cleared (null), we keep the existing image
+  // The existing image is managed by the watch on props.exercise?.image
 });
 
 const clearImage = () => {
@@ -207,7 +222,7 @@ const populateForm = (exercise: Exercise | null) => {
 watch(
   () => props.exercise,
   (exercise) => {
-    if (exercise && props.open) {
+    if (exercise && props.open && isEditMode.value) {
       populateForm(exercise);
     }
   },
@@ -224,18 +239,41 @@ watch(
     } else if (!newValue) {
       // Drawer closed, reset form
       resetForm();
+      imageUrl.value = null;
       showDeleteDialog.value = false;
+    } else if (newValue && !props.exercise) {
+      // Create mode - reset form when opening
+      resetForm();
+      imageUrl.value = null;
     }
   },
 );
 
 const onSubmit = handleSubmit(async (values) => {
-  if (!props.exercise) return;
-
   try {
-    await updateExercise({
-      id: props.exercise.id,
-      data: {
+    if (isEditMode.value && props.exercise) {
+      // Edit mode
+      await updateExercise({
+        id: props.exercise.id,
+        data: {
+          name: values.name.trim(),
+          description: values.description?.trim() || undefined,
+          primary_muscle_groups: values.primary_muscle_groups,
+          secondary_muscle_groups:
+            values.secondary_muscle_groups &&
+            values.secondary_muscle_groups.length > 0
+              ? values.secondary_muscle_groups
+              : undefined,
+          equipment: values.equipment,
+          exercise_features: values.exercise_features,
+          image: values.image,
+        },
+      });
+      resetForm();
+      emits("exercise-updated");
+    } else {
+      // Create mode
+      await createExercise({
         name: values.name.trim(),
         description: values.description?.trim() || undefined,
         primary_muscle_groups: values.primary_muscle_groups,
@@ -246,13 +284,17 @@ const onSubmit = handleSubmit(async (values) => {
             : undefined,
         equipment: values.equipment,
         exercise_features: values.exercise_features,
-        image: values.image,
-      },
-    });
-    resetForm();
-    emits("exercise-updated");
+        image: values.image ?? null,
+      });
+      resetForm();
+      imageUrl.value = null;
+      emits("exercise-created");
+    }
   } catch (err) {
-    console.error("Failed to update exercise:", err);
+    console.error(
+      `Failed to ${isEditMode.value ? "update" : "create"} exercise:`,
+      err,
+    );
   }
 });
 
@@ -269,9 +311,30 @@ const onDelete = async () => {
   }
 };
 
-const error = computed(() => updateError.value || deleteError.value);
-const isPending = computed(() => isUpdating.value || isDeleting.value);
+const error = computed(
+  () => createError.value || updateError.value || deleteError.value,
+);
+const isPending = computed(
+  () => isCreating.value || isUpdating.value || isDeleting.value,
+);
 const showDeleteDialog = ref(false);
+
+const title = computed(() =>
+  isEditMode.value ? t("exercises.editTitle") : t("exercises.createNew"),
+);
+
+const description = computed(() =>
+  isEditMode.value
+    ? t("exercises.editDescription")
+    : t("exercises.createDescription"),
+);
+
+const submitButtonText = computed(() => {
+  if (isEditMode.value) {
+    return isUpdating.value ? t("updating") : t("exercises.updateExercise");
+  }
+  return isCreating.value ? t("creating") : t("exercises.create");
+});
 
 onUnmounted(() => {
   if (props.exercise?.image) {
@@ -287,9 +350,9 @@ onUnmounted(() => {
   <DrawerContent class="max-h-[95vh]">
     <div class="mx-auto w-full max-w-2xl overflow-y-auto">
       <DrawerHeader>
-        <DrawerTitle>{{ $t("exercises.editTitle") }}</DrawerTitle>
+        <DrawerTitle>{{ title }}</DrawerTitle>
         <DrawerDescription>
-          {{ $t("exercises.editDescription") }}
+          {{ description }}
         </DrawerDescription>
       </DrawerHeader>
       <div class="p-4 pb-0 space-y-6">
@@ -339,7 +402,7 @@ onUnmounted(() => {
                       (e) => {
                         const target = e.target as HTMLInputElement;
                         const file = target.files?.[0];
-                        handleChange(file ?? undefined);
+                        handleChange(file ?? (isEditMode ? undefined : null));
                       }
                     "
                     type="file"
@@ -352,7 +415,7 @@ onUnmounted(() => {
                   <div v-if="imageUrl">
                     <img
                       :src="imageUrl"
-                      :alt="exercise?.name"
+                      :alt="exercise?.name || 'Preview'"
                       class="h-32 w-32 rounded-lg object-cover border"
                     />
                   </div>
@@ -480,7 +543,7 @@ onUnmounted(() => {
         </form>
       </div>
       <DrawerFooter class="flex-col gap-2 justify-between">
-        <Dialog v-model:open="showDeleteDialog">
+        <Dialog v-if="isEditMode" v-model:open="showDeleteDialog">
           <DialogTrigger as-child>
             <Button type="button" variant="destructive" :disabled="isPending">
               {{ $t("exercises.deleteExercise") }}
@@ -516,7 +579,7 @@ onUnmounted(() => {
           </DialogContent>
         </Dialog>
         <Button @click="onSubmit" :disabled="isPending" class="flex-1">
-          {{ isUpdating ? $t("updating") : $t("exercises.updateExercise") }}
+          {{ submitButtonText }}
         </Button>
         <DrawerClose as-child>
           <Button variant="outline">{{ $t("cancel") }}</Button>

@@ -3,8 +3,7 @@ import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useExercises } from "@/features/exercises/composables/useExercises";
 import ExerciseList from "@/features/exercises/components/ExerciseList.vue";
-import CreateExerciseDrawer from "@/features/exercises/components/CreateExerciseDrawer.vue";
-import EditExerciseDrawer from "@/features/exercises/components/EditExerciseDrawer.vue";
+import ExerciseDrawer from "@/features/exercises/components/ExerciseDrawer.vue";
 import ExerciseFilter from "@/features/exercises/components/ExerciseFilter.vue";
 import type { Exercise } from "@/features/exercises/types";
 import type { ExerciseFilter as ExerciseFilterType } from "@/features/exercises/components/ExerciseFilter.vue";
@@ -228,8 +227,9 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
         <DrawerTrigger as-child>
           <Button>{{ $t("exercises.createNew") }}</Button>
         </DrawerTrigger>
-        <CreateExerciseDrawer
+        <ExerciseDrawer
           :open="createDrawerOpen"
+          :exercise="null"
           @exercise-created="handleExerciseCreated"
           @form-dirty="handleFormDirty"
         />
@@ -239,7 +239,7 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
         :dismissible="true"
         @update:open="handleEditDrawerOpenChange"
       >
-        <EditExerciseDrawer
+        <ExerciseDrawer
           :open="editDrawerOpen"
           :exercise="selectedExercise"
           @exercise-updated="handleExerciseUpdated"
