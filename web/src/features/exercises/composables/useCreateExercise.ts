@@ -11,6 +11,7 @@ export type CreateExerciseRequest = {
   primary_muscle_groups?: string[];
   secondary_muscle_groups?: string[];
   equipment?: string[];
+  exercise_features?: string[];
   image?: File | null;
 };
 
@@ -30,6 +31,9 @@ async function createExercise(data: CreateExerciseRequest): Promise<Exercise> {
     });
     data.equipment?.forEach((eq) => {
       formData.append("equipment", eq);
+    });
+    data.exercise_features?.forEach((ef) => {
+      formData.append("exercise_features", ef);
     });
     formData.append("image", data.image);
     return apiClient.post<Exercise>("/exercises", formData);

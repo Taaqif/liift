@@ -289,7 +289,7 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
 
     <div
       v-if="!loading && total > 0"
-      class="mt-8 flex items-center justify-between"
+      class="mt-8 flex flex-col gap-2 items-center justify-between"
     >
       <Pagination
         v-slot="{ page }"
@@ -315,6 +315,16 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
           <PaginationNext />
         </PaginationContent>
       </Pagination>
+      <div class="text-sm text-muted-foreground">
+        {{
+          $t("pagination.showingFromToOfTotal", {
+            from: offset + 1,
+            to: Math.min(offset + limit, total),
+            total: total,
+          })
+        }}
+        {{ $t("exercises.titleLower") }}
+      </div>
     </div>
   </div>
 </template>

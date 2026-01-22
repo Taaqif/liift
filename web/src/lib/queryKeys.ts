@@ -18,6 +18,7 @@ export const referenceKeys = {
   all: baseKeys.reference,
   equipment: () => [...baseKeys.reference, "equipment"] as const,
   muscleGroup: () => [...baseKeys.reference, "muscleGroup"] as const,
+  exerciseFeatures: () => [...baseKeys.reference, "exerciseFeatures"] as const,
 } as const;
 
 export const exerciseKeys = {

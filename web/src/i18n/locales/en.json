@@ -88,6 +88,8 @@
     "secondaryMuscleGroupsPlaceholder": "Select secondary muscle groups...",
     "equipment": "Equipment",
     "equipmentPlaceholder": "Select equipment...",
+    "exerciseFeatures": "Exercise Features",
+    "exerciseFeaturesDescription": "Select the features that apply to this exercise (e.g., weight, reps, duration).",
     "deleteExercise": "Delete Exercise",
     "deleteExerciseConfirmDescription": "This action cannot be undone. This will permanently delete the exercise \"{name}\" from your library.",
     "updateExercise": "Update Exercise",
@@ -106,7 +108,8 @@
     "validation": {
       "nameRequired": "Exercise name is required",
       "primaryMuscleGroupsRequired": "At least one primary muscle group is required",
-      "equipmentRequired": "At least one equipment is required"
+      "equipmentRequired": "At least one equipment is required",
+      "exerciseFeaturesRequired": "At least one exercise feature is required"
     },
     "filter": {
       "searchPlaceholder": "Search exercises...",
@@ -117,3 +120,4 @@
     }
   }
 }
+

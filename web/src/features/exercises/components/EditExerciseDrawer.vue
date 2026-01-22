@@ -8,6 +8,7 @@ import { useUpdateExercise } from "../composables/useUpdateExercise";
 import { useDeleteExercise } from "../composables/useDeleteExercise";
 import { useMuscleGroup } from "@/features/reference/composables/useMuscleGroup";
 import { useEquipment } from "@/features/reference/composables/useEquipment";
+import { useExerciseFeature } from "@/features/reference/composables/useExerciseFeature";
 import type { Exercise } from "../types";
 import { getImageUrl, revokeImageUrl } from "@/lib/api";
 import {
@@ -29,6 +30,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { MultiSelectTags } from "@/components/ui/multi-select-tags";
+import {
+  FieldGroup,
+  FieldSet,
+  FieldLegend,
+  FieldDescription,
+  FieldLabel,
+  Field,
+  FieldTitle,
+} from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +75,7 @@ const {
 } = useDeleteExercise();
 const { muscleGroup } = useMuscleGroup();
 const { equipment } = useEquipment();
+const { exerciseFeatures } = useExerciseFeature();
 
 const formSchema = z.object({
   name: z.string().min(1, t("exercises.validation.nameRequired")),
@@ -76,6 +88,9 @@ const formSchema = z.object({
   equipment: z
     .array(z.string())
     .min(1, t("exercises.validation.equipmentRequired")),
+  exercise_features: z
+    .array(z.string())
+    .min(1, t("exercises.validation.exerciseFeaturesRequired")),
 });
 
 const { handleSubmit, resetForm, meta, setFieldValue } = useForm({
@@ -86,6 +101,7 @@ const { handleSubmit, resetForm, meta, setFieldValue } = useForm({
     primary_muscle_groups: [] as string[],
     secondary_muscle_groups: [] as string[],
     equipment: [] as string[],
+    exercise_features: [] as string[],
   },
 });
 
@@ -159,6 +175,13 @@ const equipmentOptions = computed(() =>
   })),
 );
 
+const exerciseFeatureOptions = computed(() =>
+  exerciseFeatures.value.map((feature) => ({
+    value: feature.name,
+    label: feature.name,
+  })),
+);
+
 const populateForm = (exercise: Exercise | null) => {
   if (exercise) {
     // Use resetForm with values to set the form values AND reset the dirty state
@@ -173,6 +196,8 @@ const populateForm = (exercise: Exercise | null) => {
           (mg) => mg.name,
         ),
         equipment: exercise.equipment.map((eq) => eq.name),
+        exercise_features:
+          exercise.exercise_features?.map((ef) => ef.name) ?? [],
         image: exercise.image ? undefined : null,
       },
     });
@@ -220,6 +245,7 @@ const onSubmit = handleSubmit(async (values) => {
             ? values.secondary_muscle_groups
             : undefined,
         equipment: values.equipment,
+        exercise_features: values.exercise_features,
         image: values.image,
       },
     });
@@ -387,6 +413,66 @@ onUnmounted(() => {
                   :options="equipmentOptions"
                   :placeholder="$t('exercises.equipmentPlaceholder')"
                 />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+
+          <FormField v-slot="{ componentField }" name="exercise_features">
+            <FormItem>
+              <FormControl>
+                <FieldGroup>
+                  <FieldSet class="gap-4">
+                    <FieldLegend>{{
+                      $t("exercises.exerciseFeatures")
+                    }}</FieldLegend>
+                    <FieldDescription class="line-clamp-1">
+                      {{ $t("exercises.exerciseFeaturesDescription") }}
+                    </FieldDescription>
+                    <FieldGroup
+                      class="flex flex-row flex-wrap gap-2 [--radius:9999rem]"
+                    >
+                      <FieldLabel
+                        v-for="option in exerciseFeatureOptions"
+                        :key="option.value"
+                        class="!w-fit"
+                      >
+                        <Field
+                          orientation="horizontal"
+                          class="gap-1.5 overflow-hidden !px-3 !py-1.5 transition-all duration-100 ease-linear group-has-data-[state=checked]/field-label:!px-2"
+                        >
+                          <Checkbox
+                            :id="option.value"
+                            :model-value="
+                              (componentField.modelValue ?? []).includes(
+                                option.value,
+                              )
+                            "
+                            @update:model-value="
+                              (value: boolean | 'indeterminate') => {
+                                const checked = value === true;
+                                const current = (componentField.modelValue ??
+                                  []) as string[];
+                                if (checked) {
+                                  componentField['onUpdate:modelValue']?.([
+                                    ...current,
+                                    option.value,
+                                  ]);
+                                } else {
+                                  componentField['onUpdate:modelValue']?.(
+                                    current.filter((v) => v !== option.value),
+                                  );
+                                }
+                              }
+                            "
+                            class="-ml-6 -translate-x-1 rounded-full transition-all duration-100 ease-linear data-[state=checked]:ml-0 data-[state=checked]:translate-x-0"
+                          />
+                          <FieldTitle>{{ option.label }}</FieldTitle>
+                        </Field>
+                      </FieldLabel>
+                    </FieldGroup>
+                  </FieldSet>
+                </FieldGroup>
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { useCreateExercise } from "../composables/useCreateExercise";
 import { useMuscleGroup } from "@/features/reference/composables/useMuscleGroup";
 import { useEquipment } from "@/features/reference/composables/useEquipment";
+import { useExerciseFeature } from "@/features/reference/composables/useExerciseFeature";
 import {
   DrawerClose,
   DrawerContent,
@@ -25,6 +26,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { MultiSelectTags } from "@/components/ui/multi-select-tags";
+import {
+  FieldGroup,
+  FieldSet,
+  FieldLegend,
+  FieldDescription,
+  FieldLabel,
+  Field,
+  FieldTitle,
+} from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const props = defineProps<{
   open?: boolean;
@@ -42,6 +53,7 @@ const { t } = useI18n();
 const { createExercise, isPending, error } = useCreateExercise();
 const { muscleGroup } = useMuscleGroup();
 const { equipment } = useEquipment();
+const { exerciseFeatures } = useExerciseFeature();
 
 const formSchema = z.object({
   name: z.string().min(1, t("exercises.validation.nameRequired")),
@@ -54,6 +66,9 @@ const formSchema = z.object({
   equipment: z
     .array(z.string())
     .min(1, t("exercises.validation.equipmentRequired")),
+  exercise_features: z
+    .array(z.string())
+    .min(1, t("exercises.validation.exerciseFeaturesRequired")),
 });
 
 const { handleSubmit, resetForm, meta, setFieldValue } = useForm({
@@ -65,6 +80,7 @@ const { handleSubmit, resetForm, meta, setFieldValue } = useForm({
     secondary_muscle_groups: [] as string[],
     image: null as File | null,
     equipment: [] as string[],
+    exercise_features: [] as string[],
   },
 });
 
@@ -91,6 +107,13 @@ const equipmentOptions = computed(() =>
   equipment.value.map((group) => ({
     value: group.name,
     label: group.name,
+  })),
+);
+
+const exerciseFeatureOptions = computed(() =>
+  exerciseFeatures.value.map((feature) => ({
+    value: feature.name,
+    label: feature.name,
   })),
 );
 
@@ -122,10 +145,11 @@ const onSubmit = handleSubmit(async (values) => {
       primary_muscle_groups: values.primary_muscle_groups,
       secondary_muscle_groups:
         values.secondary_muscle_groups &&
-          values.secondary_muscle_groups.length > 0
+        values.secondary_muscle_groups.length > 0
           ? values.secondary_muscle_groups
           : undefined,
       equipment: values.equipment,
+      exercise_features: values.exercise_features,
       image: values.image ?? null,
     });
     resetForm();
@@ -157,7 +181,10 @@ watch(
         </DrawerDescription>
       </DrawerHeader>
       <div class="p-4 pb-0 space-y-6">
-        <div v-if="error" class="p-4 bg-destructive/10 text-destructive rounded-lg">
+        <div
+          v-if="error"
+          class="p-4 bg-destructive/10 text-destructive rounded-lg"
+        >
           <p>{{ $t("exercises.error") }}: {{ error.message }}</p>
         </div>
 
@@ -166,7 +193,11 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.name") }}</FormLabel>
               <FormControl>
-                <Input :placeholder="$t('exercises.namePlaceholder')" v-bind="componentField" required />
+                <Input
+                  :placeholder="$t('exercises.namePlaceholder')"
+                  v-bind="componentField"
+                  required
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -176,7 +207,11 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.description") }}</FormLabel>
               <FormControl>
-                <Textarea :placeholder="$t('exercises.descriptionPlaceholder')" rows="3" v-bind="componentField" />
+                <Textarea
+                  :placeholder="$t('exercises.descriptionPlaceholder')"
+                  rows="3"
+                  v-bind="componentField"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -187,21 +222,36 @@ watch(
               <FormItem>
                 <FormLabel>{{ $t("exercises.image") }}</FormLabel>
                 <FormControl>
-                  <Input type="file" accept="image/*" class="cursor-pointer" @change="
-                    (e) => {
-                      const target = e.target as HTMLInputElement;
-                      const file = target.files?.[0];
-                      handleChange(file ?? null);
-                    }
-                  " />
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    class="cursor-pointer"
+                    @change="
+                      (e) => {
+                        const target = e.target as HTMLInputElement;
+                        const file = target.files?.[0];
+                        handleChange(file ?? null);
+                      }
+                    "
+                  />
                 </FormControl>
                 <FormMessage />
                 <div class="flex items-center gap-3 mt-2">
                   <div v-if="imageUrl">
-                    <img :src="imageUrl" alt="Preview" class="h-32 w-32 rounded-lg object-cover border" />
+                    <img
+                      :src="imageUrl"
+                      alt="Preview"
+                      class="h-32 w-32 rounded-lg object-cover border"
+                    />
                   </div>
-                  <Button v-if="imageUrl" type="button" variant="outline" size="sm" @click="clearImage"
-                    :disabled="!imageUrl">
+                  <Button
+                    v-if="imageUrl"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    @click="clearImage"
+                    :disabled="!imageUrl"
+                  >
                     {{ $t("exercises.clearImage") }}
                   </Button>
                 </div>
@@ -213,9 +263,12 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.primaryMuscleGroups") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']" :options="muscleGroupOptions"
-                  :placeholder="$t('exercises.primaryMuscleGroupsPlaceholder')" />
+                <MultiSelectTags
+                  :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']"
+                  :options="muscleGroupOptions"
+                  :placeholder="$t('exercises.primaryMuscleGroupsPlaceholder')"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -225,10 +278,14 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.secondaryMuscleGroups") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']" :options="muscleGroupOptions"
-                  :placeholder="$t('exercises.secondaryMuscleGroupsPlaceholder')
-                    " />
+                <MultiSelectTags
+                  :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']"
+                  :options="muscleGroupOptions"
+                  :placeholder="
+                    $t('exercises.secondaryMuscleGroupsPlaceholder')
+                  "
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -238,9 +295,72 @@ watch(
             <FormItem>
               <FormLabel>{{ $t("exercises.equipment") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']" :options="equipmentOptions"
-                  :placeholder="$t('exercises.equipmentPlaceholder')" />
+                <MultiSelectTags
+                  :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']"
+                  :options="equipmentOptions"
+                  :placeholder="$t('exercises.equipmentPlaceholder')"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+
+          <FormField v-slot="{ componentField }" name="exercise_features">
+            <FormItem>
+              <FormControl>
+                <FieldGroup>
+                  <FieldSet class="gap-4">
+                    <FieldLegend>{{
+                      $t("exercises.exerciseFeatures")
+                    }}</FieldLegend>
+                    <FieldDescription class="line-clamp-1">
+                      {{ $t("exercises.exerciseFeaturesDescription") }}
+                    </FieldDescription>
+                    <FieldGroup
+                      class="flex flex-row flex-wrap gap-2 [--radius:9999rem]"
+                    >
+                      <FieldLabel
+                        v-for="option in exerciseFeatureOptions"
+                        :key="option.value"
+                        class="!w-fit"
+                      >
+                        <Field
+                          orientation="horizontal"
+                          class="gap-1.5 overflow-hidden !px-3 !py-1.5 transition-all duration-100 ease-linear group-has-data-[state=checked]/field-label:!px-2"
+                        >
+                          <Checkbox
+                            :id="option.value"
+                            :model-value="
+                              (componentField.modelValue ?? []).includes(
+                                option.value,
+                              )
+                            "
+                            @update:model-value="
+                              (value: boolean | 'indeterminate') => {
+                                const checked = value === true;
+                                const current = (componentField.modelValue ??
+                                  []) as string[];
+                                if (checked) {
+                                  componentField['onUpdate:modelValue']?.([
+                                    ...current,
+                                    option.value,
+                                  ]);
+                                } else {
+                                  componentField['onUpdate:modelValue']?.(
+                                    current.filter((v) => v !== option.value),
+                                  );
+                                }
+                              }
+                            "
+                            class="-ml-6 -translate-x-1 rounded-full transition-all duration-100 ease-linear data-[state=checked]:ml-0 data-[state=checked]:translate-x-0"
+                          />
+                          <FieldTitle>{{ option.label }}</FieldTitle>
+                        </Field>
+                      </FieldLabel>
+                    </FieldGroup>
+                  </FieldSet>
+                </FieldGroup>
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -7,6 +7,10 @@ export type Equipment = {
   name: string;
 };
 
+export type ExerciseFeature = {
+  name: string;
+};
+
 export type Exercise = {
   id: number;
   name: string;
@@ -15,6 +19,7 @@ export type Exercise = {
   primary_muscle_groups: MuscleGroup[];
   secondary_muscle_groups: MuscleGroup[];
   equipment: Equipment[];
+  exercise_features: ExerciseFeature[];
   created_at?: string;
   updated_at?: string;
 };

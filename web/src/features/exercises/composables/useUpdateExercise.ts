@@ -11,6 +11,7 @@ export type UpdateExerciseRequest = {
   primary_muscle_groups?: string[];
   secondary_muscle_groups?: string[];
   equipment?: string[];
+  exercise_features?: string[];
   image?: File | null;
 };
 
@@ -34,6 +35,9 @@ async function updateExercise(
     data.equipment?.forEach((eq) => {
       formData.append("equipment", eq);
     });
+    data.exercise_features?.forEach((ef) => {
+      formData.append("exercise_features", ef);
+    });
     formData.append("image", data.image);
     return apiClient.put<Exercise>(`/exercises/${id}`, formData);
   }
@@ -44,6 +48,7 @@ async function updateExercise(
     primary_muscle_groups: data.primary_muscle_groups,
     secondary_muscle_groups: data.secondary_muscle_groups,
     equipment: data.equipment,
+    exercise_features: data.exercise_features,
     image_guid: data.image === null ? "" : undefined,
   };
 
