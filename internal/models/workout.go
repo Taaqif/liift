@@ -20,5 +20,13 @@ func (w *Workout) Validate() error {
 	if w.Name == "" {
 		return errors.New("name_required")
 	}
+	if len(w.Exercises) == 0 {
+		return errors.New("exercises_required")
+	}
+	for _, ex := range w.Exercises {
+		if len(ex.Sets) == 0 {
+			return errors.New("sets_required")
+		}
+	}
 	return nil
 }

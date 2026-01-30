@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"liift/api/types"
 	"liift/internal/models"
@@ -30,22 +31,61 @@ func NewExerciseHandler(repo *repository.ExerciseRepository, imageRepo *reposito
 	}
 }
 
-type ExerciseDataResponse struct {
-	ID                    uint                     `json:"id"`
-	Name                  string                   `json:"name"`
-	Description           string                   `json:"description"`
-	Image                 string                   `json:"image,omitempty"`
-	PrimaryMuscleGroups   []models.MuscleGroup     `json:"primary_muscle_groups"`
-	SecondaryMuscleGroups []models.MuscleGroup     `json:"secondary_muscle_groups"`
-	Equipment             []models.Equipment       `json:"equipment"`
-	ExerciseFeatures      []models.ExerciseFeature `json:"exercise_features"`
+// ExerciseRefItem represents a reference item (muscle group, equipment, or feature)
+type ExerciseRefItem struct {
+	Name string `json:"name"`
+}
+
+func mapExerciseAssociationsToRefItems(ex *models.Exercise) (
+	primary []ExerciseRefItem,
+	secondary []ExerciseRefItem,
+	equipment []ExerciseRefItem,
+	features []ExerciseRefItem,
+) {
+	primary = make([]ExerciseRefItem, len(ex.PrimaryMuscleGroups))
+	for i, m := range ex.PrimaryMuscleGroups {
+		primary[i] = ExerciseRefItem{Name: m.Name}
+	}
+	secondary = make([]ExerciseRefItem, len(ex.SecondaryMuscleGroups))
+	for i, m := range ex.SecondaryMuscleGroups {
+		secondary[i] = ExerciseRefItem{Name: m.Name}
+	}
+	equipment = make([]ExerciseRefItem, len(ex.Equipment))
+	for i, e := range ex.Equipment {
+		equipment[i] = ExerciseRefItem{Name: e.Name}
+	}
+	features = make([]ExerciseRefItem, len(ex.ExerciseFeatures))
+	for i, f := range ex.ExerciseFeatures {
+		features[i] = ExerciseRefItem{Name: f.Name}
+	}
+	return primary, secondary, equipment, features
+}
+
+func buildExerciseImagePath(imageGUID *string) string {
+	if imageGUID != nil && *imageGUID != "" {
+		return "/api/images/" + *imageGUID
+	}
+	return ""
+}
+
+type ExerciseResponse struct {
+	ID                    uint              `json:"id"`
+	Name                  string            `json:"name"`
+	Description           string            `json:"description"`
+	Image                 string            `json:"image,omitempty"`
+	PrimaryMuscleGroups   []ExerciseRefItem `json:"primary_muscle_groups"`
+	SecondaryMuscleGroups []ExerciseRefItem `json:"secondary_muscle_groups"`
+	Equipment             []ExerciseRefItem `json:"equipment"`
+	ExerciseFeatures      []ExerciseRefItem `json:"exercise_features"`
+	CreatedAt             time.Time         `json:"created_at"`
+	UpdatedAt             time.Time         `json:"updated_at"`
 }
 
 type ExercisesListResponse struct {
-	Data   []ExerciseDataResponse `json:"data"`
-	Total  int64                  `json:"total"`
-	Limit  int                    `json:"limit"`
-	Offset int                    `json:"offset"`
+	Data   []ExerciseResponse `json:"data"`
+	Total  int64              `json:"total"`
+	Limit  int                `json:"limit"`
+	Offset int                `json:"offset"`
 }
 
 type CreateExerciseRequest struct {
@@ -66,6 +106,22 @@ type UpdateExerciseRequest struct {
 	SecondaryMuscleGroups []string `form:"secondary_muscle_groups" json:"secondary_muscle_groups,omitempty"`
 	Equipment             []string `form:"equipment" json:"equipment"`
 	ExerciseFeatures      []string `form:"exercise_features" json:"exercise_features"`
+}
+
+func mapExerciseToResponse(ex *models.Exercise) ExerciseResponse {
+	primary, secondary, equipment, features := mapExerciseAssociationsToRefItems(ex)
+	return ExerciseResponse{
+		ID:                    ex.ID,
+		Name:                  ex.Name,
+		Description:           ex.Description,
+		Image:                 buildExerciseImagePath(ex.ImageGUID),
+		PrimaryMuscleGroups:   primary,
+		SecondaryMuscleGroups: secondary,
+		Equipment:             equipment,
+		ExerciseFeatures:      features,
+		CreatedAt:             ex.CreatedAt,
+		UpdatedAt:             ex.UpdatedAt,
+	}
 }
 
 func (h *ExerciseHandler) handleImageUpload(c echo.Context, formFieldName string) (*string, error) {
@@ -220,21 +276,8 @@ func (h *ExerciseHandler) GetExercises(c echo.Context) error {
 		})
 	}
 
-	data := utils.Map(exercises, func(exercise models.Exercise) ExerciseDataResponse {
-		var imagePath string
-		if exercise.ImageGUID != nil && *exercise.ImageGUID != "" {
-			imagePath = "/api/images/" + *exercise.ImageGUID
-		}
-		return ExerciseDataResponse{
-			ID:                    exercise.ID,
-			Name:                  exercise.Name,
-			Description:           exercise.Description,
-			Image:                 imagePath,
-			PrimaryMuscleGroups:   exercise.PrimaryMuscleGroups,
-			SecondaryMuscleGroups: exercise.SecondaryMuscleGroups,
-			Equipment:             exercise.Equipment,
-			ExerciseFeatures:      exercise.ExerciseFeatures,
-		}
+	data := utils.Map(exercises, func(exercise models.Exercise) ExerciseResponse {
+		return mapExerciseToResponse(&exercise)
 	})
 
 	return c.JSON(http.StatusOK, ExercisesListResponse{
@@ -261,7 +304,7 @@ func (h *ExerciseHandler) GetExercise(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, exercise)
+	return c.JSON(http.StatusOK, mapExerciseToResponse(exercise))
 }
 
 func (h *ExerciseHandler) CreateExercise(c echo.Context) error {
@@ -364,7 +407,7 @@ func (h *ExerciseHandler) CreateExercise(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusCreated, created)
+	return c.JSON(http.StatusCreated, mapExerciseToResponse(created))
 }
 
 func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
@@ -510,7 +553,7 @@ func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, updated)
+	return c.JSON(http.StatusOK, mapExerciseToResponse(updated))
 }
 
 func (h *ExerciseHandler) DeleteExercise(c echo.Context) error {

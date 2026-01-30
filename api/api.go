@@ -39,4 +39,8 @@ func RegisterHandlers(e *echo.Echo, db *gorm.DB) {
 	exerciseRepo := repository.NewExerciseRepository(db)
 	exerciseHandler := handlers.NewExerciseHandler(exerciseRepo, imageRepo, imageStoragePath)
 	handlers.RegisterExerciseRoutes(protected, exerciseHandler)
+
+	workoutRepo := repository.NewWorkoutRepository(db)
+	workoutHandler := handlers.NewWorkoutHandler(workoutRepo)
+	handlers.RegisterWorkoutRoutes(protected, workoutHandler)
 }

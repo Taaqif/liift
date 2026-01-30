@@ -39,6 +39,25 @@ func Map[T any, R any](in []T, fn func(T) R) []R {
 	return out
 }
 
+// Set is a set of comparable values (e.g. IDs). Uses map[T]struct{} for zero allocation.
+type Set[T comparable] map[T]struct{}
+
+// NewSet returns a new set with optional initial capacity.
+func NewSet[T comparable](cap int) Set[T] {
+	return make(Set[T], cap)
+}
+
+// Add adds v to the set.
+func (s Set[T]) Add(v T) {
+	s[v] = struct{}{}
+}
+
+// Contains reports whether v is in the set.
+func (s Set[T]) Contains(v T) bool {
+	_, ok := s[v]
+	return ok
+}
+
 func GenerateGUID() (string, error) {
 	bytes := make([]byte, 16)
 	if _, err := rand.Read(bytes); err != nil {
