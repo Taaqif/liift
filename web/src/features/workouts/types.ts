@@ -36,7 +36,7 @@ export type WorkoutsListParams = {
   limit?: number;
   offset?: number;
   search?: string;
-  exerciseFeature?: string;
+  exerciseFeatures?: string[];
   exerciseIds?: number[];
   muscleGroup?: string[];
   equipment?: string[];

@@ -21,8 +21,10 @@ async function fetchWorkouts(
   if (params?.search) {
     queryParams.append("q", params.search);
   }
-  if (params?.exerciseFeature) {
-    queryParams.append("exercise_feature", params.exerciseFeature);
+  if (params?.exerciseFeatures?.length) {
+    for (const f of params.exerciseFeatures) {
+      queryParams.append("exercise_feature", f);
+    }
   }
   if (params?.exerciseIds?.length) {
     for (const id of params.exerciseIds) {

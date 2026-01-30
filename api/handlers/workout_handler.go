@@ -175,7 +175,7 @@ func (h *WorkoutHandler) GetWorkouts(c echo.Context) error {
 	}
 
 	search := c.QueryParam("q")
-	exerciseFeature := c.QueryParam("exercise_feature")
+	exerciseFeatures := c.QueryParams()["exercise_feature"]
 	exerciseIDStrs := c.QueryParams()["exercise_id"]
 	var exerciseIDs []uint
 	for _, s := range exerciseIDStrs {
@@ -186,7 +186,7 @@ func (h *WorkoutHandler) GetWorkouts(c echo.Context) error {
 	muscleGroups := c.QueryParams()["muscle_group"]
 	equipment := c.QueryParams()["equipment"]
 
-	workouts, total, err := h.repo.List(c.Request().Context(), limit, offset, search, exerciseFeature, exerciseIDs, muscleGroups, equipment)
+	workouts, total, err := h.repo.List(c.Request().Context(), limit, offset, search, exerciseFeatures, exerciseIDs, muscleGroups, equipment)
 	if err != nil {
 		c.Logger().Errorf("Failed to fetch workouts: %v", err)
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{

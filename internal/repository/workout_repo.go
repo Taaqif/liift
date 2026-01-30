@@ -48,7 +48,8 @@ func (r *WorkoutRepository) GetByID(ctx context.Context, id uint) (*models.Worko
 func (r *WorkoutRepository) List(
 	ctx context.Context,
 	limit, offset int,
-	search, exerciseFeature string,
+	search string,
+	exerciseFeatures []string,
 	exerciseIDs []uint,
 	muscleGroups, equipment []string,
 ) ([]models.Workout, int64, error) {
@@ -61,12 +62,12 @@ func (r *WorkoutRepository) List(
 		pattern := "%" + search + "%"
 		db = db.Where("LOWER(name) LIKE LOWER(?) OR LOWER(description) LIKE LOWER(?)", pattern, pattern)
 	}
-	if exerciseFeature != "" {
+	if len(exerciseFeatures) > 0 {
 		featSubq := r.DB().WithContext(ctx).Table("workout_exercises").
 			Select("1").
 			Joins("JOIN exercise_exercise_features ON exercise_exercise_features.exercise_id = workout_exercises.exercise_id").
 			Where("workout_exercises.workout_id = workouts.id").
-			Where("exercise_exercise_features.exercise_feature_name = ?", exerciseFeature)
+			Where("exercise_exercise_features.exercise_feature_name IN ?", exerciseFeatures)
 		db = db.Where("EXISTS (?)", featSubq)
 	}
 	if len(exerciseIDs) > 0 {

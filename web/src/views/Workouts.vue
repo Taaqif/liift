@@ -34,7 +34,7 @@ const offset = ref(0);
 
 const filter = ref<WorkoutFilterType>({
   search: "",
-  exerciseFeature: "",
+  exerciseFeatures: [],
   exerciseIds: [],
   muscleGroup: [],
   equipment: [],
@@ -52,7 +52,7 @@ const params = computed(() => ({
   limit: limit.value,
   offset: offset.value,
   search: filter.value.search || undefined,
-  exerciseFeature: filter.value.exerciseFeature || undefined,
+  exerciseFeatures: filter.value.exerciseFeatures.length ? filter.value.exerciseFeatures : undefined,
   exerciseIds: filter.value.exerciseIds.length ? filter.value.exerciseIds : undefined,
   muscleGroup: filter.value.muscleGroup.length ? filter.value.muscleGroup : undefined,
   equipment: filter.value.equipment.length ? filter.value.equipment : undefined,
@@ -200,7 +200,7 @@ const handleDiscardChanges = () => {
 const handleFilter = (newFilter: WorkoutFilterType) => {
   filter.value = {
     search: newFilter.search,
-    exerciseFeature: newFilter.exerciseFeature,
+    exerciseFeatures: [...newFilter.exerciseFeatures],
     exerciseIds: [...newFilter.exerciseIds],
     muscleGroup: [...newFilter.muscleGroup],
     equipment: [...newFilter.equipment],

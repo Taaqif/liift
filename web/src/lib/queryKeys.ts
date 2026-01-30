@@ -49,7 +49,7 @@ export const workoutKeys = {
     limit?: number;
     offset?: number;
     search?: string;
-    exerciseFeature?: string;
+    exerciseFeatures?: string[];
     exerciseIds?: number[];
     muscleGroup?: string[];
     equipment?: string[];
@@ -60,7 +60,7 @@ export const workoutKeys = {
       params?.limit ?? 20,
       params?.offset ?? 0,
       params?.search ?? "",
-      params?.exerciseFeature ?? "",
+      params?.exerciseFeatures?.slice().sort().join(",") ?? "",
       params?.exerciseIds?.slice().sort((a, b) => a - b).join(",") ?? "",
       params?.muscleGroup?.sort().join(",") ?? "",
       params?.equipment?.sort().join(",") ?? "",

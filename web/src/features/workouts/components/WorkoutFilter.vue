@@ -2,13 +2,12 @@
 import { ref, watch } from "vue";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import ReferenceSelect from "@/features/reference/components/ReferenceSelect.vue";
 import ReferenceMultiSelect from "@/features/reference/components/ReferenceMultiSelect.vue";
 import ExerciseMultiSelect from "@/features/exercises/components/ExerciseMultiSelect.vue";
 
 export type WorkoutFilter = {
   search: string;
-  exerciseFeature: string;
+  exerciseFeatures: string[];
   exerciseIds: number[];
   muscleGroup: string[];
   equipment: string[];
@@ -23,7 +22,7 @@ const emits = defineEmits<{
 }>();
 
 const searchInput = ref(props.modelValue.search);
-const exerciseFeatureValue = ref(props.modelValue.exerciseFeature);
+const selectedExerciseFeatures = ref<string[]>([...props.modelValue.exerciseFeatures]);
 const selectedExerciseIds = ref<number[]>([...props.modelValue.exerciseIds]);
 const selectedMuscleGroups = ref<string[]>([...props.modelValue.muscleGroup]);
 const selectedEquipment = ref<string[]>([...props.modelValue.equipment]);
@@ -32,7 +31,7 @@ watch(
   () => props.modelValue,
   (newValue) => {
     searchInput.value = newValue.search;
-    exerciseFeatureValue.value = newValue.exerciseFeature;
+    selectedExerciseFeatures.value = [...newValue.exerciseFeatures];
     selectedExerciseIds.value = [...newValue.exerciseIds];
     selectedMuscleGroups.value = [...newValue.muscleGroup];
     selectedEquipment.value = [...newValue.equipment];
@@ -43,7 +42,7 @@ watch(
 const handleSearch = () => {
   emits("update:modelValue", {
     search: searchInput.value.trim(),
-    exerciseFeature: exerciseFeatureValue.value,
+    exerciseFeatures: [...selectedExerciseFeatures.value],
     exerciseIds: [...selectedExerciseIds.value],
     muscleGroup: [...selectedMuscleGroups.value],
     equipment: [...selectedEquipment.value],
@@ -52,13 +51,13 @@ const handleSearch = () => {
 
 const handleClear = () => {
   searchInput.value = "";
-  exerciseFeatureValue.value = "";
+  selectedExerciseFeatures.value = [];
   selectedExerciseIds.value = [];
   selectedMuscleGroups.value = [];
   selectedEquipment.value = [];
   emits("update:modelValue", {
     search: "",
-    exerciseFeature: "",
+    exerciseFeatures: [],
     exerciseIds: [],
     muscleGroup: [],
     equipment: [],
@@ -73,10 +72,9 @@ const handleClear = () => {
         <Input v-model="searchInput" :placeholder="$t('workouts.filter.searchPlaceholder')"
           @keyup.enter="handleSearch" />
       </div>
-      <div class="flex-1 min-w-[140px]">
-        <ReferenceSelect reference-type="exerciseFeature" v-model="exerciseFeatureValue"
-          :placeholder="$t('workouts.filter.exerciseTypePlaceholder')"
-          :all-option-label="$t('workouts.filter.allExerciseTypes')" />
+      <div class="flex-1">
+        <ReferenceMultiSelect reference-type="exerciseFeature" v-model="selectedExerciseFeatures"
+          :placeholder="$t('workouts.filter.exerciseTypePlaceholder')" />
       </div>
       <div class="flex-1">
         <ReferenceMultiSelect reference-type="muscleGroup" v-model="selectedMuscleGroups"
