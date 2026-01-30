@@ -1,0 +1,42 @@
+---
+description: Avoid verbose or redundant comments in code
+alwaysApply: true
+---
+
+# No Verbose Comments
+
+Prefer clear code over long comments. Comments should add value, not restate what the code does.
+
+## Do
+
+- Omit comments when the code is self-explanatory (names, structure).
+- Use brief comments only for non-obvious intent, invariants, or "why" not "what".
+- Prefer better names and small functions over comment blocks.
+
+## Don't
+
+- Don't write paragraph-style or step-by-step comments that repeat the code.
+- Don't add section headers or decorative comments (e.g. "// 1. Update workout").
+- Don't comment every line or every block; trust readable code.
+
+## Examples
+
+```go
+// ❌ Verbose
+// Build sets of incoming IDs (only non-zero IDs are "existing" items being updated)
+incomingExerciseIDs := utils.NewSet[uint](0)
+
+// ✅ Omit when obvious, or one short line only when it helps
+incomingExerciseIDs := utils.NewSet[uint](0)
+```
+
+```typescript
+// ❌ Verbose
+// Validate and prepare exercises for the API payload
+const exercises = values.exercises.map(...)
+
+// ✅ Omit; the variable name and structure are clear
+const exercises = values.exercises.map(...)
+```
+
+When in doubt: if removing the comment doesn't lose real information, remove it.
