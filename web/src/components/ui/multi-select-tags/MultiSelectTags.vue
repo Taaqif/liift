@@ -24,7 +24,6 @@ import {
   TagsInputInput,
   TagsInputItem,
   TagsInputItemDelete,
-  TagsInputItemText,
 } from "@/components/ui/tags-input";
 
 export type MultiSelectOption = {
@@ -69,8 +68,8 @@ const filteredOptions = computed(() =>
   searchTerm.value === ""
     ? normalizedOptions.value
     : normalizedOptions.value.filter((option) =>
-        contains(option.label, searchTerm.value),
-      ),
+      contains(option.label, searchTerm.value),
+    ),
 );
 
 watch(searchTerm, (f) => {
@@ -83,47 +82,28 @@ const selectedValues = computed({
   get: () => props.modelValue,
   set: (value) => emits("update:modelValue", value),
 });
+
+const getLabel = (value: string) =>
+  normalizedOptions.value.find((o) => o.value === value)?.label ?? value;
 </script>
 
 <template>
   <Popover v-model:open="open">
-    <ListboxRoot
-      v-model="selectedValues as AcceptableValue"
-      highlight-on-hover
-      multiple
-      :disabled="disabled"
-    >
+    <ListboxRoot v-model="selectedValues as AcceptableValue" highlight-on-hover multiple :disabled="disabled">
       <PopoverAnchor class="inline-flex w-full">
         <PopoverTrigger as-child>
-          <TagsInput
-            v-slot="{ modelValue: tags }"
-            v-model="selectedValues as AcceptableInputValue[]"
-            :class="cn('w-full', props.class)"
-            :disabled="disabled"
-          >
-            <TagsInputItem
-              v-for="item in tags"
-              :key="item.toString()"
-              :value="item.toString()"
-            >
-              <TagsInputItemText />
+          <TagsInput v-slot="{ modelValue: tags }" v-model="selectedValues as AcceptableInputValue[]"
+            :class="cn('w-full', props.class)" :disabled="disabled">
+            <TagsInputItem v-for="item in tags" :key="item.toString()" :value="item.toString()">
+              <span class="py-0.5 px-2 text-sm rounded bg-transparent">{{ getLabel(item.toString()) }}</span>
               <TagsInputItemDelete @click.stop />
             </TagsInputItem>
 
             <ListboxFilter v-model="searchTerm" as-child>
-              <TagsInputInput
-                :placeholder="placeholder"
-                @keydown.enter.prevent
-                @keydown.down="open = true"
-              />
+              <TagsInputInput :placeholder="placeholder" @keydown.enter.prevent @keydown.down="open = true" />
             </ListboxFilter>
 
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              class="order-last self-start ml-auto"
-              :disabled="disabled"
-            >
+            <Button size="icon-sm" variant="ghost" class="order-last self-start ml-auto" :disabled="disabled">
               <ChevronDown class="size-3.5" />
             </Button>
           </TagsInput>
@@ -133,24 +113,17 @@ const selectedValues = computed({
       <PopoverContent class="p-1" @open-auto-focus.prevent>
         <ListboxContent
           class="max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto empty:after:content-['No_options'] empty:p-1 empty:after:block"
-          tabindex="0"
-        >
-          <ListboxItem
-            v-for="item in filteredOptions"
-            :key="item.value"
+          tabindex="0">
+          <ListboxItem v-for="item in filteredOptions" :key="item.value"
             class="data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-            :value="item.value"
-            @select="
+            :value="item.value" @select="
               () => {
                 searchTerm = '';
               }
-            "
-          >
+            ">
             <span>{{ item.label }}</span>
 
-            <ListboxItemIndicator
-              class="ml-auto inline-flex items-center justify-center"
-            >
+            <ListboxItemIndicator class="ml-auto inline-flex items-center justify-center">
               <CheckIcon />
             </ListboxItemIndicator>
           </ListboxItem>

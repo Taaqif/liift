@@ -7,6 +7,7 @@ const baseKeys = {
   auth: ["auth"] as const,
   reference: ["reference"] as const,
   exercises: ["exercises"] as const,
+  workouts: ["workouts"] as const,
 } as const;
 
 export const authKeys = {
@@ -42,8 +43,34 @@ export const exerciseKeys = {
   detail: (id: number) => [...baseKeys.exercises, "detail", id] as const,
 } as const;
 
+export const workoutKeys = {
+  all: baseKeys.workouts,
+  list: (params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    exerciseFeature?: string;
+    exerciseIds?: number[];
+    muscleGroup?: string[];
+    equipment?: string[];
+  }) =>
+    [
+      ...baseKeys.workouts,
+      "list",
+      params?.limit ?? 20,
+      params?.offset ?? 0,
+      params?.search ?? "",
+      params?.exerciseFeature ?? "",
+      params?.exerciseIds?.slice().sort((a, b) => a - b).join(",") ?? "",
+      params?.muscleGroup?.sort().join(",") ?? "",
+      params?.equipment?.sort().join(",") ?? "",
+    ] as const,
+  detail: (id: number) => [...baseKeys.workouts, "detail", id] as const,
+} as const;
+
 export const queryKeys = {
   auth: authKeys,
   reference: referenceKeys,
   exercises: exerciseKeys,
+  workouts: workoutKeys,
 } as const;

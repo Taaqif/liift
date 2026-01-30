@@ -118,6 +118,51 @@
       "allMuscleGroups": "All Muscle Groups",
       "allEquipment": "All Equipment"
     }
+  },
+  "workouts": {
+    "title": "Workouts",
+    "titleLower": "@.lower:{'workouts.title'}",
+    "subtitle": "Browse and manage your workout plans",
+    "create": "Create Workout",
+    "update": "Update Workout",
+    "createNew": "Create New Workout",
+    "createDescription": "Create a new workout plan with exercises and sets.",
+    "editTitle": "Edit Workout",
+    "editDescription": "Update the workout details or delete it.",
+    "name": "Workout Name",
+    "namePlaceholder": "e.g., Push Day",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the workout...",
+    "exercises": "exercise | exercises",
+    "sets": "set | sets",
+    "noWorkouts": "No workouts found.",
+    "errorLoading": "Error loading workouts: {message}",
+    "filter": {
+      "searchPlaceholder": "Search by name or description...",
+      "exerciseTypePlaceholder": "Exercise type",
+      "allExerciseTypes": "All exercise types",
+      "exercisePlaceholder": "Exercises",
+      "muscleGroupPlaceholder": "Muscle group",
+      "equipmentPlaceholder": "Equipment"
+    },
+    "addExercise": "Add Exercise",
+    "removeExercise": "Remove Exercise",
+    "restTimer": "Rest Timer (seconds)",
+    "note": "Note",
+    "notePlaceholder": "Add a note for this exercise...",
+    "addSet": "Add Set",
+    "removeSet": "Remove Set",
+    "setNumber": "Set {number}",
+    "toasts": {
+      "created": "Workout created successfully",
+      "updated": "Workout updated successfully",
+      "deleted": "Workout deleted successfully"
+    },
+    "validation": {
+      "nameRequired": "Workout name is required",
+      "exercisesRequired": "At least one exercise is required",
+      "setsRequired": "At least one set is required for each exercise",
+      "featuresRequired": "All enabled exercise features must have values"
+    }
   }
 }
-
