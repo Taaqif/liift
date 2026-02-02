@@ -2,13 +2,19 @@
 import { computed, watch, ref, unref } from "vue";
 import { useForm, useFieldArray } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
-import { z } from "zod";
 import { useI18n } from "vue-i18n";
 import { useCreateWorkout } from "../composables/useCreateWorkout";
 import { useUpdateWorkout } from "../composables/useUpdateWorkout";
 import { useDeleteWorkout } from "../composables/useDeleteWorkout";
 import { useExercises } from "@/features/exercises/composables/useExercises";
-import type { Workout } from "../types";
+import type {
+  Workout,
+  WorkoutExerciseForm,
+  WorkoutFormValues,
+  WorkoutSetForm,
+  WorkoutSetFeatureForm,
+} from "../types";
+import { workoutFormSchema } from "../types";
 import {
   DrawerClose,
   DrawerContent,
@@ -91,47 +97,8 @@ const exerciseOptions = computed(() =>
 );
 
 
-const workoutSetFeatureSchema = z.object({
-  id: z.number().optional(),
-  feature_name: z.string(),
-  value: z.number().min(0),
-});
-
-const workoutSetSchema = z.object({
-  id: z.number().optional(),
-  _key: z.string().optional(),
-  order: z.number(),
-  features: z.array(workoutSetFeatureSchema),
-});
-
-const workoutExerciseSchema = z.object({
-  id: z.number().optional(),
-  exercise_id: z.union([z.number().min(1), z.null()]),
-  rest_timer: z.number().min(0),
-  note: z.string().optional(),
-  order: z.number(),
-  sets: z.array(workoutSetSchema),
-});
-
-const formSchema = z.object({
-  name: z.string().min(1, t("workouts.validation.nameRequired")),
-  description: z.string().optional(),
-  exercises: z
-    .array(workoutExerciseSchema)
-    .min(1, t("workouts.validation.exercisesRequired"))
-    .refine(
-      (arr) => arr.every((ex) => (ex.sets?.length ?? 0) >= 1),
-      { message: t("workouts.validation.setsRequired") },
-    ),
-});
-
-type WorkoutFormValues = z.infer<typeof formSchema>;
-type WorkoutExerciseForm = z.infer<typeof workoutExerciseSchema>;
-type WorkoutSetForm = z.infer<typeof workoutSetSchema>;
-type WorkoutSetFeatureForm = z.infer<typeof workoutSetFeatureSchema>;
-
 const { handleSubmit, resetForm, meta, values } = useForm<WorkoutFormValues>({
-  validationSchema: toTypedSchema(formSchema),
+  validationSchema: toTypedSchema(workoutFormSchema),
   initialValues: {
     name: "",
     description: "",
@@ -590,7 +557,11 @@ const drawerScrollRef = ref<HTMLElement | null>(null);
                           {{ $t("workouts.addSet") }}
                         </Button>
                       </div>
-
+                      <FormField :name="`exercises.${exerciseIndex}.sets`" v-slot>
+                        <FormItem>
+                          <FormMessage />
+                        </FormItem>
+                      </FormField>
                       <VueDraggable :model-value="field.value?.sets || []"
                         @update:model-value="(v: unknown) => setSetsInOrder(exerciseIndex, v as WorkoutExerciseForm['sets'])"
                         handle=".set-drag-handle" :force-fallback="true" :fallback-on-body="true"
