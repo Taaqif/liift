@@ -1,27 +1,29 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { MultiSelectTags } from "@/components/ui/multi-select-tags";
-import { useReferenceOptions } from "../composables/useReferenceOptions";
-import type { ReferenceType } from "../types";
+import { useMuscleGroupOptions } from "../composables/useMuscleGroupOptions";
+
+const { t } = useI18n();
 
 const props = withDefaults(
   defineProps<{
-    referenceType: ReferenceType;
     modelValue: string[];
     placeholder?: string;
     class?: string;
   }>(),
   {
-    placeholder: "Select...",
+    placeholder: undefined,
   },
 );
+
+const placeholder = computed(() => props.placeholder ?? t("selectPlaceholder"));
 
 const emits = defineEmits<{
   (e: "update:modelValue", value: string[]): void;
 }>();
 
-const { options, loading } = useReferenceOptions(props.referenceType);
-
+const { options, loading } = useMuscleGroupOptions();
 const innerValue = ref<string[]>([...props.modelValue]);
 
 watch(
@@ -39,6 +41,12 @@ function onUpdate(value: string[]) {
 </script>
 
 <template>
-  <MultiSelectTags :model-value="innerValue" :options="options" :placeholder="placeholder" :disabled="loading"
-    :class="props.class" @update:model-value="onUpdate" />
+  <MultiSelectTags
+    :model-value="innerValue"
+    :options="options"
+    :placeholder="placeholder"
+    :disabled="loading"
+    :class="props.class"
+    @update:model-value="onUpdate"
+  />
 </template>

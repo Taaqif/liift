@@ -1,2 +1,3 @@
-export { default as ReferenceSelect } from "./ReferenceSelect.vue";
-export { default as ReferenceMultiSelect } from "./ReferenceMultiSelect.vue";
+export { default as ExerciseFeatureMultiSelect } from "./ExerciseFeatureMultiSelect.vue";
+export { default as MuscleGroupMultiSelect } from "./MuscleGroupMultiSelect.vue";
+export { default as EquipmentMultiSelect } from "./EquipmentMultiSelect.vue";

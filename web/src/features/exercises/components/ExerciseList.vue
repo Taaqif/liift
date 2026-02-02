@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 import type { Exercise } from "@/features/exercises/types";
 import Card from "@/components/ui/card/Card.vue";
 import CardHeader from "@/components/ui/card/CardHeader.vue";
@@ -18,6 +19,13 @@ const props = defineProps<{
 const emits = defineEmits<{
   (e: "edit", exercise: Exercise): void;
 }>();
+
+const { t } = useI18n();
+
+const formatMuscleGroups = (groups: { name: string }[]) =>
+  groups.map((g) => t(`muscleGroup.${g.name}`)).join(", ");
+const formatEquipment = (items: { name: string }[]) =>
+  items.map((e) => t(`equipment.${e.name}`)).join(", ");
 
 const handleEdit = (exercise: Exercise) => {
   emits("edit", exercise);
@@ -137,11 +145,7 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
                       $t("exercises.primaryLabel")
                     }}</span>
                     <span class="ml-2">
-                      {{
-                        exercise.primary_muscle_groups
-                          .map((mg) => mg.name)
-                          .join(", ")
-                      }}
+                      {{ formatMuscleGroups(exercise.primary_muscle_groups) }}
                     </span>
                   </div>
                   <div v-if="exercise.secondary_muscle_groups.length > 0">
@@ -149,11 +153,7 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
                       $t("exercises.secondaryLabel")
                     }}</span>
                     <span class="ml-2">
-                      {{
-                        exercise.secondary_muscle_groups
-                          .map((mg) => mg.name)
-                          .join(", ")
-                      }}
+                      {{ formatMuscleGroups(exercise.secondary_muscle_groups) }}
                     </span>
                   </div>
                   <div v-if="exercise.equipment.length > 0">
@@ -161,7 +161,7 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
                       $t("exercises.equipmentLabel")
                     }}</span>
                     <span class="ml-2">
-                      {{ exercise.equipment.map((eq) => eq.name).join(", ") }}
+                      {{ formatEquipment(exercise.equipment) }}
                     </span>
                   </div>
                 </div>

@@ -2,7 +2,9 @@
 import { ref, watch } from "vue";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import ReferenceMultiSelect from "@/features/reference/components/ReferenceMultiSelect.vue";
+import ExerciseFeatureMultiSelect from "@/features/reference/components/ExerciseFeatureMultiSelect.vue";
+import MuscleGroupMultiSelect from "@/features/reference/components/MuscleGroupMultiSelect.vue";
+import EquipmentMultiSelect from "@/features/reference/components/EquipmentMultiSelect.vue";
 import ExerciseMultiSelect from "@/features/exercises/components/ExerciseMultiSelect.vue";
 
 export type WorkoutFilter = {
@@ -73,15 +75,15 @@ const handleClear = () => {
           @keyup.enter="handleSearch" />
       </div>
       <div class="flex-1">
-        <ReferenceMultiSelect reference-type="exerciseFeature" v-model="selectedExerciseFeatures"
+        <ExerciseFeatureMultiSelect v-model="selectedExerciseFeatures"
           :placeholder="$t('workouts.filter.exerciseTypePlaceholder')" />
       </div>
       <div class="flex-1">
-        <ReferenceMultiSelect reference-type="muscleGroup" v-model="selectedMuscleGroups"
+        <MuscleGroupMultiSelect v-model="selectedMuscleGroups"
           :placeholder="$t('workouts.filter.muscleGroupPlaceholder')" />
       </div>
       <div class="flex-1">
-        <ReferenceMultiSelect reference-type="equipment" v-model="selectedEquipment"
+        <EquipmentMultiSelect v-model="selectedEquipment"
           :placeholder="$t('workouts.filter.equipmentPlaceholder')" />
       </div>
       <div class="flex-1">

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, watch } from "vue";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MultiSelectTags } from "@/components/ui/multi-select-tags";
-import { useMuscleGroup } from "@/features/reference/composables/useMuscleGroup";
-import { useEquipment } from "@/features/reference/composables/useEquipment";
+import { useMuscleGroupOptions } from "@/features/reference/composables/useMuscleGroupOptions";
+import { useEquipmentOptions } from "@/features/reference/composables/useEquipmentOptions";
 
 export type ExerciseFilter = {
   search: string;
@@ -20,8 +20,6 @@ const emits = defineEmits<{
   (e: "update:modelValue", filter: ExerciseFilter): void;
 }>();
 
-const { muscleGroup } = useMuscleGroup();
-const { equipment } = useEquipment();
 
 const searchInput = ref(props.modelValue.search);
 const selectedMuscleGroups = ref<string[]>([...props.modelValue.muscleGroup]);
@@ -36,24 +34,9 @@ watch(
   },
   { deep: true },
 );
+const { options: muscleGroupOptions } = useMuscleGroupOptions();
+const { options: equipmentOptions } = useEquipmentOptions();
 
-const muscleGroupOptions = computed(() =>
-  muscleGroup.value
-    .map((group) => ({
-      value: group.name,
-      label: group.name,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label)),
-);
-
-const equipmentOptions = computed(() =>
-  equipment.value
-    .map((eq) => ({
-      value: eq.name,
-      label: eq.name,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label)),
-);
 
 const handleSearch = () => {
   emits("update:modelValue", {
@@ -79,26 +62,17 @@ const handleClear = () => {
   <div class="flex flex-col gap-4 p-4 border rounded-lg bg-card">
     <div class="flex flex-col sm:flex-row gap-4">
       <div class="flex-1">
-        <Input
-          v-model="searchInput"
-          :placeholder="$t('exercises.filter.searchPlaceholder')"
-          @keyup.enter="handleSearch"
-        />
+        <Input v-model="searchInput" :placeholder="$t('exercises.filter.searchPlaceholder')"
+          @keyup.enter="handleSearch" />
       </div>
 
       <div class="flex-1">
-        <MultiSelectTags
-          v-model="selectedMuscleGroups"
-          :options="muscleGroupOptions"
-          :placeholder="$t('exercises.filter.muscleGroupPlaceholder')"
-        />
+        <MultiSelectTags v-model="selectedMuscleGroups" :options="muscleGroupOptions"
+          :placeholder="$t('exercises.filter.muscleGroupPlaceholder')" />
       </div>
       <div class="flex-1">
-        <MultiSelectTags
-          v-model="selectedEquipment"
-          :options="equipmentOptions"
-          :placeholder="$t('exercises.filter.equipmentPlaceholder')"
-        />
+        <MultiSelectTags v-model="selectedEquipment" :options="equipmentOptions"
+          :placeholder="$t('exercises.filter.equipmentPlaceholder')" />
       </div>
     </div>
 
@@ -106,11 +80,7 @@ const handleClear = () => {
       <Button @click="handleSearch" class="flex-1 sm:flex-none">
         {{ $t("search") }}
       </Button>
-      <Button
-        variant="outline"
-        @click="handleClear"
-        class="flex-1 sm:flex-none"
-      >
+      <Button variant="outline" @click="handleClear" class="flex-1 sm:flex-none">
         {{ $t("clear") }}
       </Button>
     </div>

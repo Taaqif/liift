@@ -7,9 +7,9 @@ import { useI18n } from "vue-i18n";
 import { useCreateExercise } from "../composables/useCreateExercise";
 import { useUpdateExercise } from "../composables/useUpdateExercise";
 import { useDeleteExercise } from "../composables/useDeleteExercise";
-import { useMuscleGroup } from "@/features/reference/composables/useMuscleGroup";
-import { useEquipment } from "@/features/reference/composables/useEquipment";
-import { useExerciseFeature } from "@/features/reference/composables/useExerciseFeature";
+import { useMuscleGroupOptions } from "@/features/reference/composables/useMuscleGroupOptions";
+import { useEquipmentOptions } from "@/features/reference/composables/useEquipmentOptions";
+import { useExerciseFeatureOptions } from "@/features/reference/composables/useExerciseFeatureOptions";
 import type { Exercise } from "../types";
 import { getImageUrl, revokeImageUrl } from "@/lib/api";
 import {
@@ -83,9 +83,9 @@ const {
   error: deleteError,
 } = useDeleteExercise();
 
-const { muscleGroup } = useMuscleGroup();
-const { equipment } = useEquipment();
-const { exerciseFeatures } = useExerciseFeature();
+const { options: muscleGroupOptions } = useMuscleGroupOptions();
+const { options: equipmentOptions } = useEquipmentOptions();
+const { options: exerciseFeatureOptions } = useExerciseFeatureOptions();
 
 const formSchema = z.object({
   name: z.string().min(1, t("exercises.validation.nameRequired")),
@@ -174,27 +174,6 @@ watch(
     }
   },
   { immediate: true },
-);
-
-const muscleGroupOptions = computed(() =>
-  muscleGroup.value.map((group) => ({
-    value: group.name,
-    label: group.name,
-  })),
-);
-
-const equipmentOptions = computed(() =>
-  equipment.value.map((group) => ({
-    value: group.name,
-    label: group.name,
-  })),
-);
-
-const exerciseFeatureOptions = computed(() =>
-  exerciseFeatures.value.map((feature) => ({
-    value: feature.name,
-    label: feature.name,
-  })),
 );
 
 const populateForm = (exercise: Exercise | null) => {
