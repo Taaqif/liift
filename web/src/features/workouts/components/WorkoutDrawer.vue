@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref, onUnmounted } from "vue";
+import { computed, watch, ref, unref } from "vue";
 import { useForm, useFieldArray } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
@@ -8,8 +8,7 @@ import { useCreateWorkout } from "../composables/useCreateWorkout";
 import { useUpdateWorkout } from "../composables/useUpdateWorkout";
 import { useDeleteWorkout } from "../composables/useDeleteWorkout";
 import { useExercises } from "@/features/exercises/composables/useExercises";
-import type { Workout, WorkoutExercise, WorkoutSet } from "../types";
-import type { Exercise } from "@/features/exercises/types";
+import type { Workout } from "../types";
 import {
   DrawerClose,
   DrawerContent,
@@ -45,7 +44,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2 } from "lucide-vue-next";
+import { Plus, Trash2, GripVertical } from "lucide-vue-next";
+import { VueDraggable } from "vue-draggable-plus";
 
 const props = defineProps<{
   open?: boolean;
@@ -90,85 +90,62 @@ const exerciseOptions = computed(() =>
   })),
 );
 
-// Create a dynamic schema based on exercise features
-const createExerciseSchema = (exerciseId: number | null) => {
-  if (!exerciseId) {
-    return z.object({
-      exercise_id: z.number().min(1, t("workouts.validation.exercisesRequired")),
-      rest_timer: z.number().min(0),
-      note: z.string().optional(),
-      order: z.number(),
-      sets: z.array(z.any()).min(1, t("workouts.validation.setsRequired")),
-    });
-  }
 
-  const exercise = allExercises.value.find((e) => e.id === exerciseId);
-  if (!exercise || !exercise.exercise_features) {
-    return z.object({
-      exercise_id: z.number(),
-      rest_timer: z.number().min(0),
-      note: z.string().optional(),
-      order: z.number(),
-      sets: z.array(z.any()).min(1),
-    });
-  }
+const workoutSetFeatureSchema = z.object({
+  id: z.number().optional(),
+  feature_name: z.string(),
+  value: z.number().min(0),
+});
 
-  const featureNames = exercise.exercise_features.map((f) => f.name);
+const workoutSetSchema = z.object({
+  id: z.number().optional(),
+  _key: z.string().optional(),
+  order: z.number(),
+  features: z.array(workoutSetFeatureSchema),
+});
 
-  const setSchema = z.object({
-    order: z.number(),
-    features: z
-      .array(
-        z.object({
-          feature_name: z.string(),
-          value: z.number().min(0),
-        }),
-      )
-      .refine(
-        (features) => {
-          // Check that all enabled features have values
-          return featureNames.every((name) =>
-            features.some((f) => f.feature_name === name),
-          );
-        },
-        {
-          message: t("workouts.validation.featuresRequired"),
-        },
-      ),
-  });
-
-  return z.object({
-    exercise_id: z.number().min(1),
-    rest_timer: z.number().min(0),
-    note: z.string().optional(),
-    order: z.number(),
-    sets: z.array(setSchema).min(1, t("workouts.validation.setsRequired")),
-  });
-};
+const workoutExerciseSchema = z.object({
+  id: z.number().optional(),
+  exercise_id: z.union([z.number().min(1), z.null()]),
+  rest_timer: z.number().min(0),
+  note: z.string().optional(),
+  order: z.number(),
+  sets: z.array(workoutSetSchema),
+});
 
 const formSchema = z.object({
   name: z.string().min(1, t("workouts.validation.nameRequired")),
   description: z.string().optional(),
   exercises: z
-    .array(z.any())
+    .array(workoutExerciseSchema)
     .min(1, t("workouts.validation.exercisesRequired"))
     .refine(
-      (arr) => arr.every((ex: { sets?: unknown[] }) => (ex?.sets?.length ?? 0) >= 1),
+      (arr) => arr.every((ex) => (ex.sets?.length ?? 0) >= 1),
       { message: t("workouts.validation.setsRequired") },
     ),
 });
 
-const { handleSubmit, resetForm, meta, setFieldValue } = useForm({
+type WorkoutFormValues = z.infer<typeof formSchema>;
+type WorkoutExerciseForm = z.infer<typeof workoutExerciseSchema>;
+type WorkoutSetForm = z.infer<typeof workoutSetSchema>;
+type WorkoutSetFeatureForm = z.infer<typeof workoutSetFeatureSchema>;
+
+const { handleSubmit, resetForm, meta, values } = useForm<WorkoutFormValues>({
   validationSchema: toTypedSchema(formSchema),
   initialValues: {
     name: "",
     description: "",
-    exercises: [] as any[],
+    exercises: [],
   },
 });
 
-const { fields: exerciseFields, push: pushExercise, remove: removeExercise } =
-  useFieldArray("exercises");
+const {
+  fields: exerciseFields,
+  push: pushExercise,
+  remove: removeExercise,
+  move: moveExercise,
+  update: updateExercise,
+} = useFieldArray<WorkoutExerciseForm>("exercises");
 
 const isFormDirty = computed(() => meta.value.dirty);
 
@@ -245,36 +222,72 @@ const addExercise = () => {
   });
 };
 
-const removeExerciseAtIndex = (index: number) => {
-  removeExercise(index);
-  // Update order for remaining exercises
+const syncExerciseOrders = () => {
   exerciseFields.value.forEach((field, idx) => {
-    setFieldValue(`exercises.${idx}.order`, idx);
+    const ex = field.value;
+    if (ex && ex.order !== idx) {
+      updateExercise(idx, { ...ex, order: idx });
+    }
   });
 };
 
+const removeExerciseAtIndex = (index: number) => {
+  removeExercise(index);
+  syncExerciseOrders();
+};
+
+const exercisesForDraggable = computed(
+  () => (unref(values) as WorkoutFormValues)?.exercises ?? [],
+);
+
+const onExercisesReorder = (event: { oldIndex?: number; newIndex?: number }) => {
+  const oldIndex = event.oldIndex ?? 0;
+  const newIndex = event.newIndex ?? 0;
+  if (oldIndex === newIndex) return;
+  moveExercise(oldIndex, newIndex);
+  syncExerciseOrders();
+};
+
+const setSetsInOrder = (exerciseIndex: number, newSets: WorkoutSetForm[]) => {
+  const exercise = exerciseFields.value[exerciseIndex]?.value;
+  if (!exercise) return;
+  const withOrder = newSets.map((set, idx) => ({
+    ...set,
+    _key: String(set._key ?? set.id ?? crypto.randomUUID()),
+    order: idx,
+  }));
+  updateExercise(exerciseIndex, { ...exercise, sets: withOrder });
+};
+
 const addSet = (exerciseIndex: number) => {
-  const currentSets = exerciseFields.value[exerciseIndex].value?.sets || [];
-  const exerciseId = exerciseFields.value[exerciseIndex].value?.exercise_id;
-  const featureNames = exerciseId ? getExerciseFeatures(exerciseId) : [];
+  const exercise = exerciseFields.value[exerciseIndex]?.value;
+  if (!exercise) return;
+  const currentSets = exercise.sets || [];
+  const featureNames = exercise.exercise_id
+    ? getExerciseFeatures(exercise.exercise_id)
+    : [];
   const newSet = {
+    _key: crypto.randomUUID(),
     order: currentSets.length,
     features: featureNames.map((name) => ({
       feature_name: name,
       value: 0,
     })),
   };
-  setFieldValue(`exercises.${exerciseIndex}.sets`, [...currentSets, newSet]);
+  updateExercise(exerciseIndex, {
+    ...exercise,
+    sets: [...currentSets, newSet],
+  });
 };
 
 const removeSet = (exerciseIndex: number, setIndex: number) => {
-  const currentSets = exerciseFields.value[exerciseIndex].value?.sets || [];
-  const newSets = currentSets.filter((_: any, idx: number) => idx !== setIndex);
-  setFieldValue(`exercises.${exerciseIndex}.sets`, newSets);
-  // Update order
-  newSets.forEach((_: any, idx: number) => {
-    setFieldValue(`exercises.${exerciseIndex}.sets.${idx}.order`, idx);
-  });
+  const exercise = exerciseFields.value[exerciseIndex]?.value;
+  if (!exercise) return;
+  const currentSets = exercise.sets || [];
+  const newSets = currentSets
+    .filter((_, idx) => idx !== setIndex)
+    .map((set, idx) => ({ ...set, order: idx }));
+  updateExercise(exerciseIndex, { ...exercise, sets: newSets });
 };
 
 const getExerciseFeatures = (exerciseId: number | null): string[] => {
@@ -283,23 +296,29 @@ const getExerciseFeatures = (exerciseId: number | null): string[] => {
   return exercise?.exercise_features?.map((f) => f.name) || [];
 };
 
+const getSetFeatureValue = (
+  set: WorkoutSetForm,
+  featureName: string,
+): number =>
+  set.features?.find((f) => f.feature_name === featureName)?.value ?? 0;
+
 const updateSetFeatures = (
   exerciseIndex: number,
   setIndex: number,
   exerciseId: number,
 ) => {
+  const exercise = exerciseFields.value[exerciseIndex]?.value;
+  if (!exercise) return;
   const features = getExerciseFeatures(exerciseId);
-  const currentSet =
-    exerciseFields.value[exerciseIndex].value?.sets[setIndex] || {};
-  const currentFeatures = currentSet.features || [];
+  const currentSet = exercise.sets?.[setIndex];
+  const currentFeatures = currentSet?.features ?? [];
 
-  // Remove features that are no longer enabled
-  const validFeatures = currentFeatures.filter((f: any) =>
+  const validFeatures = currentFeatures.filter((f: WorkoutSetFeatureForm) =>
     features.includes(f.feature_name),
   );
-
-  // Add missing features
-  const existingFeatureNames = validFeatures.map((f: any) => f.feature_name);
+  const existingFeatureNames = validFeatures.map(
+    (f: WorkoutSetFeatureForm) => f.feature_name,
+  );
   const missingFeatures = features
     .filter((name) => !existingFeatureNames.includes(name))
     .map((name) => ({
@@ -307,21 +326,54 @@ const updateSetFeatures = (
       value: 0,
     }));
 
-  setFieldValue(`exercises.${exerciseIndex}.sets.${setIndex}.features`, [
-    ...validFeatures,
-    ...missingFeatures,
-  ]);
+  const newSets = [...(exercise.sets || [])];
+  newSets[setIndex] = {
+    ...currentSet,
+    order: currentSet?.order ?? setIndex,
+    features: [...validFeatures, ...missingFeatures],
+  };
+  updateExercise(exerciseIndex, { ...exercise, sets: newSets });
+};
+
+const updateFeatureValue = (
+  exerciseIndex: number,
+  setIndex: number,
+  featureName: string,
+  value: number,
+) => {
+  const exercise = exerciseFields.value[exerciseIndex]?.value;
+  if (!exercise) return;
+  const sets = [...(exercise.sets || [])];
+  const set = sets[setIndex];
+  if (!set) return;
+  const features = [...(set.features || [])];
+  const existingIndex = features.findIndex(
+    (f: WorkoutSetFeatureForm) => f.feature_name === featureName,
+  );
+  if (existingIndex >= 0) {
+    const f = features[existingIndex];
+    if (f) {
+      features[existingIndex] = { ...f, value };
+    }
+  } else {
+    features.push({ feature_name: featureName, value });
+  }
+  sets[setIndex] = { ...set, features };
+  updateExercise(exerciseIndex, { ...exercise, sets });
 };
 
 const onSubmit = handleSubmit(async (values) => {
   try {
-    // Validate and prepare exercises
-    const exercises = values.exercises.map((ex: any, idx: number) => {
+    const validExercises = values.exercises.filter(
+      (ex): ex is WorkoutExerciseForm & { exercise_id: number } =>
+        ex.exercise_id != null,
+    );
+    const exercises = validExercises.map((ex, idx) => {
       const exerciseFeatures = getExerciseFeatures(ex.exercise_id);
-      const sets = ex.sets.map((set: any, setIdx: number) => {
+      const sets = ex.sets.map((set, setIdx) => {
         const features = exerciseFeatures.map((featureName) => {
           const existing = set.features?.find(
-            (f: any) => f.feature_name === featureName,
+            (f) => f.feature_name === featureName,
           );
           return {
             ...(existing?.id != null && { id: existing.id }),
@@ -412,11 +464,13 @@ const submitButtonText = computed(() => {
   }
   return isCreating.value ? t("creating") : t("workouts.create");
 });
+
+const drawerScrollRef = ref<HTMLElement | null>(null);
 </script>
 
 <template>
-  <DrawerContent class="max-h-[95vh]">
-    <div class="mx-auto w-full max-w-4xl overflow-y-auto">
+  <DrawerContent class="!max-h-[95vh]">
+    <div ref="drawerScrollRef" class="mx-auto w-full max-w-4xl overflow-y-auto ">
       <DrawerHeader>
         <DrawerTitle>{{ title }}</DrawerTitle>
         <DrawerDescription>
@@ -458,139 +512,144 @@ const submitButtonText = computed(() => {
               </Button>
             </div>
 
-            <div v-for="(field, exerciseIndex) in exerciseFields" :key="field.key"
-              class="border rounded-lg p-4 space-y-4">
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex-1 space-y-4">
-                  <FormField v-slot="{ componentField }" :name="`exercises.${exerciseIndex}.exercise_id`">
-                    <FormItem>
-                      <FormLabel>{{ $t("exercises.title") }}</FormLabel>
-                      <FormControl>
-                        <Select v-model="componentField.modelValue" @update:model-value="
-                          (value) => {
-                            componentField['onUpdate:modelValue']?.(value);
-                            if (value) {
-                              // Update all sets for this exercise
-                              const sets = field.value?.sets || [];
-                              sets.forEach((_: any, setIdx: number) => {
-                                updateSetFeatures(exerciseIndex, setIdx, value);
-                              });
+            <VueDraggable :model-value="exercisesForDraggable" :custom-update="onExercisesReorder"
+              handle=".exercise-drag-handle" :force-fallback="true" :fallback-on-body="true"
+              ghost-class="workout-drag-ghost" chosen-class="workout-drag-chosen" fallback-class="workout-drag-fallback"
+              :animation="200" :scroll="drawerScrollRef || true" :bubble-scroll="true" :scroll-sensitivity="80"
+              :scroll-speed="16" class="space-y-4">
+              <div v-for="(field, exerciseIndex) in exerciseFields" :key="field.key"
+                class="border rounded-lg p-4 space-y-4">
+                <div class="flex items-start justify-between gap-4">
+                  <button type="button"
+                    class="exercise-drag-handle mt-1 p-1.5 rounded-md cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground hover:bg-muted/80 touch-none transition-colors"
+                    tabindex="-1">
+                    <GripVertical class="w-4 h-4" />
+                  </button>
+                  <div class="flex-1 space-y-4 min-w-0">
+                    <FormField v-slot="{ componentField }" :name="`exercises.${exerciseIndex}.exercise_id`">
+                      <FormItem>
+                        <FormLabel>{{ $t("exercises.title") }}</FormLabel>
+                        <FormControl>
+                          <Select v-model="componentField.modelValue" @update:model-value="
+                            (value) => {
+                              componentField['onUpdate:modelValue']?.(value);
+                              if (value) {
+                                const sets = field.value?.sets || [];
+                                sets.forEach((_, setIdx) => {
+                                  updateSetFeatures(
+                                    exerciseIndex,
+                                    setIdx,
+                                    Number(value),
+                                  );
+                                });
+                              }
                             }
-                          }
-                        ">
-                          <SelectTrigger>
-                            <SelectValue :placeholder="$t('exercises.title')" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem v-for="option in exerciseOptions" :key="option.value" :value="option.value">
-                              {{ option.label }}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  </FormField>
-
-                  <div class="grid grid-cols-2 gap-4">
-                    <FormField v-slot="{ componentField }" :name="`exercises.${exerciseIndex}.rest_timer`">
-                      <FormItem>
-                        <FormLabel>{{ $t("workouts.restTimer") }}</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" v-bind="componentField" />
+                          ">
+                            <SelectTrigger>
+                              <SelectValue :placeholder="$t('exercises.title')" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem v-for="option in exerciseOptions" :key="option.value" :value="option.value">
+                                {{ option.label }}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     </FormField>
 
-                    <FormField v-slot="{ componentField }" :name="`exercises.${exerciseIndex}.note`">
-                      <FormItem>
-                        <FormLabel>{{ $t("workouts.note") }}</FormLabel>
-                        <FormControl>
-                          <Textarea :placeholder="$t('workouts.notePlaceholder')" rows="2" v-bind="componentField" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    </FormField>
-                  </div>
+                    <div class="grid grid-cols-2 gap-4">
+                      <FormField v-slot="{ componentField }" :name="`exercises.${exerciseIndex}.rest_timer`">
+                        <FormItem>
+                          <FormLabel>{{ $t("workouts.restTimer") }}</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="0" v-bind="componentField" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      </FormField>
 
-                  <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                      <Label class="text-base font-medium">{{ $t("workouts.sets") }}</Label>
-                      <Button type="button" variant="outline" size="sm" @click="addSet(exerciseIndex)"
-                        :disabled="!field.value?.exercise_id">
-                        <Plus class="w-4 h-4 mr-2" />
-                        {{ $t("workouts.addSet") }}
-                      </Button>
+                      <FormField v-slot="{ componentField }" :name="`exercises.${exerciseIndex}.note`">
+                        <FormItem>
+                          <FormLabel>{{ $t("workouts.note") }}</FormLabel>
+                          <FormControl>
+                            <Textarea :placeholder="$t('workouts.notePlaceholder')" rows="2" v-bind="componentField" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      </FormField>
                     </div>
 
-                    <div v-for="(set, setIndex) in field.value?.sets || []" :key="setIndex"
-                      class="border rounded p-3 space-y-2">
+                    <div class="space-y-2">
                       <div class="flex items-center justify-between">
-                        <Label class="text-sm font-medium">
-                          {{ $t("workouts.setNumber", { number: setIndex + 1 }) }}
-                        </Label>
-                        <Button type="button" variant="ghost" size="sm" @click="removeSet(exerciseIndex, setIndex)">
-                          <Trash2 class="w-4 h-4" />
+                        <Label class="text-base font-medium">{{ $t("workouts.sets") }}</Label>
+                        <Button type="button" variant="outline" size="sm" @click="addSet(exerciseIndex)"
+                          :disabled="!field.value?.exercise_id">
+                          <Plus class="w-4 h-4 mr-2" />
+                          {{ $t("workouts.addSet") }}
                         </Button>
                       </div>
 
-                      <div v-if="field.value?.exercise_id" class="grid grid-cols-2 gap-2">
-                        <FormField v-for="featureName in getExerciseFeatures(
-                          field.value.exercise_id,
-                        )" :key="featureName"
-                          :name="`exercises.${exerciseIndex}.sets.${setIndex}.features.${getExerciseFeatures(field.value.exercise_id).indexOf(featureName)}.value`">
-                          <FormItem>
-                            <FormLabel class="text-sm capitalize">
-                              {{ featureName }}
-                            </FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.01" min="0" :model-value="set.features?.find(
-                                (f: any) => f.feature_name === featureName,
-                              )?.value || 0
-                                " @update:model-value="
-                                  (value) => {
-                                    const currentFeatures =
-                                      set.features || [];
-                                    const existingIndex =
-                                      currentFeatures.findIndex(
-                                        (f: any) =>
-                                          f.feature_name === featureName,
-                                      );
-                                    if (existingIndex >= 0) {
-                                      setFieldValue(
-                                        `exercises.${exerciseIndex}.sets.${setIndex}.features.${existingIndex}.value`,
-                                        parseFloat(value) || 0,
-                                      );
-                                    } else {
-                                      const newFeatures = [
-                                        ...currentFeatures,
-                                        {
-                                          feature_name: featureName,
-                                          value: parseFloat(value) || 0,
-                                        },
-                                      ];
-                                      setFieldValue(
-                                        `exercises.${exerciseIndex}.sets.${setIndex}.features`,
-                                        newFeatures,
-                                      );
-                                    }
-                                  }
-                                " />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        </FormField>
-                      </div>
+                      <VueDraggable :model-value="field.value?.sets || []"
+                        @update:model-value="(v: unknown) => setSetsInOrder(exerciseIndex, v as WorkoutExerciseForm['sets'])"
+                        handle=".set-drag-handle" :force-fallback="true" :fallback-on-body="true"
+                        ghost-class="workout-drag-ghost-set" chosen-class="workout-drag-chosen"
+                        fallback-class="workout-drag-fallback-set" :animation="150" :scroll="drawerScrollRef || true"
+                        :bubble-scroll="true" :scroll-sensitivity="80" :scroll-speed="16" class="space-y-2">
+                        <div v-for="(set, setIndex) in field.value?.sets || []" :key="set.id ?? set._key ?? setIndex"
+                          class="border rounded p-3 space-y-2">
+                          <div class="flex items-center justify-between">
+                            <button type="button"
+                              class="set-drag-handle p-1 rounded cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground hover:bg-muted/80 touch-none transition-colors"
+                              tabindex="-1">
+                              <GripVertical class="w-4 h-4" />
+                            </button>
+                            <Label class="text-sm font-medium flex-1">
+                              {{ $t("workouts.setNumber", { number: setIndex + 1 }) }}
+                            </Label>
+                            <Button type="button" variant="ghost" size="sm"
+                              @click="removeSet(exerciseIndex, Number(setIndex))">
+                              <Trash2 class="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          <div v-if="field.value?.exercise_id" class="grid grid-cols-2 gap-2">
+                            <FormField v-for="featureName in getExerciseFeatures(
+                              field.value.exercise_id,
+                            )" :key="featureName"
+                              :name="`exercises[${exerciseIndex}].sets.${setIndex}.features.${getExerciseFeatures(field.value.exercise_id).indexOf(featureName)}.value`">
+                              <FormItem>
+                                <FormLabel class="text-sm capitalize">
+                                  {{ featureName }}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input type="number" step="0.01" min="0"
+                                    :model-value="getSetFeatureValue(set, featureName)" @update:model-value="
+                                      (value: string | number) =>
+                                        updateFeatureValue(
+                                          exerciseIndex,
+                                          setIndex,
+                                          featureName,
+                                          Number(value) || 0,
+                                        )
+                                    " />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            </FormField>
+                          </div>
+                        </div>
+                      </VueDraggable>
                     </div>
                   </div>
+                  <Button type="button" variant="ghost" size="sm" @click="removeExerciseAtIndex(exerciseIndex)"
+                    class="shrink-0">
+                    <Trash2 class="w-4 h-4" />
+                  </Button>
                 </div>
-                <Button type="button" variant="ghost" size="sm" @click="removeExerciseAtIndex(exerciseIndex)"
-                  class="shrink-0">
-                  <Trash2 class="w-4 h-4" />
-                </Button>
               </div>
-            </div>
+            </VueDraggable>
 
             <FormField v-slot="{ componentField }" name="exercises">
               <FormItem>
@@ -634,3 +693,52 @@ const submitButtonText = computed(() => {
     </div>
   </DrawerContent>
 </template>
+
+<style scoped>
+:deep(.workout-drag-ghost) {
+  border-radius: 0.5rem;
+  border: 2px dashed hsl(var(--primary) / 0.4);
+  background: hsl(var(--primary) / 0.05);
+  min-height: 80px;
+  opacity: 0.9;
+  transition: all 0.15s ease;
+}
+
+:deep(.workout-drag-ghost-set) {
+  border-radius: 0.5rem;
+  border: 2px dashed hsl(var(--primary) / 0.4);
+  background: hsl(var(--primary) / 0.05);
+  min-height: 60px;
+  opacity: 0.9;
+  transition: all 0.15s ease;
+}
+
+:deep(.workout-drag-chosen) {
+  opacity: 0.4;
+}
+</style>
+
+<style>
+/* Global: fallback clone is appended to body */
+.workout-drag-fallback {
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  box-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.25), 0 0 0 1px rgb(0 0 0 / 0.05);
+  transform: scale(1.02) rotate(1deg);
+  opacity: 1;
+  cursor: grabbing;
+  z-index: 9999;
+}
+
+.workout-drag-fallback-set {
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  box-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.25), 0 0 0 1px rgb(0 0 0 / 0.05);
+  transform: scale(1.01) rotate(0.5deg);
+  opacity: 1;
+  cursor: grabbing;
+  z-index: 9999;
+}
+</style>

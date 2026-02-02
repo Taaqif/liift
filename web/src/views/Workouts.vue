@@ -218,14 +218,14 @@ const handleFilter = (newFilter: WorkoutFilterType) => {
           {{ $t("workouts.subtitle") }}
         </p>
       </div>
-      <Drawer :open="createDrawerOpen" :dismissible="true" @update:open="handleCreateDrawerOpenChange">
+      <Drawer :open="createDrawerOpen" :dismissible="true" :handle-only="true" @update:open="handleCreateDrawerOpenChange">
         <DrawerTrigger as-child>
           <Button>{{ $t("workouts.createNew") }}</Button>
         </DrawerTrigger>
         <WorkoutDrawer :open="createDrawerOpen" :workout="null" @workout-created="handleWorkoutCreated"
           @form-dirty="handleFormDirty" />
       </Drawer>
-      <Drawer :open="editDrawerOpen" :dismissible="true" @update:open="handleEditDrawerOpenChange">
+      <Drawer :open="editDrawerOpen" :dismissible="true" :handle-only="true" @update:open="handleEditDrawerOpenChange">
         <WorkoutDrawer :open="editDrawerOpen" :workout="selectedWorkout" @workout-updated="handleWorkoutUpdated"
           @workout-deleted="handleWorkoutDeleted" @form-dirty="handleFormDirty" />
       </Drawer>
