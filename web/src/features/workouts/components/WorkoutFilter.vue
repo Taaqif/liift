@@ -69,11 +69,11 @@ const handleClear = () => {
 
 <template>
   <div class="flex flex-col gap-4 p-4 border rounded-lg bg-card">
+    <div class="w-full">
+      <Input v-model="searchInput" :placeholder="$t('workouts.filter.searchPlaceholder')"
+        @keyup.enter="handleSearch" />
+    </div>
     <div class="flex flex-col sm:flex-row gap-4">
-      <div class="flex-1">
-        <Input v-model="searchInput" :placeholder="$t('workouts.filter.searchPlaceholder')"
-          @keyup.enter="handleSearch" />
-      </div>
       <div class="flex-1">
         <ExerciseFeatureMultiSelect v-model="selectedExerciseFeatures"
           :placeholder="$t('workouts.filter.exerciseTypePlaceholder')" />
