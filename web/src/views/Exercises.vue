@@ -219,33 +219,16 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
           {{ $t("exercises.subtitle") }}
         </p>
       </div>
-      <Drawer
-        :open="createDrawerOpen"
-        :dismissible="true"
-        @update:open="handleCreateDrawerOpenChange"
-      >
+      <Drawer :open="createDrawerOpen" :dismissible="true" @update:open="handleCreateDrawerOpenChange">
         <DrawerTrigger as-child>
           <Button>{{ $t("exercises.createNew") }}</Button>
         </DrawerTrigger>
-        <ExerciseDrawer
-          :open="createDrawerOpen"
-          :exercise="null"
-          @exercise-created="handleExerciseCreated"
-          @form-dirty="handleFormDirty"
-        />
+        <ExerciseDrawer :open="createDrawerOpen" :exercise="null" @exercise-created="handleExerciseCreated"
+          @form-dirty="handleFormDirty" />
       </Drawer>
-      <Drawer
-        :open="editDrawerOpen"
-        :dismissible="true"
-        @update:open="handleEditDrawerOpenChange"
-      >
-        <ExerciseDrawer
-          :open="editDrawerOpen"
-          :exercise="selectedExercise"
-          @exercise-updated="handleExerciseUpdated"
-          @exercise-deleted="handleExerciseDeleted"
-          @form-dirty="handleFormDirty"
-        />
+      <Drawer :open="editDrawerOpen" :dismissible="true" @update:open="handleEditDrawerOpenChange">
+        <ExerciseDrawer :open="editDrawerOpen" :exercise="selectedExercise" @exercise-updated="handleExerciseUpdated"
+          @exercise-deleted="handleExerciseDeleted" @form-dirty="handleFormDirty" />
       </Drawer>
       <Dialog v-model:open="showUnsavedDialog">
         <DialogContent>
@@ -267,46 +250,24 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
       </Dialog>
     </div>
 
-    <div
-      v-if="error"
-      class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg"
-    >
+    <div v-if="error" class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
       <p>{{ $t("exercises.errorLoading", { message: error.message }) }}</p>
     </div>
 
     <div class="mb-6">
-      <ExerciseFilter
-        :model-value="filter"
-        @update:model-value="handleFilter"
-      />
+      <ExerciseFilter :model-value="filter" @update:model-value="handleFilter" />
     </div>
 
-    <ExerciseList
-      :exercises="exercises"
-      :loading="loading"
-      @edit="handleEditExercise"
-    />
+    <ExerciseList :exercises="exercises" :loading="loading" @edit="handleEditExercise" />
 
-    <div
-      v-if="!loading && total > 0"
-      class="mt-8 flex flex-col gap-2 items-center justify-between"
-    >
-      <Pagination
-        v-slot="{ page }"
-        v-model:page="currentPage"
-        :items-per-page="limit"
-        :total="total"
-        :default-page="currentPage"
-      >
+    <div v-if="!loading && total > 0" class="mt-8 flex flex-col gap-2 items-center justify-between">
+      <Pagination v-slot="{ page }" v-model:page="currentPage" :items-per-page="limit" :total="total"
+        :default-page="currentPage">
         <PaginationContent v-slot="{ items }">
           <PaginationPrevious />
 
           <template v-for="(item, index) in items" :key="index">
-            <PaginationItem
-              v-if="item.type === 'page'"
-              :value="item.value"
-              :is-active="item.value === page"
-            >
+            <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
               {{ item.value }}
             </PaginationItem>
             <PaginationEllipsis v-else :key="item.type" :index="index" />

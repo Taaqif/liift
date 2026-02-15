@@ -240,7 +240,7 @@ const onSubmit = handleSubmit(async (values) => {
           primary_muscle_groups: values.primary_muscle_groups,
           secondary_muscle_groups:
             values.secondary_muscle_groups &&
-            values.secondary_muscle_groups.length > 0
+              values.secondary_muscle_groups.length > 0
               ? values.secondary_muscle_groups
               : undefined,
           equipment: values.equipment,
@@ -258,7 +258,7 @@ const onSubmit = handleSubmit(async (values) => {
         primary_muscle_groups: values.primary_muscle_groups,
         secondary_muscle_groups:
           values.secondary_muscle_groups &&
-          values.secondary_muscle_groups.length > 0
+            values.secondary_muscle_groups.length > 0
             ? values.secondary_muscle_groups
             : undefined,
         equipment: values.equipment,
@@ -327,7 +327,7 @@ onUnmounted(() => {
 
 <template>
   <DrawerContent class="max-h-[95vh]">
-    <div class="mx-auto w-full max-w-2xl overflow-y-auto">
+    <div class="mx-auto w-full max-w-4xl overflow-y-auto">
       <DrawerHeader>
         <DrawerTitle>{{ title }}</DrawerTitle>
         <DrawerDescription>
@@ -335,10 +335,7 @@ onUnmounted(() => {
         </DrawerDescription>
       </DrawerHeader>
       <div class="p-4 pb-0 space-y-6">
-        <div
-          v-if="error"
-          class="p-4 bg-destructive/10 text-destructive rounded-lg"
-        >
+        <div v-if="error" class="p-4 bg-destructive/10 text-destructive rounded-lg">
           <p>{{ $t("exercises.error") }}: {{ error.message }}</p>
         </div>
 
@@ -347,11 +344,7 @@ onUnmounted(() => {
             <FormItem>
               <FormLabel>{{ $t("exercises.name") }}</FormLabel>
               <FormControl>
-                <Input
-                  :placeholder="$t('exercises.namePlaceholder')"
-                  v-bind="componentField"
-                  required
-                />
+                <Input :placeholder="$t('exercises.namePlaceholder')" v-bind="componentField" required />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -361,11 +354,7 @@ onUnmounted(() => {
             <FormItem>
               <FormLabel>{{ $t("exercises.description") }}</FormLabel>
               <FormControl>
-                <Textarea
-                  :placeholder="$t('exercises.descriptionPlaceholder')"
-                  rows="3"
-                  v-bind="componentField"
-                />
+                <Textarea :placeholder="$t('exercises.descriptionPlaceholder')" rows="3" v-bind="componentField" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -376,36 +365,22 @@ onUnmounted(() => {
               <FormItem>
                 <FormLabel>{{ $t("exercises.image") }}</FormLabel>
                 <FormControl>
-                  <Input
-                    @change="
-                      (e) => {
-                        const target = e.target as HTMLInputElement;
-                        const file = target.files?.[0];
-                        handleChange(file ?? (isEditMode ? undefined : null));
-                      }
-                    "
-                    type="file"
-                    accept="image/*"
-                    class="cursor-pointer"
-                  />
+                  <Input @change="
+                    (e) => {
+                      const target = e.target as HTMLInputElement;
+                      const file = target.files?.[0];
+                      handleChange(file ?? (isEditMode ? undefined : null));
+                    }
+                  " type="file" accept="image/*" class="cursor-pointer" />
                 </FormControl>
                 <FormMessage />
                 <div class="flex items-center gap-3 mt-2">
                   <div v-if="imageUrl">
-                    <img
-                      :src="imageUrl"
-                      :alt="exercise?.name || 'Preview'"
-                      class="h-32 w-32 rounded-lg object-cover border"
-                    />
+                    <img :src="imageUrl" :alt="exercise?.name || 'Preview'"
+                      class="h-32 w-32 rounded-lg object-cover border" />
                   </div>
-                  <Button
-                    v-if="imageUrl"
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    @click="clearImage"
-                    :disabled="!imageUrl"
-                  >
+                  <Button v-if="imageUrl" type="button" variant="outline" size="sm" @click="clearImage"
+                    :disabled="!imageUrl">
                     {{ $t("exercises.clearImage") }}
                   </Button>
                 </div>
@@ -417,12 +392,9 @@ onUnmounted(() => {
             <FormItem>
               <FormLabel>{{ $t("exercises.primaryMuscleGroups") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags
-                  :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']"
-                  :options="muscleGroupOptions"
-                  :placeholder="$t('exercises.primaryMuscleGroupsPlaceholder')"
-                />
+                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']" :options="muscleGroupOptions"
+                  :placeholder="$t('exercises.primaryMuscleGroupsPlaceholder')" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -432,14 +404,10 @@ onUnmounted(() => {
             <FormItem>
               <FormLabel>{{ $t("exercises.secondaryMuscleGroups") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags
-                  :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']"
-                  :options="muscleGroupOptions"
-                  :placeholder="
-                    $t('exercises.secondaryMuscleGroupsPlaceholder')
-                  "
-                />
+                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']" :options="muscleGroupOptions"
+                  :placeholder="$t('exercises.secondaryMuscleGroupsPlaceholder')
+                    " />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -449,12 +417,9 @@ onUnmounted(() => {
             <FormItem>
               <FormLabel>{{ $t("exercises.equipment") }}</FormLabel>
               <FormControl>
-                <MultiSelectTags
-                  :model-value="(componentField.modelValue ?? []) as string[]"
-                  @update:model-value="componentField['onUpdate:modelValue']"
-                  :options="equipmentOptions"
-                  :placeholder="$t('exercises.equipmentPlaceholder')"
-                />
+                <MultiSelectTags :model-value="(componentField.modelValue ?? []) as string[]"
+                  @update:model-value="componentField['onUpdate:modelValue']" :options="equipmentOptions"
+                  :placeholder="$t('exercises.equipmentPlaceholder')" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -467,30 +432,18 @@ onUnmounted(() => {
                   <FieldSet class="gap-4">
                     <FieldLegend>{{
                       $t("exercises.exerciseFeatures")
-                    }}</FieldLegend>
+                      }}</FieldLegend>
                     <FieldDescription class="line-clamp-1">
                       {{ $t("exercises.exerciseFeaturesDescription") }}
                     </FieldDescription>
-                    <FieldGroup
-                      class="flex flex-row flex-wrap gap-2 [--radius:9999rem]"
-                    >
-                      <FieldLabel
-                        v-for="option in exerciseFeatureOptions"
-                        :key="option.value"
-                        class="!w-fit"
-                      >
-                        <Field
-                          orientation="horizontal"
-                          class="gap-1.5 overflow-hidden !px-3 !py-1.5 transition-all duration-100 ease-linear group-has-data-[state=checked]/field-label:!px-2"
-                        >
-                          <Checkbox
-                            :id="option.value"
-                            :model-value="
-                              (componentField.modelValue ?? []).includes(
-                                option.value,
-                              )
-                            "
-                            @update:model-value="
+                    <FieldGroup class="flex flex-row flex-wrap gap-2 [--radius:9999rem]">
+                      <FieldLabel v-for="option in exerciseFeatureOptions" :key="option.value" class="!w-fit">
+                        <Field orientation="horizontal"
+                          class="gap-1.5 overflow-hidden !px-3 !py-1.5 transition-all duration-100 ease-linear group-has-data-[state=checked]/field-label:!px-2">
+                          <Checkbox :id="option.value" :model-value="(componentField.modelValue ?? []).includes(
+                            option.value,
+                          )
+                            " @update:model-value="
                               (value: boolean | 'indeterminate') => {
                                 const checked = value === true;
                                 const current = (componentField.modelValue ??
@@ -507,8 +460,7 @@ onUnmounted(() => {
                                 }
                               }
                             "
-                            class="-ml-6 -translate-x-1 rounded-full transition-all duration-100 ease-linear data-[state=checked]:ml-0 data-[state=checked]:translate-x-0"
-                          />
+                            class="-ml-6 -translate-x-1 rounded-full transition-all duration-100 ease-linear data-[state=checked]:ml-0 data-[state=checked]:translate-x-0" />
                           <FieldTitle>{{ option.label }}</FieldTitle>
                         </Field>
                       </FieldLabel>
@@ -540,18 +492,10 @@ onUnmounted(() => {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button
-                variant="outline"
-                @click="showDeleteDialog = false"
-                :disabled="isDeleting"
-              >
+              <Button variant="outline" @click="showDeleteDialog = false" :disabled="isDeleting">
                 {{ $t("cancel") }}
               </Button>
-              <Button
-                variant="destructive"
-                @click="onDelete"
-                :disabled="isDeleting"
-              >
+              <Button variant="destructive" @click="onDelete" :disabled="isDeleting">
                 {{ isDeleting ? $t("deleting") : $t("delete") }}
               </Button>
             </DialogFooter>

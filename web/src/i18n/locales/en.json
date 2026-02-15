@@ -64,6 +64,7 @@
   "nav": {
     "home": "Home",
     "workouts": "Workouts",
+    "workoutPlans": "Workout Plans",
     "exercises": "Exercises"
   },
   "auth": {
@@ -207,5 +208,47 @@
       "setsRequired": "At least one set is required for each exercise",
       "featuresRequired": "All enabled exercise features must have values"
     }
+  },
+  "workoutPlans": {
+    "title": "Workout Plans",
+    "titleLower": "@.lower:{'workoutPlans.title'}",
+    "subtitle": "Schedule workouts over weeks and days",
+    "createNew": "Create New Plan",
+    "createDescription": "Define a plan with configurable weeks and days. Mark days as rest or assign one or more workouts.",
+    "editTitle": "Edit Plan",
+    "editDescription": "Update the plan schedule or delete it.",
+    "update": "Update Plan",
+    "name": "Plan Name",
+    "namePlaceholder": "e.g., 12-Week Strength Block",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the plan...",
+    "numberOfWeeks": "Number of weeks",
+    "daysPerWeek": "Days per week",
+    "schedule": "Schedule",
+    "weekLabel": "Week {number}",
+    "dayLabel": "Day {number}",
+    "restDay": "Rest day",
+    "selectWorkouts": "Select one or more workouts...",
+    "addWorkout": "Add workout...",
+    "workoutsPerDay": "Workouts (1 or more)",
+    "noWorkoutsYet": "No workouts yet. Create workouts in the Workouts page first.",
+    "allWorkoutsAdded": "All selected. Remove one to add a different workout.",
+    "noPlans": "No workout plans yet.",
+    "errorLoading": "Error loading plans: {message}",
+    "weeksDays": "{weeks} weeks × {days} days",
+    "workoutSlots": "{count} workout slot | {count} workout slots",
+    "toasts": {
+      "created": "Plan created successfully",
+      "updated": "Plan updated successfully",
+      "deleted": "Plan deleted successfully"
+    },
+    "validation": {
+      "nameRequired": "Plan name is required"
+    },
+    "error": "Error",
+    "unsavedChangesTitle": "Unsaved changes",
+    "unsavedChangesDescription": "You have unsaved changes. Are you sure you want to close?",
+    "keepEditing": "Keep editing",
+    "discardChanges": "Discard changes"
   }
 }
