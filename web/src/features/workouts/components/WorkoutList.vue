@@ -6,19 +6,25 @@ import CardTitle from "@/components/ui/card/CardTitle.vue";
 import CardDescription from "@/components/ui/card/CardDescription.vue";
 import CardContent from "@/components/ui/card/CardContent.vue";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "lucide-vue-next";
+import { Calendar, Play } from "lucide-vue-next";
 
 const props = defineProps<{
   workouts: Workout[];
   loading?: boolean;
+  startingWorkoutId?: number | null;
 }>();
 
 const emits = defineEmits<{
   (e: "edit", workout: Workout): void;
+  (e: "start", workout: Workout): void;
 }>();
 
 const handleEdit = (workout: Workout) => {
   emits("edit", workout);
+};
+
+const handleStart = (workout: Workout) => {
+  emits("start", workout);
 };
 
 const getExerciseCount = (workout: Workout): number => {
@@ -59,14 +65,24 @@ const getTotalSets = (workout: Workout): number => {
                 {{ workout.description }}
               </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="handleEdit(workout)"
-              class="shrink-0"
-            >
-              {{ $t("edit") }}
-            </Button>
+            <div class="flex items-center gap-2 shrink-0">
+              <Button
+                variant="default"
+                size="sm"
+                :disabled="startingWorkoutId != null"
+                @click="handleStart(workout)"
+              >
+                <Play class="w-4 h-4 mr-1" />
+                {{ $t("workoutSession.startWorkout") }}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                @click="handleEdit(workout)"
+              >
+                {{ $t("edit") }}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

@@ -209,6 +209,27 @@
       "featuresRequired": "All enabled exercise features must have values"
     }
   },
+  "workoutSession": {
+    "activeWorkout": "Active Workout",
+    "startWorkout": "Start",
+    "startedAt": "Started",
+    "rest": "Rest",
+    "endWorkout": "End Workout",
+    "ending": "Ending…",
+    "addSet": "Add set",
+    "loading": "Loading workout...",
+    "addExercise": "Add exercise",
+    "addExerciseDescription": "Choose an exercise from your library to add to this workout.",
+    "toasts": {
+      "started": "Workout started",
+      "updated": "Progress saved",
+      "exerciseAdded": "Exercise added to workout",
+      "ended": "Workout ended",
+      "saveFailed": "Failed to save. Check connection and try again.",
+      "endFailed": "Failed to end workout. Try again."
+    },
+    "activeSessionExists": "You already have an active workout. End it or go to the active workout first."
+  },
   "workoutPlans": {
     "title": "Workout Plans",
     "titleLower": "@.lower:{'workoutPlans.title'}",

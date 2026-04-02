@@ -69,6 +69,14 @@ export const workoutKeys = {
   detail: (id: number) => [...baseKeys.workouts, "detail", id] as const,
 } as const;
 
+const workoutSessionBase = ["workout-sessions"] as const;
+
+export const workoutSessionKeys = {
+  all: workoutSessionBase,
+  active: () => [...workoutSessionBase, "active"] as const,
+  detail: (id: number) => [...workoutSessionBase, id] as const,
+} as const;
+
 export const workoutPlanKeys = {
   all: baseKeys.workoutPlans,
   list: (params?: { limit?: number; offset?: number }) =>
@@ -86,5 +94,6 @@ export const queryKeys = {
   reference: referenceKeys,
   exercises: exerciseKeys,
   workouts: workoutKeys,
+  workoutSessions: workoutSessionKeys,
   workoutPlans: workoutPlanKeys,
 } as const;

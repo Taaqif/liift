@@ -30,6 +30,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/workouts/active",
+      name: "active-workout",
+      component: () => import("../views/ActiveWorkout.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/exercises",
       name: "exercises",
       component: () => import("../views/Exercises.vue"),

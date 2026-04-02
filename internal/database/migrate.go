@@ -12,6 +12,13 @@ import (
 func Migrate(db *gorm.DB) error {
 	log.Println("Running database migrations...")
 
+	if err := renameOrderToSortOrder(db); err != nil {
+		return err
+	}
+	if err := workoutSessionExerciseAdHocColumns(db); err != nil {
+		return err
+	}
+
 	err := db.AutoMigrate(
 		&models.Equipment{},
 		&models.MuscleGroup{},
@@ -24,12 +31,44 @@ func Migrate(db *gorm.DB) error {
 		&models.WorkoutSet{},
 		&models.WorkoutSetFeature{},
 		&models.WorkoutPlan{},
+		&models.WorkoutSession{},
+		&models.WorkoutSessionExercise{},
+		&models.WorkoutSessionSet{},
+		&models.WorkoutSessionSetValue{},
 	)
 	if err != nil {
 		return err
 	}
 
 	log.Println("Database migrations completed successfully")
+	return nil
+}
+
+func renameOrderToSortOrder(db *gorm.DB) error {
+	for _, table := range []interface{}{"workout_session_exercises", "workout_session_sets"} {
+		if err := db.Migrator().RenameColumn(table, "order", "sort_order"); err != nil {
+			log.Printf("Rename order->sort_order in %v (may already be done): %v", table, err)
+		} else {
+			log.Printf("Renamed column order -> sort_order in %v", table)
+		}
+	}
+	return nil
+}
+
+func workoutSessionExerciseAdHocColumns(db *gorm.DB) error {
+	m := &models.WorkoutSessionExercise{}
+	if !db.Migrator().HasColumn(m, "ExerciseID") {
+		if err := db.Migrator().AddColumn(m, "ExerciseID"); err != nil {
+			return err
+		}
+		log.Printf("Added exercise_id to workout_session_exercises")
+	}
+	if !db.Migrator().HasColumn(m, "RestTimer") {
+		if err := db.Migrator().AddColumn(m, "RestTimer"); err != nil {
+			return err
+		}
+		log.Printf("Added rest_timer to workout_session_exercises")
+	}
 	return nil
 }
 

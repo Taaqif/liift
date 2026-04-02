@@ -2,6 +2,9 @@
 import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkouts } from "@/features/workouts/composables/useWorkouts";
+import { useStartWorkout } from "@/features/workout-session/composables/useStartWorkout";
+import { useI18n } from "vue-i18n";
+import { toast } from "vue-sonner";
 import WorkoutList from "@/features/workouts/components/WorkoutList.vue";
 import WorkoutDrawer from "@/features/workouts/components/WorkoutDrawer.vue";
 import WorkoutFilter from "@/features/workouts/components/WorkoutFilter.vue";
@@ -28,6 +31,9 @@ import {
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
+const { startWorkout } = useStartWorkout();
+const startingWorkoutId = ref<number | null>(null);
 
 const limit = ref(12);
 const offset = ref(0);
@@ -97,6 +103,23 @@ const handleEditWorkout = (workout: Workout) => {
   nextTick(() => {
     formDirty.value = false;
   });
+};
+
+const handleStartWorkout = async (workout: Workout) => {
+  startingWorkoutId.value = workout.id;
+  try {
+    await startWorkout(workout.id);
+  } catch (e) {
+    const err = e as Error;
+    if (err.message === "active_session_exists") {
+      toast.error(t("workoutSession.activeSessionExists"));
+      router.push({ name: "active-workout" });
+    } else {
+      toast.error(err.message);
+    }
+  } finally {
+    startingWorkoutId.value = null;
+  }
 };
 
 const handleWorkoutCreated = () => {
@@ -257,7 +280,13 @@ const handleFilter = (newFilter: WorkoutFilterType) => {
       <WorkoutFilter :model-value="filter" @update:model-value="handleFilter" />
     </div>
 
-    <WorkoutList :workouts="workouts" :loading="loading" @edit="handleEditWorkout" />
+    <WorkoutList
+      :workouts="workouts"
+      :loading="loading"
+      :starting-workout-id="startingWorkoutId"
+      @edit="handleEditWorkout"
+      @start="handleStartWorkout"
+    />
 
     <div v-if="!loading && total > 0" class="mt-8 flex flex-col gap-2 items-center justify-between">
       <Pagination v-slot="{ page }" v-model:page="currentPage" :items-per-page="limit" :total="total"
@@ -269,7 +298,7 @@ const handleFilter = (newFilter: WorkoutFilterType) => {
             <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
               {{ item.value }}
             </PaginationItem>
-            <PaginationEllipsis v-else :key="item.type" :index="index" />
+            <PaginationEllipsis v-else :key="item.type" />
           </template>
 
           <PaginationNext />
