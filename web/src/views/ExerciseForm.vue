@@ -262,7 +262,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="p-8 max-w-4xl mx-auto">
+  <div>
     <div class="mb-8 flex items-center gap-4">
       <Button variant="ghost" size="icon" @click="router.push({ name: 'exercises' })">
         <ArrowLeft class="h-4 w-4" />

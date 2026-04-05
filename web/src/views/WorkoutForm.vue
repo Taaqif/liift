@@ -290,7 +290,7 @@ onBeforeRouteLeave(() => {
 </script>
 
 <template>
-  <div ref="pageScrollRef" class="p-8 max-w-4xl mx-auto">
+  <div ref="pageScrollRef">
     <div class="mb-8 flex items-center gap-4">
       <Button variant="ghost" size="icon" @click="router.push({ name: 'workouts' })">
         <ArrowLeft class="h-4 w-4" />

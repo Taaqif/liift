@@ -1,0 +1,26 @@
+services:
+  liift:
+    build: .
+    image: liift:latest
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: "3000"
+      DB_DRIVER: sqlite
+      DB_SQLITE_PATH: /data/liift.db
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env (e.g. run: openssl rand -hex 32)}
+      IMAGE_STORAGE_PATH: /storage/images
+    volumes:
+      - liift-data:/data
+      - liift-storage:/storage/images
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/system"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  liift-data:
+  liift-storage:

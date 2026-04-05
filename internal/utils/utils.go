@@ -4,33 +4,39 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
 )
 
-func GetEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+// GetEnv returns the value of the environment variable or the fallback value.
+func GetEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
 	}
-	if defaultValue == "" {
-		log.Printf("ERROR: Required environment variable '%s' is not set and no default value provided", key)
-		panic(fmt.Sprintf("required environment variable '%s' is not set", key))
-	}
-	return defaultValue
+	return fallback
 }
 
-// GetEnvAsInt gets an environment variable as integer or returns a default value
-func GetEnvAsInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
+// MustGetEnv returns the value of the environment variable or fatals if unset.
+func MustGetEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		log.Fatalf("required environment variable %q is not set", key)
+	}
+	return v
+}
+
+// GetEnvAsInt returns an environment variable parsed as int or the fallback.
+func GetEnvAsInt(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			return i
 		}
 	}
-	return defaultValue
+	return fallback
 }
 
+// Map applies fn to every element of in and returns the results.
 func Map[T any, R any](in []T, fn func(T) R) []R {
 	out := make([]R, len(in))
 	for i, v := range in {
@@ -39,7 +45,7 @@ func Map[T any, R any](in []T, fn func(T) R) []R {
 	return out
 }
 
-// Set is a set of comparable values (e.g. IDs). Uses map[T]struct{} for zero allocation.
+// Set is a set of comparable values backed by map[T]struct{}.
 type Set[T comparable] map[T]struct{}
 
 // NewSet returns a new set with optional initial capacity.
@@ -58,10 +64,11 @@ func (s Set[T]) Contains(v T) bool {
 	return ok
 }
 
+// GenerateGUID returns a random 32-character hex string.
 func GenerateGUID() (string, error) {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(bytes), nil
+	return hex.EncodeToString(b), nil
 }

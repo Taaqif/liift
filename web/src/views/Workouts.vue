@@ -95,7 +95,7 @@ const handleFilter = (newFilter: WorkoutFilterType) => {
 </script>
 
 <template>
-  <div class="p-8 max-w-[1200px] mx-auto">
+  <div>
     <div class="mb-8 flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold mb-2">{{ $t("workouts.title") }}</h1>

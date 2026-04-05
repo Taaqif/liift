@@ -276,7 +276,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="p-8 max-w-[900px] mx-auto">
+  <div>
     <div v-if="loading && !localSession" class="flex items-center justify-center py-16">
       <p class="text-muted-foreground">{{ $t("workoutSession.loading") }}</p>
     </div>

@@ -1,38 +1,59 @@
-FROM node:20 as build-web
-WORKDIR /build
+# Stage 1: Build frontend
+FROM node:22-alpine AS build-web
+WORKDIR /app
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY web/ .
+RUN npm run build
 
-COPY ./web/package.json ./web/package.lock ./
-RUN yarn install --frozen-lockfile
-
-COPY ./web .
-RUN yarn build
-
-FROM golang:1.25.4 as build
-
-# Set the Current Working Directory inside the container
-WORKDIR /build
-
-# Copy the modules files
-COPY go.mod .
-COPY go.sum .
-
-# Download the modules
+# Stage 2: Build Go binary
+# CGO is required for the SQLite driver (mattn/go-sqlite3)
+FROM golang:1.25.4-alpine AS build-go
+RUN apk add --no-cache gcc musl-dev
+WORKDIR /app
+COPY go.mod go.sum ./
 RUN go mod download
-
-# Copy rest fo the code
 COPY . .
+COPY --from=build-web /app/dist ./web/dist
 
-# Copt the web build into the expected folder
-COPY --from=build-web /build/dist ./web/dist
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_TIME=unknown
 
-RUN CGO_ENABLED=0 go build -buildvcs=false -o ./bin/go-liift ./main.go
+RUN CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-s -w \
+      -X liift/api/handlers.Version=${VERSION} \
+      -X liift/api/handlers.Commit=${COMMIT} \
+      -X 'liift/api/handlers.BuildTime=${BUILD_TIME}'" \
+    -o ./bin/liift \
+    .
 
-FROM alpine:3.14
+# Stage 3: Minimal runtime image
+FROM alpine:3.21
 
-COPY --from=build /build/bin/go-liift /usr/bin/go-liift
+# ca-certificates: for TLS; tzdata: for timezone support; wget: for HEALTHCHECK
+RUN apk add --no-cache ca-certificates tzdata wget \
+    && addgroup -S liift \
+    && adduser -S liift -G liift
 
-# This container exposes port 3000 to the outside world
+WORKDIR /app
+COPY --from=build-go /app/bin/liift ./liift
+
+RUN mkdir -p /data /storage/images \
+    && chown -R liift:liift /app /data /storage/images
+
+USER liift
+
+# /data: SQLite database file; /storage/images: uploaded images
+VOLUME ["/data", "/storage/images"]
+
 EXPOSE 3000
 
-# Run the executable
-CMD ["/usr/bin/go-vite"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget -qO- http://localhost:3000/api/system || exit 1
+
+LABEL org.opencontainers.image.title="Liift" \
+      org.opencontainers.image.description="Self-hosted workout tracking application" \
+      org.opencontainers.image.version="${VERSION}"
+
+CMD ["./liift"]

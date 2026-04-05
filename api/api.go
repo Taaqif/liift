@@ -11,17 +11,16 @@ import (
 	"gorm.io/gorm"
 )
 
-func RegisterHandlers(e *echo.Echo, db *gorm.DB) {
+func RegisterHandlers(e *echo.Echo, db *gorm.DB, jwtSecret []byte) {
 	apiGroup := e.Group("/api")
 
 	handlers.RegisterSystemRoutes(apiGroup)
 
-	authHandler := handlers.NewAuthHandler(db)
+	authHandler := handlers.NewAuthHandler(db, jwtSecret)
 	handlers.RegisterAuthRoutes(apiGroup, authHandler)
 
-	protected := apiGroup.Group("", middleware.RequireAuth)
+	protected := apiGroup.Group("", middleware.RequireAuth(jwtSecret))
 
-	// Create handlers with dependencies
 	equipmentHandler := handlers.NewEquipmentHandler(db)
 	handlers.RegisterEquipmentRoutes(protected, equipmentHandler)
 

@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"liift/internal/utils"
-
-	"github.com/joho/godotenv"
 )
 
 // Config holds database configuration
@@ -19,16 +17,14 @@ type Config struct {
 	SSLMode      string
 	MaxOpenConns int
 	MaxIdleConns int
-	MaxLifetime  int // in seconds
+	MaxLifetime  int    // in seconds
 	Driver       string // "postgres" or "sqlite"
 	SQLitePath   string // path for SQLite database file
 }
 
-// LoadConfig loads database configuration from environment variables
+// LoadConfig loads database configuration from environment variables.
+// godotenv.Load() must be called before this (done in main).
 func LoadConfig() (*Config, error) {
-	// Try to load .env file (ignore error if it doesn't exist)
-	_ = godotenv.Load()
-
 	config := &Config{
 		Host:         utils.GetEnv("DB_HOST", "localhost"),
 		Port:         utils.GetEnvAsInt("DB_PORT", 5432),

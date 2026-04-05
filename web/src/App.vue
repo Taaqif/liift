@@ -115,8 +115,10 @@ onMounted(() => {
         </Button>
       </div>
     </header>
-    <main class="flex-1 overflow-y-auto p-2 md:p-8">
-      <router-view />
+    <main class="flex-1 overflow-y-auto flex flex-col">
+      <div class="max-w-7xl mx-auto w-full px-4 py-6 md:px-8 md:py-8 flex-1 flex flex-col">
+        <router-view />
+      </div>
     </main>
     <VueQueryDevtools />
     <Toaster />

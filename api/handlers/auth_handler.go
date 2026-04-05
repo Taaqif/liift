@@ -6,7 +6,6 @@ import (
 
 	"liift/api/types"
 	"liift/internal/models"
-	"liift/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
@@ -34,11 +33,10 @@ type AuthHandler struct {
 	jwtSecret []byte
 }
 
-func NewAuthHandler(db *gorm.DB) *AuthHandler {
-	secret := utils.GetEnv("JWT_SECRET", "")
+func NewAuthHandler(db *gorm.DB, jwtSecret []byte) *AuthHandler {
 	return &AuthHandler{
 		db:        db,
-		jwtSecret: []byte(secret),
+		jwtSecret: jwtSecret,
 	}
 }
 
