@@ -27,8 +27,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col">
-    <div class="px-8 py-4 shadow flex items-center justify-between">
+  <div class="h-screen flex flex-col">
+    <header class="shrink-0 px-8 py-4 border-b flex items-center justify-between">
       <NavigationMenu>
         <NavigationMenuList>
           <NavigationMenuItem>
@@ -114,8 +114,8 @@ onMounted(() => {
           <router-link to="/register">{{ $t("auth.register") }}</router-link>
         </Button>
       </div>
-    </div>
-    <main class="p-2 md:p-8 flex-1">
+    </header>
+    <main class="flex-1 overflow-y-auto p-2 md:p-8">
       <router-view />
     </main>
     <VueQueryDevtools />

@@ -36,9 +36,33 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/workouts/new",
+      name: "workout-create",
+      component: () => import("../views/WorkoutForm.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/workouts/:id/edit",
+      name: "workout-edit",
+      component: () => import("../views/WorkoutForm.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/exercises",
       name: "exercises",
       component: () => import("../views/Exercises.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/exercises/new",
+      name: "exercise-create",
+      component: () => import("../views/ExerciseForm.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/exercises/:id/edit",
+      name: "exercise-edit",
+      component: () => import("../views/ExerciseForm.vue"),
       meta: { requiresAuth: true },
     },
     {
@@ -47,11 +71,23 @@ const router = createRouter({
       component: () => import("../views/WorkoutPlans.vue"),
       meta: { requiresAuth: true },
     },
+    {
+      path: "/workout-plans/new",
+      name: "workout-plan-create",
+      component: () => import("../views/WorkoutPlanForm.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/workout-plans/:id/edit",
+      name: "workout-plan-edit",
+      component: () => import("../views/WorkoutPlanForm.vue"),
+      meta: { requiresAuth: true },
+    },
   ],
 });
 
 // Navigation guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const { isAuthenticated } = useAuth();
 
   // Check if route requires authentication

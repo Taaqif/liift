@@ -1,26 +1,20 @@
 <script setup lang="ts">
 import { computed, watch, ref, unref } from "vue";
+import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 import { useForm, useFieldArray } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { useI18n } from "vue-i18n";
-import { useCreateWorkout } from "../composables/useCreateWorkout";
-import { useUpdateWorkout } from "../composables/useUpdateWorkout";
-import { useDeleteWorkout } from "../composables/useDeleteWorkout";
+import { useWorkout } from "@/features/workouts/composables/useWorkout";
+import { useCreateWorkout } from "@/features/workouts/composables/useCreateWorkout";
+import { useUpdateWorkout } from "@/features/workouts/composables/useUpdateWorkout";
+import { useDeleteWorkout } from "@/features/workouts/composables/useDeleteWorkout";
 import { useExercises } from "@/features/exercises/composables/useExercises";
 import type {
   Workout,
   WorkoutExerciseForm,
   WorkoutFormValues,
-} from "../types";
-import { workoutFormSchema } from "../types";
-import {
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+} from "@/features/workouts/types";
+import { workoutFormSchema } from "@/features/workouts/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,25 +35,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-vue-next";
+import { ArrowLeft, Plus } from "lucide-vue-next";
 import { VueDraggable } from "vue-draggable-plus";
-import WorkoutExerciseItem from "./WorkoutExerciseItem.vue";
+import WorkoutExerciseItem from "@/features/workouts/components/WorkoutExerciseItem.vue";
 
-const props = defineProps<{
-  open?: boolean;
-  modal?: boolean;
-  workout?: Workout | null;
-}>();
-
-const emits = defineEmits<{
-  (e: "workout-created"): void;
-  (e: "workout-updated"): void;
-  (e: "workout-deleted"): void;
-  (e: "form-dirty", value: boolean): void;
-}>();
-
+const route = useRoute();
+const router = useRouter();
 const { t } = useI18n();
-const isEditMode = computed(() => !!props.workout);
+
+const workoutId = computed(() => {
+  const id = route.params.id;
+  return id ? Number(id) : null;
+});
+const isEditMode = computed(() => !!workoutId.value);
+
+const { workout, loading: workoutLoading } = useWorkout(workoutId);
 
 const {
   createWorkout,
@@ -77,7 +67,6 @@ const {
   error: deleteError,
 } = useDeleteWorkout();
 
-// Fetch all exercises for selection
 const { exercises: allExercises } = useExercises({ limit: 1000 });
 
 const exerciseOptions = computed(() =>
@@ -87,7 +76,6 @@ const exerciseOptions = computed(() =>
     exercise: ex,
   })),
 );
-
 
 const { handleSubmit, resetForm, meta, values } = useForm<WorkoutFormValues>({
   validationSchema: toTypedSchema(workoutFormSchema),
@@ -106,70 +94,35 @@ const {
   update: updateExercise,
 } = useFieldArray<WorkoutExerciseForm>("exercises");
 
-const isFormDirty = computed(() => meta.value.dirty);
-
-watch(
-  [isFormDirty, () => props.open],
-  ([dirty, isOpen]) => {
-    if (isOpen) {
-      emits("form-dirty", dirty);
-    }
-  },
-  { immediate: true },
-);
-
-const populateForm = (workout: Workout | null) => {
-  if (workout) {
-    const exercises = (workout.exercises || []).map((ex) => ({
-      id: ex.id,
-      exercise_id: ex.exercise_id,
-      rest_timer: ex.rest_timer,
-      note: ex.note || "",
-      order: ex.order,
-      sets: (ex.sets || []).map((set) => ({
-        id: set.id,
-        order: set.order,
-        features: (set.features || []).map((f) => ({
-          id: f.id,
-          feature_name: f.feature_name,
-          value: f.value,
-        })),
+const populateForm = (w: Workout) => {
+  const exercises = (w.exercises || []).map((ex) => ({
+    id: ex.id,
+    exercise_id: ex.exercise_id,
+    rest_timer: ex.rest_timer,
+    note: ex.note || "",
+    order: ex.order,
+    sets: (ex.sets || []).map((set) => ({
+      id: set.id,
+      order: set.order,
+      features: (set.features || []).map((f) => ({
+        id: f.id,
+        feature_name: f.feature_name,
+        value: f.value,
       })),
-    }));
-
-    resetForm({
-      values: {
-        name: workout.name,
-        description: workout.description || "",
-        exercises,
-      },
-    });
-  }
+    })),
+  }));
+  resetForm({
+    values: {
+      name: w.name,
+      description: w.description || "",
+      exercises,
+    },
+  });
 };
 
-watch(
-  () => props.workout,
-  (workout) => {
-    if (workout && props.open && isEditMode.value) {
-      populateForm(workout);
-    }
-  },
-  { immediate: true },
-);
-
-watch(
-  () => props.open,
-  (newValue) => {
-    if (newValue && props.workout) {
-      populateForm(props.workout);
-    } else if (!newValue) {
-      resetForm();
-      showDeleteDialog.value = false;
-    } else if (newValue && !props.workout) {
-      resetForm();
-    }
-  },
-);
+watch(workout, (w) => {
+  if (w) populateForm(w);
+}, { immediate: true });
 
 const addExercise = () => {
   pushExercise({
@@ -253,14 +206,12 @@ const onSubmit = handleSubmit(async (values) => {
             value: existing?.value || 0,
           };
         });
-
         return {
           ...(set.id != null && { id: set.id }),
           order: setIdx,
           features,
         };
       });
-
       return {
         ...(ex.id != null && { id: ex.id }),
         exercise_id: ex.exercise_id,
@@ -271,26 +222,24 @@ const onSubmit = handleSubmit(async (values) => {
       };
     });
 
-    if (isEditMode.value && props.workout) {
+    if (isEditMode.value && workoutId.value) {
       await updateWorkout({
-        id: props.workout.id,
+        id: workoutId.value,
         data: {
           name: values.name.trim(),
           description: values.description?.trim() || undefined,
           exercises,
         },
       });
-      resetForm();
-      emits("workout-updated");
     } else {
       await createWorkout({
         name: values.name.trim(),
         description: values.description?.trim() || undefined,
         exercises,
       });
-      resetForm();
-      emits("workout-created");
     }
+    resetForm();
+    router.push({ name: "workouts" });
   } catch (err) {
     console.error(
       `Failed to ${isEditMode.value ? "update" : "create"} workout:`,
@@ -300,13 +249,11 @@ const onSubmit = handleSubmit(async (values) => {
 });
 
 const onDelete = async () => {
-  if (!props.workout) return;
-
+  if (!workoutId.value) return;
   try {
-    await deleteWorkout(props.workout.id);
-    resetForm();
+    await deleteWorkout(workoutId.value);
     showDeleteDialog.value = false;
-    emits("workout-deleted");
+    router.push({ name: "workouts" });
   } catch (err) {
     console.error("Failed to delete workout:", err);
   }
@@ -323,13 +270,9 @@ const showDeleteDialog = ref(false);
 const title = computed(() =>
   isEditMode.value ? t("workouts.editTitle") : t("workouts.createNew"),
 );
-
 const description = computed(() =>
-  isEditMode.value
-    ? t("workouts.editDescription")
-    : t("workouts.createDescription"),
+  isEditMode.value ? t("workouts.editDescription") : t("workouts.createDescription"),
 );
-
 const submitButtonText = computed(() => {
   if (isEditMode.value) {
     return isUpdating.value ? t("updating") : t("workouts.update");
@@ -337,80 +280,104 @@ const submitButtonText = computed(() => {
   return isCreating.value ? t("creating") : t("workouts.create");
 });
 
-const drawerScrollRef = ref<HTMLElement | null>(null);
+const pageScrollRef = ref<HTMLElement | null>(null);
+
+onBeforeRouteLeave(() => {
+  if (meta.value.dirty && !isPending.value) {
+    return window.confirm(t("unsavedChanges.confirmLeave") || "You have unsaved changes. Leave anyway?");
+  }
+});
 </script>
 
 <template>
-  <DrawerContent class="!max-h-[95vh]">
-    <div ref="drawerScrollRef" class="mx-auto w-full max-w-4xl overflow-y-auto ">
-      <DrawerHeader>
-        <DrawerTitle>{{ title }}</DrawerTitle>
-        <DrawerDescription>
-          {{ description }}
-        </DrawerDescription>
-      </DrawerHeader>
-      <div class="p-4 pb-0 space-y-6">
-        <div v-if="error" class="p-4 bg-destructive/10 text-destructive rounded-lg">
-          <p>{{ $t("workouts.error") }}: {{ error.message }}</p>
-        </div>
-
-        <form @submit="onSubmit" class="space-y-6">
-          <FormField v-slot="{ componentField }" name="name">
-            <FormItem>
-              <FormLabel>{{ $t("workouts.name") }}</FormLabel>
-              <FormControl>
-                <Input :placeholder="$t('workouts.namePlaceholder')" v-bind="componentField" required />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <FormField v-slot="{ componentField }" name="description">
-            <FormItem>
-              <FormLabel>{{ $t("workouts.description") }}</FormLabel>
-              <FormControl>
-                <Textarea :placeholder="$t('workouts.descriptionPlaceholder')" rows="3" v-bind="componentField" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <Label class="text-base font-medium">{{ $t("workouts.exercises") }}</Label>
-              <Button type="button" variant="outline" size="sm" @click="addExercise">
-                <Plus class="w-4 h-4 mr-2" />
-                {{ $t("workouts.addExercise") }}
-              </Button>
-            </div>
-
-            <VueDraggable :model-value="exercisesForDraggable" :custom-update="onExercisesReorder"
-              handle=".exercise-drag-handle" :force-fallback="true" :fallback-on-body="true"
-              ghost-class="workout-drag-ghost" chosen-class="workout-drag-chosen" fallback-class="workout-drag-fallback"
-              :animation="200" :scroll="drawerScrollRef || true" :bubble-scroll="true" :scroll-sensitivity="80"
-              :scroll-speed="16" class="space-y-4">
-              <WorkoutExerciseItem
-                v-for="(field, exerciseIndex) in exerciseFields"
-                :key="field.key"
-                :exercise-index="exerciseIndex"
-                :field="field"
-                :exercise-options="exerciseOptions"
-                :get-exercise-features="getExerciseFeatures"
-                :drawer-scroll-ref="drawerScrollRef"
-                @exercise-selected="(v) => onExerciseSelected(exerciseIndex, field.value, v)"
-                @remove="removeExerciseAtIndex(exerciseIndex)"
-              />
-            </VueDraggable>
-
-            <FormField v-slot="{ componentField }" name="exercises">
-              <FormItem>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-          </div>
-        </form>
+  <div ref="pageScrollRef" class="p-8 max-w-4xl mx-auto">
+    <div class="mb-8 flex items-center gap-4">
+      <Button variant="ghost" size="icon" @click="router.push({ name: 'workouts' })">
+        <ArrowLeft class="h-4 w-4" />
+      </Button>
+      <div>
+        <h1 class="text-3xl font-bold">{{ title }}</h1>
+        <p class="text-muted-foreground">{{ description }}</p>
       </div>
-      <DrawerFooter class="flex-col gap-2 justify-between">
+    </div>
+
+    <div v-if="isEditMode && workoutLoading" class="flex items-center justify-center py-24">
+      <div class="text-muted-foreground">{{ $t("loading") }}</div>
+    </div>
+
+    <div v-else class="space-y-6">
+      <div v-if="error" class="p-4 bg-destructive/10 text-destructive rounded-lg">
+        <p>{{ $t("workouts.error") }}: {{ error.message }}</p>
+      </div>
+
+      <form @submit="onSubmit" class="space-y-6">
+        <FormField v-slot="{ componentField }" name="name">
+          <FormItem>
+            <FormLabel>{{ $t("workouts.name") }}</FormLabel>
+            <FormControl>
+              <Input :placeholder="$t('workouts.namePlaceholder')" v-bind="componentField" required />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+
+        <FormField v-slot="{ componentField }" name="description">
+          <FormItem>
+            <FormLabel>{{ $t("workouts.description") }}</FormLabel>
+            <FormControl>
+              <Textarea :placeholder="$t('workouts.descriptionPlaceholder')" rows="3" v-bind="componentField" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <Label class="text-base font-medium">{{ $t("workouts.exercises") }}</Label>
+            <Button type="button" variant="outline" size="sm" @click="addExercise">
+              <Plus class="w-4 h-4 mr-2" />
+              {{ $t("workouts.addExercise") }}
+            </Button>
+          </div>
+
+          <VueDraggable
+            :model-value="exercisesForDraggable"
+            :custom-update="onExercisesReorder"
+            handle=".exercise-drag-handle"
+            :force-fallback="true"
+            :fallback-on-body="true"
+            ghost-class="workout-drag-ghost"
+            chosen-class="workout-drag-chosen"
+            fallback-class="workout-drag-fallback"
+            :animation="200"
+            :scroll="pageScrollRef || true"
+            :bubble-scroll="true"
+            :scroll-sensitivity="80"
+            :scroll-speed="16"
+            class="space-y-4"
+          >
+            <WorkoutExerciseItem
+              v-for="(field, exerciseIndex) in exerciseFields"
+              :key="field.key"
+              :exercise-index="exerciseIndex"
+              :field="(field as { value: WorkoutExerciseForm; key: string })"
+              :exercise-options="exerciseOptions"
+              :get-exercise-features="getExerciseFeatures"
+              :drawer-scroll-ref="pageScrollRef"
+              @exercise-selected="(v) => onExerciseSelected(exerciseIndex, field.value, v)"
+              @remove="removeExerciseAtIndex(exerciseIndex)"
+            />
+          </VueDraggable>
+
+          <FormField name="exercises">
+            <FormItem>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+        </div>
+      </form>
+
+      <div class="flex flex-col gap-2 pt-4 border-t">
         <Dialog v-if="isEditMode" v-model:open="showDeleteDialog">
           <DialogTrigger as-child>
             <Button type="button" variant="destructive" :disabled="isPending">
@@ -420,9 +387,7 @@ const drawerScrollRef = ref<HTMLElement | null>(null);
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{{ $t("delete") }}</DialogTitle>
-              <DialogDescription>
-                {{ $t("areYouSure") }}
-              </DialogDescription>
+              <DialogDescription>{{ $t("areYouSure") }}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" @click="showDeleteDialog = false" :disabled="isDeleting">
@@ -437,12 +402,12 @@ const drawerScrollRef = ref<HTMLElement | null>(null);
         <Button @click="onSubmit" :disabled="isPending" class="flex-1">
           {{ submitButtonText }}
         </Button>
-        <DrawerClose as-child>
-          <Button variant="outline">{{ $t("cancel") }}</Button>
-        </DrawerClose>
-      </DrawerFooter>
+        <Button variant="outline" @click="router.push({ name: 'workouts' })">
+          {{ $t("cancel") }}
+        </Button>
+      </div>
     </div>
-  </DrawerContent>
+  </div>
 </template>
 
 <style scoped>
@@ -470,7 +435,6 @@ const drawerScrollRef = ref<HTMLElement | null>(null);
 </style>
 
 <style>
-/* Global: fallback clone is appended to body */
 .workout-drag-fallback {
   border-radius: 0.5rem;
   border: 1px solid hsl(var(--border));
