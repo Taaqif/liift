@@ -270,6 +270,13 @@
     "unsavedChangesTitle": "Unsaved changes",
     "unsavedChangesDescription": "You have unsaved changes. Are you sure you want to close?",
     "keepEditing": "Keep editing",
-    "discardChanges": "Discard changes"
+    "discardChanges": "Discard changes",
+    "adHocWorkout": {
+      "create": "Create new workout",
+      "title": "Create new workout",
+      "description": "This workout will be saved to your library and added to {day}.",
+      "dayLabel": "Week {week}, Day {day}",
+      "save": "Save workout"
+    }
   }
 }

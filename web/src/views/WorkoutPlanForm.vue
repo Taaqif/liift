@@ -19,6 +19,7 @@ import {
   createEmptyPlan,
   resizeWeeks,
 } from "@/features/workout-plans/types";
+import type { Workout } from "@/features/workouts/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,8 +40,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft } from "lucide-vue-next";
+import { ArrowLeft, Plus } from "lucide-vue-next";
 import WorkoutListSelect from "@/features/workout-plans/components/WorkoutListSelect.vue";
+import AdHocWorkoutDialog from "@/features/workout-plans/components/AdHocWorkoutDialog.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -193,6 +195,23 @@ const isPending = computed(
 );
 const showDeleteDialog = ref(false);
 
+// Ad-hoc workout creation per day
+const adHocDialogOpen = ref(false);
+const adHocTarget = ref<{ weekIndex: number; dayIndex: number } | null>(null);
+
+function openAdHocDialog(weekIndex: number, dayIndex: number) {
+  adHocTarget.value = { weekIndex, dayIndex };
+  adHocDialogOpen.value = true;
+}
+
+function onAdHocWorkoutCreated(workout: Workout) {
+  if (!adHocTarget.value) return;
+  const { weekIndex, dayIndex } = adHocTarget.value;
+  const current = scheduleWeeks.value[weekIndex]?.days[dayIndex];
+  const existingIds = current?.workoutIds ?? [];
+  setDayWorkoutIds(weekIndex, dayIndex, [...existingIds, workout.id]);
+}
+
 const title = computed(() =>
   isEditMode.value ? t("workoutPlans.editTitle") : t("workoutPlans.createNew"),
 );
@@ -332,6 +351,16 @@ onBeforeRouteLeave(() => {
                       :scroll-ref="pageScrollRef"
                       @update:model-value="(ids) => setDayWorkoutIds(weekIndex, dayIndex, ids)"
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      class="w-full"
+                      @click="openAdHocDialog(weekIndex, dayIndex)"
+                    >
+                      <Plus class="w-4 h-4 mr-2" />
+                      {{ $t("workoutPlans.adHocWorkout.create") }}
+                    </Button>
                   </template>
                 </div>
               </div>
@@ -344,6 +373,17 @@ onBeforeRouteLeave(() => {
           </FormField>
         </div>
       </form>
+
+      <AdHocWorkoutDialog
+        v-model:open="adHocDialogOpen"
+        :day-label="adHocTarget
+          ? $t('workoutPlans.adHocWorkout.dayLabel', {
+              week: adHocTarget.weekIndex + 1,
+              day: adHocTarget.dayIndex + 1,
+            })
+          : ''"
+        @workout-created="onAdHocWorkoutCreated"
+      />
 
       <div class="flex flex-col gap-2 pt-4 border-t">
         <Dialog v-if="isEditMode" v-model:open="showDeleteDialog">
