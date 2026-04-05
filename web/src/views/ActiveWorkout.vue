@@ -27,7 +27,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Timer, StopCircle, Check, Circle } from "lucide-vue-next";
+import { Plus, Timer, StopCircle, Check, Circle, ChevronDown, ChevronUp } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 
@@ -246,8 +246,11 @@ function formatElapsed(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+const showEndDialog = ref(false);
+
 async function handleEndWorkout() {
   if (sessionId.value === 0) return;
+  showEndDialog.value = false;
   endingWorkout.value = true;
   try {
     await endSessionMutation.endSession();
@@ -273,6 +276,27 @@ onUnmounted(() => {
   if (restTimerId) clearInterval(restTimerId);
   if (elapsedTimerId) clearInterval(elapsedTimerId);
 });
+
+// Accordion: track which fully-completed exercises are manually expanded
+const expandedExercises = ref<Set<number>>(new Set());
+
+function isExerciseComplete(ex: WorkoutSessionExercise): boolean {
+  return ex.sets.length > 0 && ex.sets.every((s) => !!s.completed_at);
+}
+
+function isExerciseCollapsed(ex: WorkoutSessionExercise): boolean {
+  return isExerciseComplete(ex) && !expandedExercises.value.has(ex.id);
+}
+
+function toggleExercise(ex: WorkoutSessionExercise) {
+  if (expandedExercises.value.has(ex.id)) {
+    expandedExercises.value.delete(ex.id);
+  } else {
+    expandedExercises.value.add(ex.id);
+  }
+  expandedExercises.value = new Set(expandedExercises.value);
+}
+
 </script>
 
 <template>
@@ -320,13 +344,34 @@ onUnmounted(() => {
           <Button
             variant="destructive"
             :disabled="endingWorkout || endSessionMutation.isPending.value"
-            @click="handleEndWorkout"
+            @click="showEndDialog = true"
           >
             <StopCircle class="w-4 h-4 mr-2" />
             {{ endingWorkout || endSessionMutation.isPending.value ? $t("workoutSession.ending") : $t("workoutSession.endWorkout") }}
           </Button>
         </div>
       </div>
+
+      <Dialog v-model:open="showEndDialog">
+        <DialogContent class="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{{ $t("workoutSession.endDialog.title") }}</DialogTitle>
+            <DialogDescription>{{ $t("workoutSession.endDialog.description") }}</DialogDescription>
+          </DialogHeader>
+          <div class="flex flex-col gap-2 pt-2">
+            <Button
+              class="bg-green-600 hover:bg-green-700 text-white"
+              :disabled="endingWorkout"
+              @click="handleEndWorkout"
+            >
+              {{ endingWorkout ? $t("workoutSession.ending") : $t("workoutSession.completeWorkout") }}
+            </Button>
+            <Button variant="outline" :disabled="endingWorkout" @click="showEndDialog = false">
+              {{ $t("cancel") }}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog v-model:open="showAddExerciseDialog">
         <DialogContent class="max-w-md max-h-[80vh] flex flex-col">
@@ -364,13 +409,35 @@ onUnmounted(() => {
 
       <div class="space-y-6">
         <Card v-for="ex in localSession.exercises" :key="ex.id">
-          <CardHeader>
-            <CardTitle class="text-lg">{{ ex.exercise?.name ?? "" }}</CardTitle>
-            <p v-if="ex.exercise?.primary_muscle_groups?.length" class="text-sm text-muted-foreground">
-              {{ ex.exercise.primary_muscle_groups.map((m) => m.name).join(", ") }}
+          <CardHeader
+            class="cursor-pointer select-none"
+            :class="{ 'pb-4': isExerciseCollapsed(ex) }"
+            @click="isExerciseComplete(ex) && toggleExercise(ex)"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <CardTitle class="text-lg flex items-center gap-2">
+                  <Check
+                    v-if="isExerciseComplete(ex)"
+                    class="size-4 shrink-0 text-green-600 dark:text-green-400"
+                  />
+                  {{ ex.exercise?.name ?? "" }}
+                </CardTitle>
+                <p v-if="ex.exercise?.primary_muscle_groups?.length" class="text-sm text-muted-foreground">
+                  {{ ex.exercise.primary_muscle_groups.map((m) => m.name).join(", ") }}
+                </p>
+              </div>
+              <ChevronDown
+                v-if="isExerciseComplete(ex)"
+                class="size-5 text-muted-foreground shrink-0 transition-transform duration-200"
+                :class="{ '-rotate-180': !isExerciseCollapsed(ex) }"
+              />
+            </div>
+            <p v-if="isExerciseCollapsed(ex)" class="text-xs text-muted-foreground mt-1">
+              {{ $t("workoutSession.setsCompleted", { count: ex.sets.length }) }}
             </p>
           </CardHeader>
-          <CardContent class="space-y-4">
+          <CardContent v-if="!isExerciseCollapsed(ex)" class="space-y-4">
             <div class="space-y-2">
               <div
                 v-for="(set, setIdx) in ex.sets"
@@ -434,6 +501,16 @@ onUnmounted(() => {
           </CardContent>
         </Card>
       </div>
+
+      <Button
+        v-if="isActive"
+        class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white"
+        :disabled="endingWorkout || endSessionMutation.isPending.value"
+        @click="showEndDialog = true"
+      >
+        <StopCircle class="w-4 h-4 mr-2" />
+        {{ endingWorkout || endSessionMutation.isPending.value ? $t("workoutSession.ending") : $t("workoutSession.completeWorkout") }}
+      </Button>
     </template>
   </div>
 </template>

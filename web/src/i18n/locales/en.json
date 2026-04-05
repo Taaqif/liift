@@ -228,7 +228,13 @@
       "saveFailed": "Failed to save. Check connection and try again.",
       "endFailed": "Failed to end workout. Try again."
     },
-    "activeSessionExists": "You already have an active workout. End it or go to the active workout first."
+    "activeSessionExists": "You already have an active workout. End it or go to the active workout first.",
+    "setsCompleted": "{count} set completed | {count} sets completed",
+    "completeWorkout": "Complete Workout",
+    "endDialog": {
+      "title": "Complete workout?",
+      "description": "Are you sure you want to end this workout? This cannot be undone."
+    }
   },
   "workoutPlans": {
     "title": "Workout Plans",
