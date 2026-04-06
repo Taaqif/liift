@@ -39,6 +39,8 @@ func RegisterHandlers(e *echo.Echo, db *gorm.DB, jwtSecret []byte) {
 	exerciseHandler := handlers.NewExerciseHandler(exerciseRepo, imageRepo, imageStoragePath)
 	handlers.RegisterExerciseRoutes(protected, exerciseHandler)
 
+	workoutSessionRepo := repository.NewWorkoutSessionRepository(db)
+
 	workoutRepo := repository.NewWorkoutRepository(db)
 	workoutHandler := handlers.NewWorkoutHandler(workoutRepo)
 	handlers.RegisterWorkoutRoutes(protected, workoutHandler)
@@ -47,9 +49,11 @@ func RegisterHandlers(e *echo.Echo, db *gorm.DB, jwtSecret []byte) {
 	workoutPlanHandler := handlers.NewWorkoutPlanHandler(workoutPlanRepo)
 	handlers.RegisterWorkoutPlanRoutes(protected, workoutPlanHandler)
 
+	exerciseLogHandler := handlers.NewExerciseLogHandler(exerciseRepo, workoutSessionRepo)
+	handlers.RegisterExerciseLogRoutes(protected, exerciseLogHandler)
+
 	workoutPlanProgressRepo := repository.NewWorkoutPlanProgressRepository(db)
 
-	workoutSessionRepo := repository.NewWorkoutSessionRepository(db)
 	workoutSessionHandler := handlers.NewWorkoutSessionHandler(workoutSessionRepo, workoutPlanProgressRepo)
 	handlers.RegisterWorkoutSessionRoutes(protected, workoutSessionHandler)
 

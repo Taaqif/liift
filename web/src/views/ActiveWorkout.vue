@@ -28,9 +28,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Timer, StopCircle, Check, Circle, ChevronDown, ChevronUp } from "lucide-vue-next";
+import { Plus, Timer, StopCircle, Check, Circle, ChevronDown, ChevronUp, History } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
+import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer.vue";
 
 const router = useRouter();
 const { t } = useI18n();
@@ -295,6 +296,16 @@ onUnmounted(() => {
   if (elapsedTimerId) clearInterval(elapsedTimerId);
 });
 
+const logDrawerOpen = ref(false);
+const logExerciseId = ref<number | null>(null);
+const logExerciseName = ref<string | undefined>(undefined);
+
+function openLogs(exerciseId: number, name?: string) {
+  logExerciseId.value = exerciseId;
+  logExerciseName.value = name;
+  logDrawerOpen.value = true;
+}
+
 // Accordion: track which fully-completed exercises are manually expanded
 const expandedExercises = ref<Set<number>>(new Set());
 
@@ -474,11 +485,22 @@ function toggleExercise(ex: WorkoutSessionExercise) {
                   {{ ex.exercise.primary_muscle_groups.map((m) => m.name).join(", ") }}
                 </p>
               </div>
-              <ChevronDown
-                v-if="isExerciseComplete(ex)"
-                class="size-5 text-muted-foreground shrink-0 transition-transform duration-200"
-                :class="{ '-rotate-180': !isExerciseCollapsed(ex) }"
-              />
+              <div class="flex items-center gap-1 shrink-0" @click.stop>
+                <Button
+                  v-if="ex.exercise?.id"
+                  variant="ghost"
+                  size="icon"
+                  class="size-8 text-muted-foreground"
+                  @click="openLogs(ex.exercise.id, ex.exercise.name)"
+                >
+                  <History class="size-4" />
+                </Button>
+                <ChevronDown
+                  v-if="isExerciseComplete(ex)"
+                  class="size-5 text-muted-foreground transition-transform duration-200"
+                  :class="{ '-rotate-180': !isExerciseCollapsed(ex) }"
+                />
+              </div>
             </div>
             <p v-if="isExerciseCollapsed(ex)" class="text-xs text-muted-foreground mt-1">
               {{ $t("workoutSession.setsCompleted", { count: ex.sets.length }) }}
@@ -502,6 +524,7 @@ function toggleExercise(ex: WorkoutSessionExercise) {
                       :disabled="!isActive"
                       @update:model-value="(val: number) => updateSetValue(ex, set, vIdx, val)"
                       @blur="save()"
+                      @change="save()"
                     />
                   </template>
                 </div>
@@ -569,4 +592,10 @@ function toggleExercise(ex: WorkoutSessionExercise) {
       </div>
     </template>
   </div>
+
+  <ExerciseLogDrawer
+    v-model:open="logDrawerOpen"
+    :exercise-id="logExerciseId"
+    :exercise-name="logExerciseName"
+  />
 </template>

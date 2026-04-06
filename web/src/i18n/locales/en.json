@@ -161,6 +161,13 @@
       "equipmentPlaceholder": "All Equipment",
       "allMuscleGroups": "All Muscle Groups",
       "allEquipment": "All Equipment"
+    },
+    "logs": {
+      "title": "Exercise History",
+      "description": "Previous logged sets for this exercise.",
+      "noLogs": "No history yet. Complete a workout with this exercise to see your progress here.",
+      "set": "Set",
+      "pageOf": "{current} / {total}"
     }
   },
   "workouts": {
@@ -263,6 +270,7 @@
     "weekLabel": "Week {number}",
     "dayLabel": "Day {number}",
     "restDay": "Rest day",
+    "dayDescriptionPlaceholder": "Notes for this day (optional)...",
     "selectWorkouts": "Select one or more workouts...",
     "addWorkout": "Add workout...",
     "workoutsPerDay": "Workouts",
@@ -297,6 +305,12 @@
       "title": "Edit workout",
       "description": "Make changes to this workout.",
       "save": "Save changes"
+    },
+    "detail": {
+      "view": "View",
+      "noWorkouts": "No workouts assigned.",
+      "noExercises": "No exercises in this workout.",
+      "workoutNotFound": "Workout not found."
     },
     "progress": {
       "title": "Active Plan",

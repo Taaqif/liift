@@ -43,6 +43,8 @@ export const exerciseKeys = {
       params?.equipment?.sort().join(",") ?? "",
     ] as const,
   detail: (id: number) => [...baseKeys.exercises, "detail", id] as const,
+  logs: (id: number, limit?: number, offset?: number) =>
+    [...baseKeys.exercises, "logs", id, limit ?? 20, offset ?? 0] as const,
 } as const;
 
 export const workoutKeys = {

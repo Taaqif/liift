@@ -16,6 +16,10 @@ const { plans, loading, error } = useWorkoutPlans();
 const { progress } = useActivePlanProgress();
 const { startPlan, isPending: isStarting } = useStartPlan();
 
+const handleViewPlan = (plan: WorkoutPlan) => {
+  router.push({ name: "workout-plan-detail", params: { id: plan.id } });
+};
+
 const handleEditPlan = (plan: WorkoutPlan) => {
   router.push({ name: "workout-plan-edit", params: { id: plan.id } });
 };
@@ -79,6 +83,7 @@ async function handleStartPlan(plan: WorkoutPlan) {
       :loading="loading"
       :active-plan-id="progress?.plan_id ?? null"
       :is-starting="isStarting"
+      @view="handleViewPlan"
       @edit="handleEditPlan"
       @start="handleStartPlan"
     />

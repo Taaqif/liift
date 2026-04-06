@@ -6,6 +6,7 @@ const t = i18n.global.t;
 export const planDaySchema = z.object({
   isRest: z.boolean(),
   workoutIds: z.array(z.number().int().positive()),
+  description: z.string().optional(),
 });
 
 export const planWeekSchema = z.object({

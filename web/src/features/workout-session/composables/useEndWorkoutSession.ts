@@ -6,7 +6,7 @@ import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { apiClient } from "@/lib/api";
 import type { WorkoutSession } from "@/features/workout-session/types";
-import { workoutSessionKeys, workoutPlanProgressKeys } from "@/lib/queryKeys";
+import { workoutSessionKeys, workoutPlanProgressKeys, exerciseKeys } from "@/lib/queryKeys";
 
 async function endWorkoutSession(sessionId: number): Promise<WorkoutSession> {
   return apiClient.post<WorkoutSession>(
@@ -25,6 +25,7 @@ export function useEndWorkoutSession(sessionId: MaybeRefOrGetter<number>) {
       queryClient.setQueryData(workoutSessionKeys.detail(data.id), data);
       queryClient.removeQueries({ queryKey: workoutSessionKeys.active() });
       queryClient.invalidateQueries({ queryKey: workoutSessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
       if (data.plan_progress_id) {
         queryClient.invalidateQueries({ queryKey: workoutPlanProgressKeys.all });
         router.push({ name: "active-plan" });

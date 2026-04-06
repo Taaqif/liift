@@ -8,8 +8,9 @@ import CardTitle from "@/components/ui/card/CardTitle.vue";
 import CardDescription from "@/components/ui/card/CardDescription.vue";
 import CardContent from "@/components/ui/card/CardContent.vue";
 import { Button } from "@/components/ui/button";
-import { Dumbbell } from "lucide-vue-next";
+import { Dumbbell, History } from "lucide-vue-next";
 import { getImageUrl, revokeImageUrl } from "@/lib/api";
+import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer.vue";
 
 const props = defineProps<{
   exercises: Exercise[];
@@ -30,6 +31,14 @@ const formatEquipment = (items: { name: string }[]) =>
 const handleEdit = (exercise: Exercise) => {
   emits("edit", exercise);
 };
+
+const logDrawerOpen = ref(false);
+const selectedExercise = ref<Exercise | null>(null);
+
+function openLogs(exercise: Exercise) {
+  selectedExercise.value = exercise;
+  logDrawerOpen.value = true;
+}
 
 type ImageCacheEntry = { url: string; path: string };
 const imageCache = ref<Map<number, ImageCacheEntry>>(new Map());
@@ -167,17 +176,32 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
                 </div>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="handleEdit(exercise)"
-              class="shrink-0"
-            >
-              {{ $t("edit") }}
-            </Button>
+            <div class="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-8"
+                @click="openLogs(exercise)"
+              >
+                <History class="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                @click="handleEdit(exercise)"
+              >
+                {{ $t("edit") }}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
     </div>
   </div>
+
+<ExerciseLogDrawer
+  v-model:open="logDrawerOpen"
+  :exercise-id="selectedExercise?.id ?? null"
+  :exercise-name="selectedExercise?.name"
+/>
 </template>

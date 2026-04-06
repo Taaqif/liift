@@ -393,6 +393,149 @@ func syncSessionTree(tx *gorm.DB, s *models.WorkoutSession) error {
 	return nil
 }
 
+type ExerciseLogValue struct {
+	FeatureName string  `json:"feature_name"`
+	Value       float64 `json:"value"`
+}
+
+type ExerciseLogSet struct {
+	Order       int                `json:"order"`
+	CompletedAt time.Time          `json:"completed_at"`
+	Values      []ExerciseLogValue `json:"values"`
+}
+
+type ExerciseLogEntry struct {
+	SessionID   uint             `json:"session_id"`
+	Date        time.Time        `json:"date"`
+	WorkoutName string           `json:"workout_name"`
+	Sets        []ExerciseLogSet `json:"sets"`
+}
+
+func (r *WorkoutSessionRepository) GetExerciseLogs(ctx context.Context, exerciseID uint, userID uint, limit, offset int) ([]ExerciseLogEntry, int64, error) {
+	type countResult struct {
+		Count int64
+	}
+	var cr countResult
+	if err := r.DB().WithContext(ctx).Raw(`
+		SELECT COUNT(DISTINCT ws.id) as count
+		FROM workout_sessions ws
+		JOIN workout_session_exercises wse ON wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
+		LEFT JOIN workout_exercises we ON we.id = wse.workout_exercise_id AND we.deleted_at IS NULL
+		JOIN workout_session_sets wss ON wss.workout_session_exercise_id = wse.id AND wss.deleted_at IS NULL
+		WHERE (we.exercise_id = ? OR wse.exercise_id = ?)
+		AND wss.completed_at IS NOT NULL
+		AND ws.deleted_at IS NULL
+		AND ws.user_id = ?
+	`, exerciseID, exerciseID, userID).Scan(&cr).Error; err != nil {
+		return nil, 0, err
+	}
+	if cr.Count == 0 {
+		return nil, 0, nil
+	}
+
+	type sessionMeta struct {
+		ID          uint
+		StartedAt   time.Time
+		WorkoutName string
+	}
+	var metas []sessionMeta
+	if err := r.DB().WithContext(ctx).Raw(`
+		SELECT DISTINCT ws.id, ws.started_at, COALESCE(w.name, '') as workout_name
+		FROM workout_sessions ws
+		JOIN workout_session_exercises wse ON wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
+		LEFT JOIN workout_exercises we ON we.id = wse.workout_exercise_id AND we.deleted_at IS NULL
+		LEFT JOIN workouts w ON w.id = ws.workout_id AND w.deleted_at IS NULL
+		JOIN workout_session_sets wss ON wss.workout_session_exercise_id = wse.id AND wss.deleted_at IS NULL
+		WHERE (we.exercise_id = ? OR wse.exercise_id = ?)
+		AND wss.completed_at IS NOT NULL
+		AND ws.deleted_at IS NULL
+		AND ws.user_id = ?
+		ORDER BY ws.started_at DESC
+		LIMIT ? OFFSET ?
+	`, exerciseID, exerciseID, userID, limit, offset).Scan(&metas).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(metas) == 0 {
+		return nil, cr.Count, nil
+	}
+
+	sessionIDs := make([]uint, len(metas))
+	for i, m := range metas {
+		sessionIDs[i] = m.ID
+	}
+
+	type setRow struct {
+		SessionID   uint
+		SetID       uint
+		SetOrder    int
+		CompletedAt time.Time
+		FeatureName string
+		Value       float64
+	}
+	var rows []setRow
+	if err := r.DB().WithContext(ctx).Raw(`
+		SELECT wse.workout_session_id as session_id,
+		       wss.id as set_id,
+		       wss.sort_order as set_order,
+		       wss.completed_at,
+		       wssv.feature_name,
+		       wssv.value
+		FROM workout_session_sets wss
+		JOIN workout_session_exercises wse ON wse.id = wss.workout_session_exercise_id AND wse.deleted_at IS NULL
+		LEFT JOIN workout_exercises we ON we.id = wse.workout_exercise_id AND we.deleted_at IS NULL
+		JOIN workout_session_set_values wssv ON wssv.workout_session_set_id = wss.id AND wssv.deleted_at IS NULL
+		WHERE wse.workout_session_id IN ?
+		AND (we.exercise_id = ? OR wse.exercise_id = ?)
+		AND wss.completed_at IS NOT NULL
+		AND wss.deleted_at IS NULL
+		ORDER BY wse.sort_order ASC, wss.sort_order ASC
+	`, sessionIDs, exerciseID, exerciseID).Scan(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	type setInfo struct {
+		order       int
+		completedAt time.Time
+		values      []ExerciseLogValue
+	}
+	sessionSetIDs := map[uint][]uint{}
+	setInfos := map[uint]*setInfo{}
+	for _, row := range rows {
+		if _, exists := setInfos[row.SetID]; !exists {
+			setInfos[row.SetID] = &setInfo{order: row.SetOrder, completedAt: row.CompletedAt}
+			sessionSetIDs[row.SessionID] = append(sessionSetIDs[row.SessionID], row.SetID)
+		}
+		setInfos[row.SetID].values = append(setInfos[row.SetID].values, ExerciseLogValue{
+			FeatureName: row.FeatureName,
+			Value:       row.Value,
+		})
+	}
+
+	result := make([]ExerciseLogEntry, 0, len(metas))
+	for _, meta := range metas {
+		var logSets []ExerciseLogSet
+		for _, setID := range sessionSetIDs[meta.ID] {
+			s := setInfos[setID]
+			logSets = append(logSets, ExerciseLogSet{
+				Order:       s.order,
+				CompletedAt: s.completedAt,
+				Values:      s.values,
+			})
+		}
+		if len(logSets) == 0 {
+			continue
+		}
+		result = append(result, ExerciseLogEntry{
+			SessionID:   meta.ID,
+			Date:        meta.StartedAt,
+			WorkoutName: meta.WorkoutName,
+			Sets:        logSets,
+		})
+	}
+
+	return result, cr.Count, nil
+}
+
 func (r *WorkoutSessionRepository) Cancel(ctx context.Context, id, userID uint) (*models.WorkoutSession, error) {
 	var s models.WorkoutSession
 	err := r.DB().WithContext(ctx).Where("id = ? AND user_id = ? AND ended_at IS NULL", id, userID).First(&s).Error

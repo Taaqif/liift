@@ -22,8 +22,9 @@ func NewWorkoutPlanHandler(repo *repository.WorkoutPlanRepository) *WorkoutPlanH
 }
 
 type PlanDayRequest struct {
-	IsRest     bool   `json:"isRest"`
-	WorkoutIDs []uint `json:"workoutIds"`
+	IsRest      bool   `json:"isRest"`
+	WorkoutIDs  []uint `json:"workoutIds"`
+	Description string `json:"description"`
 }
 
 type PlanWeekRequest struct {
@@ -47,8 +48,9 @@ type UpdateWorkoutPlanRequest struct {
 }
 
 type PlanDayResponse struct {
-	IsRest     bool   `json:"isRest"`
-	WorkoutIDs []uint `json:"workoutIds"`
+	IsRest      bool   `json:"isRest"`
+	WorkoutIDs  []uint `json:"workoutIds"`
+	Description string `json:"description,omitempty"`
 }
 
 type PlanWeekResponse struct {
@@ -80,7 +82,7 @@ func mapScheduleToWeeks(s models.ScheduleData) []PlanWeekResponse {
 			Days: utils.Map(w.Days, func(d models.PlanDayJSON) PlanDayResponse {
 				ids := make([]uint, len(d.WorkoutIDs))
 				copy(ids, d.WorkoutIDs)
-				return PlanDayResponse{IsRest: d.IsRest, WorkoutIDs: ids}
+				return PlanDayResponse{IsRest: d.IsRest, WorkoutIDs: ids, Description: d.Description}
 			}),
 		}
 	}
@@ -107,7 +109,7 @@ func requestWeeksToSchedule(weeks []PlanWeekRequest) models.ScheduleData {
 			Days: utils.Map(w.Days, func(d PlanDayRequest) models.PlanDayJSON {
 				ids := make([]uint, len(d.WorkoutIDs))
 				copy(ids, d.WorkoutIDs)
-				return models.PlanDayJSON{IsRest: d.IsRest, WorkoutIDs: ids}
+				return models.PlanDayJSON{IsRest: d.IsRest, WorkoutIDs: ids, Description: d.Description}
 			}),
 		}
 	}

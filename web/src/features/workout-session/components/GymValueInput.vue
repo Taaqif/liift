@@ -19,6 +19,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: "update:modelValue", value: number): void;
   (e: "blur"): void;
+  (e: "change"): void;
 }>();
 
 const weightUnit = ref<"kg" | "lbs">("kg");
@@ -67,11 +68,13 @@ function clamp(v: number): number {
 function stepUp() {
   const next = clamp(props.modelValue + step.value);
   emit("update:modelValue", props.featureName === "weight" ? Math.round(next * 100) / 100 : next);
+  emit("change");
 }
 
 function stepDown() {
   const next = clamp(props.modelValue - step.value);
   emit("update:modelValue", props.featureName === "weight" ? Math.round(next * 100) / 100 : next);
+  emit("change");
 }
 
 function onNumericInput(e: Event) {

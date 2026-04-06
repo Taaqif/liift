@@ -5,7 +5,7 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { apiClient } from "@/lib/api";
 import type { WorkoutSession } from "@/features/workout-session/types";
-import { workoutSessionKeys, workoutPlanProgressKeys } from "@/lib/queryKeys";
+import { workoutSessionKeys, workoutPlanProgressKeys, exerciseKeys } from "@/lib/queryKeys";
 
 export function useCancelWorkoutSession(sessionId: MaybeRefOrGetter<number>) {
   const queryClient = useQueryClient();
@@ -19,6 +19,7 @@ export function useCancelWorkoutSession(sessionId: MaybeRefOrGetter<number>) {
       queryClient.setQueryData(workoutSessionKeys.detail(data.id), data);
       queryClient.removeQueries({ queryKey: workoutSessionKeys.active() });
       queryClient.invalidateQueries({ queryKey: workoutSessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
       if (data.plan_progress_id) {
         queryClient.invalidateQueries({ queryKey: workoutPlanProgressKeys.all });
         router.push({ name: "active-plan" });

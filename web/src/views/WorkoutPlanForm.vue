@@ -83,6 +83,7 @@ function populateForm(p: WorkoutPlan) {
     days: w.days.map((d) => ({
       isRest: d.isRest,
       workoutIds: [...(d.workoutIds ?? [])],
+      description: d.description ?? "",
     })),
   }));
   resetForm({
@@ -162,6 +163,7 @@ const onSubmit = handleSubmit(async (formValues) => {
         days: w.days.map((d) => ({
           isRest: d.isRest,
           workoutIds: [...(d.workoutIds ?? [])],
+          description: d.description?.trim() ?? "",
         })),
       })),
     };
@@ -350,6 +352,12 @@ onBeforeRouteLeave(() => {
                       {{ $t("workoutPlans.restDay") }}
                     </label>
                   </div>
+                  <Textarea
+                    :placeholder="$t('workoutPlans.dayDescriptionPlaceholder')"
+                    rows="2"
+                    :value="day.description ?? ''"
+                    @input="(e: Event) => updateDay(weekIndex, dayIndex, { description: (e.target as HTMLTextAreaElement).value })"
+                  />
                   <template v-if="!day.isRest">
                     <div class="space-y-1">
                       <span class="text-sm text-muted-foreground block">

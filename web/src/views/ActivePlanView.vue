@@ -26,7 +26,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, ChevronLeft, ChevronRight, Check, Play, Trophy, Dumbbell } from "lucide-vue-next";
+import { ArrowLeft, ChevronLeft, ChevronRight, Check, Play, Trophy, Dumbbell, History } from "lucide-vue-next";
+import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer.vue";
 
 const router = useRouter();
 const { t } = useI18n();
@@ -154,6 +155,16 @@ function getWorkout(id: number): Workout | undefined {
 
 function setLabel(count: number): string {
   return t("workouts.sets", count);
+}
+
+const logDrawerOpen = ref(false);
+const logExerciseId = ref<number | null>(null);
+const logExerciseName = ref<string | undefined>(undefined);
+
+function openLogs(exerciseId: number, name?: string) {
+  logExerciseId.value = exerciseId;
+  logExerciseName.value = name;
+  logDrawerOpen.value = true;
 }
 
 </script>
@@ -316,9 +327,19 @@ function setLabel(count: number): string {
                         <span class="size-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
                         <span class="truncate">{{ we.exercise?.name ?? `#${we.exercise_id}` }}</span>
                       </div>
-                      <span class="shrink-0 text-xs text-muted-foreground/70">
-                        {{ we.sets.length }} {{ setLabel(we.sets.length) }}
-                      </span>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="size-6 text-muted-foreground/60 hover:text-foreground"
+                          @click="openLogs(we.exercise_id, we.exercise?.name)"
+                        >
+                          <History class="size-3.5" />
+                        </Button>
+                        <span class="text-xs text-muted-foreground/70">
+                          {{ we.sets.length }} {{ setLabel(we.sets.length) }}
+                        </span>
+                      </div>
                     </li>
                   </ul>
                 </div>
@@ -425,4 +446,10 @@ function setLabel(count: number): string {
       </Dialog>
     </template>
   </div>
+
+  <ExerciseLogDrawer
+    v-model:open="logDrawerOpen"
+    :exercise-id="logExerciseId"
+    :exercise-name="logExerciseName"
+  />
 </template>
