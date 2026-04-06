@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { useActiveWorkoutSession } from "@/features/workout-session/composables/useActiveWorkoutSession";
 import { useUpdateWorkoutSession } from "@/features/workout-session/composables/useUpdateWorkoutSession";
 import { useEndWorkoutSession } from "@/features/workout-session/composables/useEndWorkoutSession";
+import { useCancelWorkoutSession } from "@/features/workout-session/composables/useCancelWorkoutSession";
 import { useAddExerciseToSession } from "@/features/workout-session/composables/useAddExerciseToSession";
 import { useExercises } from "@/features/exercises/composables/useExercises";
 import type {
@@ -57,6 +58,7 @@ watch(
 const sessionId = computed(() => localSession.value?.id ?? 0);
 const isActive = computed(() => !!localSession.value && !localSession.value.ended_at);
 const endSessionMutation = useEndWorkoutSession(sessionId);
+const cancelSessionMutation = useCancelWorkoutSession(sessionId);
 const updateSessionMutation = useUpdateWorkoutSession(sessionId);
 const addExerciseMutation = useAddExerciseToSession(sessionId);
 
@@ -247,6 +249,22 @@ function formatElapsed(sec: number): string {
 }
 
 const showEndDialog = ref(false);
+const showCancelDialog = ref(false);
+const cancellingWorkout = ref(false);
+
+async function handleCancelWorkout() {
+  if (sessionId.value === 0) return;
+  showCancelDialog.value = false;
+  cancellingWorkout.value = true;
+  try {
+    await cancelSessionMutation.cancelSession();
+  } catch (err) {
+    toast.error(t("workoutSession.toasts.cancelFailed"));
+    console.error("Failed to cancel workout:", err);
+  } finally {
+    cancellingWorkout.value = false;
+  }
+}
 
 async function handleEndWorkout() {
   if (sessionId.value === 0) return;
@@ -349,8 +367,37 @@ function toggleExercise(ex: WorkoutSessionExercise) {
             <StopCircle class="w-4 h-4 mr-2" />
             {{ endingWorkout || endSessionMutation.isPending.value ? $t("workoutSession.ending") : $t("workoutSession.endWorkout") }}
           </Button>
+          <Button
+            variant="ghost"
+            class="text-muted-foreground hover:text-destructive"
+            :disabled="cancellingWorkout || cancelSessionMutation.isPending.value"
+            @click="showCancelDialog = true"
+          >
+            {{ $t("workoutSession.cancelWorkout") }}
+          </Button>
         </div>
       </div>
+
+      <Dialog v-model:open="showCancelDialog">
+        <DialogContent class="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{{ $t("workoutSession.cancelDialog.title") }}</DialogTitle>
+            <DialogDescription>{{ $t("workoutSession.cancelDialog.description") }}</DialogDescription>
+          </DialogHeader>
+          <div class="flex flex-col gap-2 pt-2">
+            <Button
+              variant="destructive"
+              :disabled="cancellingWorkout"
+              @click="handleCancelWorkout"
+            >
+              {{ cancellingWorkout ? $t("workoutSession.cancelling") : $t("workoutSession.cancelWorkout") }}
+            </Button>
+            <Button variant="outline" :disabled="cancellingWorkout" @click="showCancelDialog = false">
+              {{ $t("workoutSession.keepGoing") }}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog v-model:open="showEndDialog">
         <DialogContent class="max-w-sm">
@@ -502,15 +549,24 @@ function toggleExercise(ex: WorkoutSessionExercise) {
         </Card>
       </div>
 
-      <Button
-        v-if="isActive"
-        class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white"
-        :disabled="endingWorkout || endSessionMutation.isPending.value"
-        @click="showEndDialog = true"
-      >
-        <StopCircle class="w-4 h-4 mr-2" />
-        {{ endingWorkout || endSessionMutation.isPending.value ? $t("workoutSession.ending") : $t("workoutSession.completeWorkout") }}
-      </Button>
+      <div v-if="isActive" class="mt-6 flex flex-col gap-2">
+        <Button
+          class="w-full bg-green-600 hover:bg-green-700 text-white"
+          :disabled="endingWorkout || endSessionMutation.isPending.value"
+          @click="showEndDialog = true"
+        >
+          <StopCircle class="w-4 h-4 mr-2" />
+          {{ endingWorkout || endSessionMutation.isPending.value ? $t("workoutSession.ending") : $t("workoutSession.completeWorkout") }}
+        </Button>
+        <Button
+          variant="ghost"
+          class="w-full text-muted-foreground hover:text-destructive"
+          :disabled="cancellingWorkout || cancelSessionMutation.isPending.value"
+          @click="showCancelDialog = true"
+        >
+          {{ $t("workoutSession.cancelWorkout") }}
+        </Button>
+      </div>
     </template>
   </div>
 </template>

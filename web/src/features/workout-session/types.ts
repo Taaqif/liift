@@ -43,6 +43,7 @@ export type WorkoutSession = {
   id: number;
   user_id: number;
   workout_id: number;
+  plan_progress_id?: number | null;
   started_at: string;
   ended_at: string | null;
   workout?: WorkoutSessionWorkoutRef | null;

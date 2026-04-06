@@ -47,6 +47,7 @@ type WorkoutExerciseRequest struct {
 type CreateWorkoutRequest struct {
 	Name        string                   `json:"name"`
 	Description string                   `json:"description"`
+	IsLibrary   *bool                    `json:"is_library"`
 	Exercises   []WorkoutExerciseRequest `json:"exercises"`
 }
 
@@ -94,6 +95,7 @@ type WorkoutResponse struct {
 	ID          uint                      `json:"id"`
 	Name        string                    `json:"name"`
 	Description string                    `json:"description"`
+	IsLibrary   bool                      `json:"is_library"`
 	Exercises   []WorkoutExerciseResponse `json:"exercises"`
 	CreatedAt   time.Time                 `json:"created_at"`
 	UpdatedAt   time.Time                 `json:"updated_at"`
@@ -111,6 +113,7 @@ func mapWorkoutToResponse(w *models.Workout) WorkoutResponse {
 		ID:          w.ID,
 		Name:        w.Name,
 		Description: w.Description,
+		IsLibrary:   w.IsLibrary,
 		Exercises:   utils.Map(w.Exercises, mapWorkoutExerciseToResponse),
 		CreatedAt:   w.CreatedAt,
 		UpdatedAt:   w.UpdatedAt,
@@ -185,8 +188,9 @@ func (h *WorkoutHandler) GetWorkouts(c echo.Context) error {
 	}
 	muscleGroups := c.QueryParams()["muscle_group"]
 	equipment := c.QueryParams()["equipment"]
+	includeAll := c.QueryParam("all") == "1"
 
-	workouts, total, err := h.repo.List(c.Request().Context(), limit, offset, search, exerciseFeatures, exerciseIDs, muscleGroups, equipment)
+	workouts, total, err := h.repo.List(c.Request().Context(), limit, offset, search, exerciseFeatures, exerciseIDs, muscleGroups, equipment, includeAll)
 	if err != nil {
 		c.Logger().Errorf("Failed to fetch workouts: %v", err)
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
@@ -233,9 +237,14 @@ func (h *WorkoutHandler) CreateWorkout(c echo.Context) error {
 		})
 	}
 
+	isLibrary := true
+	if req.IsLibrary != nil {
+		isLibrary = *req.IsLibrary
+	}
 	workout := models.Workout{
 		Name:        req.Name,
 		Description: req.Description,
+		IsLibrary:   isLibrary,
 	}
 
 	exercises := make([]models.WorkoutExercise, len(req.Exercises))

@@ -84,6 +84,78 @@ func (r *WorkoutSessionRepository) Start(ctx context.Context, userID uint, worko
 	return r.GetByID(ctx, session.ID, userID)
 }
 
+func (r *WorkoutSessionRepository) StartDay(ctx context.Context, userID, planProgressID uint, workoutIDs []uint) (*models.WorkoutSession, error) {
+	var active models.WorkoutSession
+	err := r.DB().WithContext(ctx).Where("user_id = ? AND ended_at IS NULL", userID).First(&active).Error
+	if err == nil {
+		return nil, ErrActiveSessionExists
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	if len(workoutIDs) == 0 {
+		return nil, errors.New("no workouts provided")
+	}
+
+	primaryWorkoutID := workoutIDs[0]
+
+	now := time.Now().UTC()
+	ppID := planProgressID
+	session := &models.WorkoutSession{
+		UserID:         userID,
+		WorkoutID:      primaryWorkoutID,
+		PlanProgressID: &ppID,
+		StartedAt:      now,
+	}
+	if err := r.DB().WithContext(ctx).Create(session).Error; err != nil {
+		return nil, err
+	}
+
+	order := 0
+	for _, wid := range workoutIDs {
+		workout, err := r.workoutByID(ctx, wid)
+		if err != nil {
+			return nil, err
+		}
+		for _, we := range workout.Exercises {
+			se := models.WorkoutSessionExercise{
+				WorkoutSessionID:  session.ID,
+				WorkoutExerciseID: we.ID,
+				RestTimer:         we.RestTimer,
+				Order:             order,
+			}
+			order++
+			if err := r.DB().WithContext(ctx).Create(&se).Error; err != nil {
+				return nil, err
+			}
+			for j, ws := range we.Sets {
+				workoutSetID := ws.ID
+				ss := models.WorkoutSessionSet{
+					WorkoutSessionExerciseID: se.ID,
+					WorkoutSetID:             &workoutSetID,
+					Order:                    j,
+				}
+				if err := r.DB().WithContext(ctx).Create(&ss).Error; err != nil {
+					return nil, err
+				}
+				for _, f := range ws.Features {
+					sv := models.WorkoutSessionSetValue{
+						WorkoutSessionSetID: ss.ID,
+						FeatureName:         f.FeatureName,
+						Value:               f.Value,
+					}
+					if err := r.DB().WithContext(ctx).Create(&sv).Error; err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+	}
+
+	return r.GetByID(ctx, session.ID, userID)
+}
+
 func (r *WorkoutSessionRepository) workoutByID(ctx context.Context, id uint) (*models.Workout, error) {
 	var w models.Workout
 	err := r.DB().WithContext(ctx).
@@ -319,6 +391,56 @@ func syncSessionTree(tx *gorm.DB, s *models.WorkoutSession) error {
 		}
 	}
 	return nil
+}
+
+func (r *WorkoutSessionRepository) Cancel(ctx context.Context, id, userID uint) (*models.WorkoutSession, error) {
+	var s models.WorkoutSession
+	err := r.DB().WithContext(ctx).Where("id = ? AND user_id = ? AND ended_at IS NULL", id, userID).First(&s).Error
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now().UTC()
+	err = r.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var exercises []models.WorkoutSessionExercise
+		if err := tx.Preload("Sets").Where("workout_session_id = ?", id).Find(&exercises).Error; err != nil {
+			return err
+		}
+
+		for _, ex := range exercises {
+			var incompleteSetIDs []uint
+			hasCompleted := false
+			for _, set := range ex.Sets {
+				if set.CompletedAt == nil {
+					incompleteSetIDs = append(incompleteSetIDs, set.ID)
+				} else {
+					hasCompleted = true
+				}
+			}
+
+			if len(incompleteSetIDs) > 0 {
+				if err := tx.Where("workout_session_set_id IN ?", incompleteSetIDs).Delete(&models.WorkoutSessionSetValue{}).Error; err != nil {
+					return err
+				}
+				if err := tx.Where("id IN ?", incompleteSetIDs).Delete(&models.WorkoutSessionSet{}).Error; err != nil {
+					return err
+				}
+			}
+
+			if !hasCompleted {
+				if err := tx.Delete(&models.WorkoutSessionExercise{}, ex.ID).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		return tx.Model(&s).Update("ended_at", now).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.EndedAt = &now
+	return r.GetByID(ctx, s.ID, userID)
 }
 
 func (r *WorkoutSessionRepository) End(ctx context.Context, id, userID uint) (*models.WorkoutSession, error) {

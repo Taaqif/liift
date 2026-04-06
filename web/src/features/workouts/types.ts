@@ -76,6 +76,7 @@ export type Workout = {
   id: number;
   name: string;
   description?: string;
+  is_library?: boolean;
   exercises: WorkoutExercise[];
   created_at?: string;
   updated_at?: string;
@@ -89,6 +90,7 @@ export type WorkoutsListParams = {
   exerciseIds?: number[];
   muscleGroup?: string[];
   equipment?: string[];
+  includeAll?: boolean;
 };
 
 export type WorkoutsListResponse = {

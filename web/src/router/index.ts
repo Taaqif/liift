@@ -83,6 +83,12 @@ const router = createRouter({
       component: () => import("../views/WorkoutPlanForm.vue"),
       meta: { requiresAuth: true },
     },
+    {
+      path: "/workout-plans/active",
+      name: "active-plan",
+      component: () => import("../views/ActivePlanView.vue"),
+      meta: { requiresAuth: true },
+    },
   ],
 });
 

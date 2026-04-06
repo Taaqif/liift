@@ -226,9 +226,17 @@
       "exerciseAdded": "Exercise added to workout",
       "ended": "Workout ended",
       "saveFailed": "Failed to save. Check connection and try again.",
-      "endFailed": "Failed to end workout. Try again."
+      "endFailed": "Failed to end workout. Try again.",
+      "cancelFailed": "Failed to cancel workout. Try again."
     },
     "activeSessionExists": "You already have an active workout. End it or go to the active workout first.",
+    "cancelWorkout": "Cancel workout",
+    "cancelling": "Cancelling...",
+    "keepGoing": "Keep going",
+    "cancelDialog": {
+      "title": "Cancel workout?",
+      "description": "Any sets you've already completed will still be saved. Incomplete sets will be discarded."
+    },
     "setsCompleted": "{count} set completed | {count} sets completed",
     "completeWorkout": "Complete Workout",
     "endDialog": {
@@ -257,7 +265,7 @@
     "restDay": "Rest day",
     "selectWorkouts": "Select one or more workouts...",
     "addWorkout": "Add workout...",
-    "workoutsPerDay": "Workouts (1 or more)",
+    "workoutsPerDay": "Workouts",
     "noWorkoutsYet": "No workouts yet. Create workouts in the Workouts page first.",
     "allWorkoutsAdded": "All selected. Remove one to add a different workout.",
     "noPlans": "No workout plans yet.",
@@ -281,8 +289,55 @@
       "create": "Create new workout",
       "title": "Create new workout",
       "description": "This workout will be saved to your library and added to {day}.",
+      "descriptionPlanOnly": "This workout will be added to {day} only and won't appear in your workout library.",
       "dayLabel": "Week {week}, Day {day}",
       "save": "Save workout"
+    },
+    "editWorkout": {
+      "title": "Edit workout",
+      "description": "Make changes to this workout.",
+      "save": "Save changes"
+    },
+    "progress": {
+      "title": "Active Plan",
+      "noActivePlan": "You don't have an active workout plan.",
+      "browsePlans": "Browse Plans",
+      "weekOf": "Week {current} of {total}",
+      "currentPosition": "Currently on Week {week}, Day {day}",
+      "goToCurrent": "Go to current",
+      "jumpHere": "Jump here",
+      "advanceToNext": "Mark done & advance",
+      "completePlan": "Complete Plan",
+      "completing": "Completing...",
+      "stopPlan": "Stop Plan",
+      "stopping": "Stopping...",
+      "noWorkoutsAssigned": "No workouts assigned to this day.",
+      "startDay": "Start Day",
+      "startingDay": "Starting...",
+      "continueWorkout": "Continue Workout",
+      "activeDayInProgress": "Workout in progress",
+      "activeBadge": "Active",
+      "alreadyActive": "You already have an active plan. Stop it first.",
+      "start": "Start Plan",
+      "activeBanner": {
+        "title": "Active Plan in Progress",
+        "position": "Week {week}, Day {day}",
+        "view": "View Active Plan"
+      },
+      "completeDialog": {
+        "title": "Complete this plan?",
+        "description": "Congratulations! You've reached the end of the plan. Mark it as completed?"
+      },
+      "stopDialog": {
+        "title": "Stop this plan?",
+        "description": "Your progress will be lost. Are you sure you want to stop this plan?"
+      },
+      "toasts": {
+        "started": "Plan started!",
+        "completed": "Plan completed! Great work!",
+        "stopped": "Plan stopped."
+      }
     }
-  }
+  },
+  "loading": "Loading..."
 }

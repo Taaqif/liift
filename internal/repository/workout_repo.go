@@ -52,11 +52,15 @@ func (r *WorkoutRepository) List(
 	exerciseFeatures []string,
 	exerciseIDs []uint,
 	muscleGroups, equipment []string,
+	includeAll bool,
 ) ([]models.Workout, int64, error) {
 	var workouts []models.Workout
 	var total int64
 
 	db := r.DB().WithContext(ctx).Model(&models.Workout{})
+	if !includeAll {
+		db = db.Where("is_library = true")
+	}
 
 	if search != "" {
 		pattern := "%" + search + "%"

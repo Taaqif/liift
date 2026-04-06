@@ -4,12 +4,13 @@ import "time"
 
 type WorkoutSession struct {
 	BaseModel
-	UserID    uint        `gorm:"not null;index" json:"user_id"`
-	WorkoutID uint        `gorm:"not null;index" json:"workout_id"`
-	StartedAt time.Time   `gorm:"not null" json:"started_at"`
-	EndedAt   *time.Time  `json:"ended_at"`
-	Workout   Workout     `gorm:"foreignKey:WorkoutID" json:"workout,omitempty"`
-	Exercises []WorkoutSessionExercise `gorm:"foreignKey:WorkoutSessionID;constraint:OnDelete:CASCADE" json:"exercises"`
+	UserID         uint        `gorm:"not null;index" json:"user_id"`
+	WorkoutID      uint        `gorm:"not null;index" json:"workout_id"`
+	PlanProgressID *uint       `gorm:"index" json:"plan_progress_id,omitempty"`
+	StartedAt      time.Time   `gorm:"not null" json:"started_at"`
+	EndedAt        *time.Time  `json:"ended_at"`
+	Workout        Workout     `gorm:"foreignKey:WorkoutID" json:"workout,omitempty"`
+	Exercises      []WorkoutSessionExercise `gorm:"foreignKey:WorkoutSessionID;constraint:OnDelete:CASCADE" json:"exercises"`
 }
 
 func (WorkoutSession) TableName() string {

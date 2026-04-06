@@ -41,6 +41,9 @@ async function fetchWorkouts(
       queryParams.append("equipment", eq);
     }
   }
+  if (params?.includeAll) {
+    queryParams.append("all", "1");
+  }
 
   const queryString = queryParams.toString();
   const url = `/workouts${queryString ? `?${queryString}` : ""}`;

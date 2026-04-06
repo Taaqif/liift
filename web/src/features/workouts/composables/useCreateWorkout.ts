@@ -8,6 +8,7 @@ import { workoutKeys } from "@/lib/queryKeys";
 export type CreateWorkoutRequest = {
   name: string;
   description?: string;
+  is_library?: boolean;
   exercises: {
     exercise_id: number;
     rest_timer: number;

@@ -74,6 +74,16 @@ onMounted(() => {
           <NavigationMenuItem>
             <NavigationMenuLink as-child>
               <router-link
+                to="/workout-plans/active"
+                active-class="text-accent-foreground bg-accent"
+              >
+                {{ $t("workoutPlans.progress.title") }}
+              </router-link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
+          <NavigationMenuItem>
+            <NavigationMenuLink as-child>
+              <router-link
                 to="/exercises"
                 active-class="text-accent-foreground bg-accent"
               >

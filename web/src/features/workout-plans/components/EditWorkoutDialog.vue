@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, unref } from "vue";
+import { computed, ref, unref, watch } from "vue";
 import { useForm, useFieldArray } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { useI18n } from "vue-i18n";
-import { useCreateWorkout } from "@/features/workouts/composables/useCreateWorkout";
+import { useWorkout } from "@/features/workouts/composables/useWorkout";
+import { useUpdateWorkout } from "@/features/workouts/composables/useUpdateWorkout";
 import { useExercises } from "@/features/exercises/composables/useExercises";
-import type { Workout, WorkoutExerciseForm, WorkoutFormValues } from "@/features/workouts/types";
+import type { WorkoutExerciseForm, WorkoutFormValues } from "@/features/workouts/types";
 import { workoutFormSchema } from "@/features/workouts/types";
 import {
   Dialog,
@@ -31,18 +32,18 @@ import WorkoutExerciseItem from "@/features/workouts/components/WorkoutExerciseI
 
 const props = defineProps<{
   open: boolean;
-  dayLabel: string;
-  saveToLibrary?: boolean;
+  workoutId: number | null;
 }>();
 
 const emit = defineEmits<{
   "update:open": [value: boolean];
-  "workout-created": [workout: Workout];
+  "workout-updated": [];
 }>();
 
 const { t } = useI18n();
-const { createWorkout, isPending } = useCreateWorkout();
+const { updateWorkout, isPending } = useUpdateWorkout();
 const { exercises: allExercises } = useExercises({ limit: 1000 });
+const { workout } = useWorkout(computed(() => props.workoutId));
 
 const exerciseOptions = computed(() =>
   allExercises.value.map((ex) => ({
@@ -64,6 +65,37 @@ const {
   move: moveExercise,
   update: updateExercise,
 } = useFieldArray<WorkoutExerciseForm>("exercises");
+
+function populateForm(w: typeof workout.value) {
+  if (!w || w.id !== props.workoutId) return;
+  resetForm({
+    values: {
+      name: w.name,
+      description: w.description || "",
+      exercises: (w.exercises || []).map((ex) => ({
+        id: ex.id,
+        exercise_id: ex.exercise_id,
+        rest_timer: ex.rest_timer,
+        note: ex.note || "",
+        order: ex.order,
+        sets: (ex.sets || []).map((set) => ({
+          id: set.id,
+          order: set.order,
+          features: (set.features || []).map((f) => ({
+            id: f.id,
+            feature_name: f.feature_name,
+            value: f.value,
+          })),
+        })),
+      })),
+    },
+  });
+}
+
+// Reset whenever the dialog opens (handles cached data) or when data arrives after opening
+watch([() => props.open, () => workout.value], ([isOpen, w]) => {
+  if (isOpen) populateForm(w);
+});
 
 const getExerciseFeatures = (exerciseId: number | null): string[] => {
   if (!exerciseId) return [];
@@ -122,6 +154,7 @@ const onExercisesReorder = (event: { oldIndex?: number; newIndex?: number }) => 
 const error = ref<string | null>(null);
 
 const onSubmit = handleSubmit(async (formValues) => {
+  if (!props.workoutId) return;
   error.value = null;
   try {
     const validExercises = formValues.exercises.filter(
@@ -130,30 +163,32 @@ const onSubmit = handleSubmit(async (formValues) => {
     const exercises = validExercises.map((ex, idx) => {
       const featureNames = getExerciseFeatures(ex.exercise_id);
       return {
+        id: ex.id,
         exercise_id: ex.exercise_id,
         rest_timer: ex.rest_timer || 0,
         note: ex.note || "",
         order: idx,
         sets: ex.sets.map((set, setIdx) => ({
+          id: set.id,
           order: setIdx,
           features: featureNames.map((name) => {
             const existing = set.features?.find((f) => f.feature_name === name);
-            return { feature_name: name, value: existing?.value ?? 0 };
+            return { id: existing?.id, feature_name: name, value: existing?.value ?? 0 };
           }),
         })),
       };
     });
 
-    const isLibrary = props.saveToLibrary !== false;
-    const workout = await createWorkout({
-      name: formValues.name.trim(),
-      description: formValues.description?.trim() || undefined,
-      is_library: isLibrary,
-      exercises,
+    await updateWorkout({
+      id: props.workoutId,
+      data: {
+        name: formValues.name.trim(),
+        description: formValues.description?.trim() || undefined,
+        exercises,
+      },
     });
 
-    emit("workout-created", workout);
-    resetForm();
+    emit("workout-updated");
     emit("update:open", false);
   } catch (err) {
     error.value = t("workouts.error");
@@ -161,12 +196,10 @@ const onSubmit = handleSubmit(async (formValues) => {
 });
 
 const onCancel = () => {
-  resetForm();
   error.value = null;
   emit("update:open", false);
 };
 
-// Scroll ref for drag-to-scroll inside the dialog
 const scrollRef = ref<HTMLElement | null>(null);
 </script>
 
@@ -174,12 +207,8 @@ const scrollRef = ref<HTMLElement | null>(null);
   <Dialog :open="open" @update:open="(v) => !v && onCancel()">
     <DialogContent class="max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0">
       <DialogHeader class="px-6 pt-6 pb-4 border-b shrink-0">
-        <DialogTitle>{{ $t("workoutPlans.adHocWorkout.title") }}</DialogTitle>
-        <DialogDescription>
-          {{ saveToLibrary !== false
-            ? $t("workoutPlans.adHocWorkout.description", { day: dayLabel })
-            : $t("workoutPlans.adHocWorkout.descriptionPlanOnly", { day: dayLabel }) }}
-        </DialogDescription>
+        <DialogTitle>{{ $t("workoutPlans.editWorkout.title") }}</DialogTitle>
+        <DialogDescription>{{ $t("workoutPlans.editWorkout.description") }}</DialogDescription>
       </DialogHeader>
 
       <div ref="scrollRef" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -265,7 +294,7 @@ const scrollRef = ref<HTMLElement | null>(null);
           {{ $t("cancel") }}
         </Button>
         <Button type="button" @click="onSubmit" :disabled="isPending">
-          {{ isPending ? $t("creating") : $t("workoutPlans.adHocWorkout.save") }}
+          {{ isPending ? $t("updating") : $t("workoutPlans.editWorkout.save") }}
         </Button>
       </div>
     </DialogContent>

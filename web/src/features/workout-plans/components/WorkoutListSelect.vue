@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { VueDraggable } from "vue-draggable-plus";
 import { useWorkouts } from "@/features/workouts/composables/useWorkouts";
+import type { Workout } from "@/features/workouts/types";
 import {
   Select,
   SelectContent,
@@ -10,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { GripVertical, X } from "lucide-vue-next";
+import { GripVertical, X, Pencil } from "lucide-vue-next";
 
 const props = withDefaults(
   defineProps<{
@@ -26,28 +27,29 @@ const props = withDefaults(
 
 const emits = defineEmits<{
   (e: "update:modelValue", value: number[]): void;
+  (e: "edit", workoutId: number): void;
 }>();
 
-const { workouts, loading } = useWorkouts({ limit: 500 });
+const { workouts, loading } = useWorkouts({ limit: 500, includeAll: true });
 const selectedIdToAdd = ref<string | undefined>(undefined);
 
 const ids = computed(() => props.modelValue ?? []);
 
 const workoutById = computed(() => {
-  const map = new Map<number, { id: number; name: string }>();
-  workouts.value.forEach((w) => map.set(w.id, { id: w.id, name: w.name }));
+  const map = new Map<number, Workout>();
+  workouts.value.forEach((w) => map.set(w.id, w));
   return map;
 });
 
 const options = computed(() =>
   workouts.value
-    .filter((w) => !ids.value.includes(w.id))
+    .filter((w) => w.is_library !== false && !ids.value.includes(w.id))
     .map((w) => ({ value: w.id.toString(), label: w.name }))
     .sort((a, b) => a.label.localeCompare(b.label)),
 );
 
 const orderedItems = computed(() =>
-  ids.value.map((id) => workoutById.value.get(id)).filter(Boolean),
+  ids.value.map((id) => workoutById.value.get(id)).filter((w): w is Workout => !!w),
 );
 
 watch(selectedIdToAdd, (val) => {
@@ -128,7 +130,7 @@ function onReorder(event: { oldIndex?: number; newIndex?: number }) {
     >
       <div
         v-for="(item, index) in orderedItems"
-        :key="item?.id ?? index"
+        :key="item.id"
         class="flex items-center gap-2 rounded border bg-background px-3 py-2 text-sm"
       >
         <span
@@ -137,7 +139,16 @@ function onReorder(event: { oldIndex?: number; newIndex?: number }) {
         >
           <GripVertical class="h-4 w-4" />
         </span>
-        <span class="flex-1">{{ item?.name ?? "" }}</span>
+        <span class="flex-1">{{ item.name }}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          class="h-8 w-8 shrink-0"
+          @click="emits('edit', item.id)"
+        >
+          <Pencil class="h-3.5 w-3.5" />
+        </Button>
         <Button
           type="button"
           variant="ghost"

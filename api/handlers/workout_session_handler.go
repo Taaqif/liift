@@ -52,11 +52,12 @@ func (o *optionalTime) Time() *time.Time {
 }
 
 type WorkoutSessionHandler struct {
-	repo *repository.WorkoutSessionRepository
+	repo            *repository.WorkoutSessionRepository
+	planProgressRepo *repository.WorkoutPlanProgressRepository
 }
 
-func NewWorkoutSessionHandler(repo *repository.WorkoutSessionRepository) *WorkoutSessionHandler {
-	return &WorkoutSessionHandler{repo: repo}
+func NewWorkoutSessionHandler(repo *repository.WorkoutSessionRepository, planProgressRepo *repository.WorkoutPlanProgressRepository) *WorkoutSessionHandler {
+	return &WorkoutSessionHandler{repo: repo, planProgressRepo: planProgressRepo}
 }
 
 type WorkoutSessionSetValueResponse struct {
@@ -101,13 +102,14 @@ type WorkoutSessionWorkoutRefResponse struct {
 }
 
 type WorkoutSessionResponse struct {
-	ID        uint                            `json:"id"`
-	UserID    uint                            `json:"user_id"`
-	WorkoutID uint                            `json:"workout_id"`
-	StartedAt time.Time                       `json:"started_at"`
-	EndedAt   *time.Time                      `json:"ended_at"`
-	Workout   *WorkoutSessionWorkoutRefResponse `json:"workout,omitempty"`
-	Exercises []WorkoutSessionExerciseResponse `json:"exercises"`
+	ID             uint                             `json:"id"`
+	UserID         uint                             `json:"user_id"`
+	WorkoutID      uint                             `json:"workout_id"`
+	PlanProgressID *uint                            `json:"plan_progress_id,omitempty"`
+	StartedAt      time.Time                        `json:"started_at"`
+	EndedAt        *time.Time                       `json:"ended_at"`
+	Workout        *WorkoutSessionWorkoutRefResponse `json:"workout,omitempty"`
+	Exercises      []WorkoutSessionExerciseResponse `json:"exercises"`
 }
 
 func mapSessionSetValueToResponse(v models.WorkoutSessionSetValue) WorkoutSessionSetValueResponse {
@@ -166,12 +168,13 @@ func mapSessionExerciseToResponse(e models.WorkoutSessionExercise) WorkoutSessio
 
 func mapSessionToResponse(s *models.WorkoutSession) WorkoutSessionResponse {
 	res := WorkoutSessionResponse{
-		ID:        s.ID,
-		UserID:    s.UserID,
-		WorkoutID: s.WorkoutID,
-		StartedAt: s.StartedAt,
-		EndedAt:   s.EndedAt,
-		Exercises: utils.Map(s.Exercises, mapSessionExerciseToResponse),
+		ID:             s.ID,
+		UserID:         s.UserID,
+		WorkoutID:      s.WorkoutID,
+		PlanProgressID: s.PlanProgressID,
+		StartedAt:      s.StartedAt,
+		EndedAt:        s.EndedAt,
+		Exercises:      utils.Map(s.Exercises, mapSessionExerciseToResponse),
 	}
 	if s.Workout.ID != 0 {
 		res.Workout = &WorkoutSessionWorkoutRefResponse{
@@ -377,6 +380,28 @@ func (h *WorkoutSessionHandler) AddExercise(c echo.Context) error {
 	return c.JSON(http.StatusCreated, mapSessionToResponse(session))
 }
 
+func (h *WorkoutSessionHandler) CancelSession(c echo.Context) error {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "invalid_session_id"})
+	}
+	userID := middleware.GetUserID(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{Error: "authorization_header_missing"})
+	}
+
+	session, err := h.repo.Cancel(c.Request().Context(), uint(id), userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.JSON(http.StatusNotFound, types.ErrorResponse{Error: "session_not_found"})
+		}
+		c.Logger().Errorf("Failed to cancel session %d: %v", id, err)
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_cancel_session"})
+	}
+
+	return c.JSON(http.StatusOK, mapSessionToResponse(session))
+}
+
 func (h *WorkoutSessionHandler) EndSession(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -396,6 +421,12 @@ func (h *WorkoutSessionHandler) EndSession(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_end_session"})
 	}
 
+	if session.PlanProgressID != nil && h.planProgressRepo != nil {
+		if err := h.planProgressRepo.AdvanceDay(c.Request().Context(), *session.PlanProgressID); err != nil {
+			c.Logger().Errorf("Failed to advance plan progress %d: %v", *session.PlanProgressID, err)
+		}
+	}
+
 	return c.JSON(http.StatusOK, mapSessionToResponse(session))
 }
 
@@ -404,6 +435,7 @@ func RegisterWorkoutSessionRoutes(api *echo.Group, handler *WorkoutSessionHandle
 	api.GET("/workout-sessions/active", handler.GetActive)
 	api.POST("/workout-sessions/:id/exercises", handler.AddExercise)
 	api.POST("/workout-sessions/:id/end", handler.EndSession)
+	api.POST("/workout-sessions/:id/cancel", handler.CancelSession)
 	api.GET("/workout-sessions/:id", handler.GetSession)
 	api.PATCH("/workout-sessions/:id", handler.UpdateSession)
 }

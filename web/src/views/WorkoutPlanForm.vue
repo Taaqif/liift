@@ -43,6 +43,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Plus } from "lucide-vue-next";
 import WorkoutListSelect from "@/features/workout-plans/components/WorkoutListSelect.vue";
 import AdHocWorkoutDialog from "@/features/workout-plans/components/AdHocWorkoutDialog.vue";
+import EditWorkoutDialog from "@/features/workout-plans/components/EditWorkoutDialog.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -81,7 +82,7 @@ function populateForm(p: WorkoutPlan) {
   const weeks = p.weeks.map((w) => ({
     days: w.days.map((d) => ({
       isRest: d.isRest,
-      workoutIds: [...d.workoutIds],
+      workoutIds: [...(d.workoutIds ?? [])],
     })),
   }));
   resetForm({
@@ -198,6 +199,15 @@ const showDeleteDialog = ref(false);
 // Ad-hoc workout creation per day
 const adHocDialogOpen = ref(false);
 const adHocTarget = ref<{ weekIndex: number; dayIndex: number } | null>(null);
+
+// Edit workout dialog
+const editWorkoutDialogOpen = ref(false);
+const editWorkoutId = ref<number | null>(null);
+
+function openEditWorkoutDialog(workoutId: number) {
+  editWorkoutId.value = workoutId;
+  editWorkoutDialogOpen.value = true;
+}
 
 function openAdHocDialog(weekIndex: number, dayIndex: number) {
   adHocTarget.value = { weekIndex, dayIndex };
@@ -341,26 +351,29 @@ onBeforeRouteLeave(() => {
                     </label>
                   </div>
                   <template v-if="!day.isRest">
-                    <span class="text-sm text-muted-foreground block">
-                      {{ $t("workoutPlans.workoutsPerDay") }}
-                    </span>
-                    <WorkoutListSelect
-                      :key="`week-${weekIndex}-day-${dayIndex}`"
-                      :model-value="day.workoutIds ?? []"
-                      :placeholder="$t('workoutPlans.addWorkout')"
-                      :scroll-ref="pageScrollRef"
-                      @update:model-value="(ids) => setDayWorkoutIds(weekIndex, dayIndex, ids)"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      class="w-full"
-                      @click="openAdHocDialog(weekIndex, dayIndex)"
-                    >
-                      <Plus class="w-4 h-4 mr-2" />
-                      {{ $t("workoutPlans.adHocWorkout.create") }}
-                    </Button>
+                    <div class="space-y-1">
+                      <span class="text-sm text-muted-foreground block">
+                        {{ $t("workoutPlans.workoutsPerDay") }}
+                      </span>
+                      <WorkoutListSelect
+                        :key="`week-${weekIndex}-day-${dayIndex}`"
+                        :model-value="day.workoutIds ?? []"
+                        :placeholder="$t('workoutPlans.addWorkout')"
+                        :scroll-ref="pageScrollRef"
+                        @update:model-value="(ids) => setDayWorkoutIds(weekIndex, dayIndex, ids)"
+                        @edit="openEditWorkoutDialog"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        class="w-full"
+                        @click="openAdHocDialog(weekIndex, dayIndex)"
+                      >
+                        <Plus class="w-4 h-4 mr-2" />
+                        {{ $t("workoutPlans.adHocWorkout.create") }}
+                      </Button>
+                    </div>
                   </template>
                 </div>
               </div>
@@ -374,6 +387,11 @@ onBeforeRouteLeave(() => {
         </div>
       </form>
 
+      <EditWorkoutDialog
+        v-model:open="editWorkoutDialogOpen"
+        :workout-id="editWorkoutId"
+      />
+
       <AdHocWorkoutDialog
         v-model:open="adHocDialogOpen"
         :day-label="adHocTarget
@@ -382,6 +400,7 @@ onBeforeRouteLeave(() => {
               day: adHocTarget.dayIndex + 1,
             })
           : ''"
+        :save-to-library="false"
         @workout-created="onAdHocWorkoutCreated"
       />
 

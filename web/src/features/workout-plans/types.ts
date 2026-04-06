@@ -30,6 +30,17 @@ export type WorkoutPlan = WorkoutPlanFormValues & {
   updated_at?: string;
 };
 
+export type WorkoutPlanProgress = {
+  id: number;
+  user_id: number;
+  plan_id: number;
+  plan: WorkoutPlan;
+  current_week: number;
+  current_day: number;
+  started_at: string;
+  completed_at: string | null;
+};
+
 export function createEmptyDay(): PlanDay {
   return { isRest: false, workoutIds: [] };
 }
@@ -60,7 +71,8 @@ export function resizeWeeks(
     const existingDays = existing?.days ?? [];
     const days: PlanDay[] = [];
     for (let d = 0; d < newDaysPerWeek; d++) {
-      days.push(existingDays[d] ?? createEmptyDay());
+      const existing = existingDays[d];
+      days.push(existing ? { ...createEmptyDay(), ...existing } : createEmptyDay());
     }
     result.push({ days });
   }
