@@ -65,7 +65,21 @@
     "home": "Home",
     "workouts": "Workouts",
     "workoutPlans": "Workout Plans",
-    "exercises": "Exercises"
+    "exercises": "Exercises",
+    "workoutHistory": "History"
+  },
+  "workoutHistory": {
+    "title": "Workout History",
+    "titleLower": "workouts",
+    "subtitle": "A record of all your completed workouts",
+    "noHistory": "No completed workouts yet. Finish a workout to see it here.",
+    "unnamedWorkout": "Unnamed Workout",
+    "unknownExercise": "Unknown Exercise",
+    "exercises": "exercises",
+    "sets": "sets",
+    "duration": "duration",
+    "noSetsCompleted": "No sets were completed in this session.",
+    "drawerDescription": "Previous sessions for this workout."
   },
   "auth": {
     "register": "Register",

@@ -91,6 +91,16 @@ onMounted(() => {
               </router-link>
             </NavigationMenuLink>
           </NavigationMenuItem>
+          <NavigationMenuItem>
+            <NavigationMenuLink as-child>
+              <router-link
+                to="/workout-history"
+                active-class="text-accent-foreground bg-accent"
+              >
+                {{ $t("nav.workoutHistory") }}
+              </router-link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
         </NavigationMenuList>
       </NavigationMenu>
       <div v-if="isAuthenticated && user" class="flex items-center gap-4">

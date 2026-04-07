@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import type { Workout } from "@/features/workouts/types";
 import Card from "@/components/ui/card/Card.vue";
 import CardTitle from "@/components/ui/card/CardTitle.vue";
 import CardDescription from "@/components/ui/card/CardDescription.vue";
 import CardContent from "@/components/ui/card/CardContent.vue";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Play } from "lucide-vue-next";
+import { Dumbbell, History, Play } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
+import WorkoutHistoryDrawer from "@/features/workout-session/components/WorkoutHistoryDrawer.vue";
 
 const props = defineProps<{
   workouts: Workout[];
@@ -20,6 +22,14 @@ const emits = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const historyDrawerOpen = ref(false);
+const selectedWorkout = ref<Workout | null>(null);
+
+function openHistory(workout: Workout) {
+  selectedWorkout.value = workout;
+  historyDrawerOpen.value = true;
+}
 
 const getExerciseCount = (workout: Workout): number =>
   workout.exercises?.length ?? 0;
@@ -69,6 +79,14 @@ const getTotalSets = (workout: Workout): number =>
             </div>
             <div class="flex items-center gap-1 shrink-0">
               <Button
+                variant="ghost"
+                size="icon"
+                class="size-8"
+                @click="openHistory(workout)"
+              >
+                <History class="size-4" />
+              </Button>
+              <Button
                 variant="default"
                 size="sm"
                 :disabled="startingWorkoutId != null"
@@ -86,4 +104,10 @@ const getTotalSets = (workout: Workout): number =>
       </Card>
     </div>
   </div>
+
+<WorkoutHistoryDrawer
+  v-model:open="historyDrawerOpen"
+  :workout-id="selectedWorkout?.id ?? null"
+  :workout-name="selectedWorkout?.name"
+/>
 </template>

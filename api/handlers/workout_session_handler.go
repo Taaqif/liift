@@ -432,8 +432,74 @@ func (h *WorkoutSessionHandler) EndSession(c echo.Context) error {
 	return c.JSON(http.StatusOK, mapSessionToResponse(session))
 }
 
+type WorkoutSessionSummaryResponse struct {
+	ID            uint       `json:"id"`
+	WorkoutID     uint       `json:"workout_id"`
+	WorkoutName   string     `json:"workout_name"`
+	StartedAt     time.Time  `json:"started_at"`
+	EndedAt       *time.Time `json:"ended_at"`
+	ExerciseCount int        `json:"exercise_count"`
+	SetsCompleted int        `json:"sets_completed"`
+}
+
+type WorkoutSessionListResponse struct {
+	Data   []WorkoutSessionSummaryResponse `json:"data"`
+	Total  int64                           `json:"total"`
+	Limit  int                             `json:"limit"`
+	Offset int                             `json:"offset"`
+}
+
+func (h *WorkoutSessionHandler) ListSessions(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{Error: "authorization_header_missing"})
+	}
+
+	limit := 20
+	offset := 0
+	if v, err := strconv.Atoi(c.QueryParam("limit")); err == nil && v > 0 {
+		limit = v
+	}
+	if v, err := strconv.Atoi(c.QueryParam("offset")); err == nil && v >= 0 {
+		offset = v
+	}
+
+	var workoutID *uint
+	if wid, err := strconv.ParseUint(c.QueryParam("workout_id"), 10, 32); err == nil && wid > 0 {
+		id := uint(wid)
+		workoutID = &id
+	}
+
+	sessions, total, err := h.repo.ListByUserID(c.Request().Context(), userID, workoutID, limit, offset)
+	if err != nil {
+		c.Logger().Errorf("Failed to list workout sessions: %v", err)
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_fetch_sessions"})
+	}
+
+	data := make([]WorkoutSessionSummaryResponse, len(sessions))
+	for i, s := range sessions {
+		data[i] = WorkoutSessionSummaryResponse{
+			ID:            s.ID,
+			WorkoutID:     s.WorkoutID,
+			WorkoutName:   s.WorkoutName,
+			StartedAt:     s.StartedAt,
+			EndedAt:       s.EndedAt,
+			ExerciseCount: s.ExerciseCount,
+			SetsCompleted: s.SetsCompleted,
+		}
+	}
+
+	return c.JSON(http.StatusOK, WorkoutSessionListResponse{
+		Data:   data,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
 func RegisterWorkoutSessionRoutes(api *echo.Group, handler *WorkoutSessionHandler) {
 	api.POST("/workouts/:id/start", handler.StartWorkout)
+	api.GET("/workout-sessions", handler.ListSessions)
 	api.GET("/workout-sessions/active", handler.GetActive)
 	api.POST("/workout-sessions/:id/exercises", handler.AddExercise)
 	api.POST("/workout-sessions/:id/end", handler.EndSession)

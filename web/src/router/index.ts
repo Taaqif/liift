@@ -95,6 +95,12 @@ const router = createRouter({
       component: () => import("../views/ActivePlanView.vue"),
       meta: { requiresAuth: true },
     },
+    {
+      path: "/workout-history",
+      name: "workout-history",
+      component: () => import("../views/WorkoutHistory.vue"),
+      meta: { requiresAuth: true },
+    },
   ],
 });
 

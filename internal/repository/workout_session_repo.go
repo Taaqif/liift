@@ -21,6 +21,62 @@ func NewWorkoutSessionRepository(db *gorm.DB) *WorkoutSessionRepository {
 	return &WorkoutSessionRepository{BaseRepository: NewBaseRepository(db)}
 }
 
+// lastExerciseValues returns the most recent completed set value per (exerciseID, featureName)
+// for the given user and exercise IDs. Only non-zero values from completed sets are returned.
+func (r *WorkoutSessionRepository) lastExerciseValues(ctx context.Context, userID uint, exerciseIDs []uint) (map[uint]map[string]float64, error) {
+	if len(exerciseIDs) == 0 {
+		return nil, nil
+	}
+
+	type row struct {
+		ExerciseID  uint
+		FeatureName string
+		Value       float64
+		CompletedAt time.Time
+	}
+	var rows []row
+	if err := r.DB().WithContext(ctx).Raw(`
+		SELECT
+			COALESCE(we.exercise_id, wse.exercise_id) AS exercise_id,
+			wssv.feature_name,
+			wssv.value,
+			wss.completed_at
+		FROM workout_session_set_values wssv
+		JOIN workout_session_sets wss
+			ON wss.id = wssv.workout_session_set_id
+			AND wss.deleted_at IS NULL
+			AND wss.completed_at IS NOT NULL
+		JOIN workout_session_exercises wse
+			ON wse.id = wss.workout_session_exercise_id
+			AND wse.deleted_at IS NULL
+		LEFT JOIN workout_exercises we
+			ON we.id = wse.workout_exercise_id
+			AND we.deleted_at IS NULL
+		JOIN workout_sessions ws
+			ON ws.id = wse.workout_session_id
+			AND ws.deleted_at IS NULL
+		WHERE ws.user_id = ?
+		  AND wssv.value != 0
+		  AND wssv.deleted_at IS NULL
+		  AND COALESCE(we.exercise_id, wse.exercise_id) IN ?
+		ORDER BY wss.completed_at DESC
+	`, userID, exerciseIDs).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[uint]map[string]float64)
+	for _, row := range rows {
+		if _, ok := result[row.ExerciseID]; !ok {
+			result[row.ExerciseID] = make(map[string]float64)
+		}
+		// First row per (exerciseID, featureName) is the most recent
+		if _, seen := result[row.ExerciseID][row.FeatureName]; !seen {
+			result[row.ExerciseID][row.FeatureName] = row.Value
+		}
+	}
+	return result, nil
+}
+
 func (r *WorkoutSessionRepository) Start(ctx context.Context, userID uint, workoutID uint) (*models.WorkoutSession, error) {
 	var active models.WorkoutSession
 	err := r.DB().WithContext(ctx).Where("user_id = ? AND ended_at IS NULL", userID).First(&active).Error
@@ -32,6 +88,15 @@ func (r *WorkoutSessionRepository) Start(ctx context.Context, userID uint, worko
 	}
 
 	workout, err := r.workoutByID(ctx, workoutID)
+	if err != nil {
+		return nil, err
+	}
+
+	exerciseIDs := make([]uint, 0, len(workout.Exercises))
+	for _, we := range workout.Exercises {
+		exerciseIDs = append(exerciseIDs, we.ExerciseID)
+	}
+	lastValues, err := r.lastExerciseValues(ctx, userID, exerciseIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +132,16 @@ func (r *WorkoutSessionRepository) Start(ctx context.Context, userID uint, worko
 				return nil, err
 			}
 			for _, f := range ws.Features {
+				val := f.Value
+				if val == 0 {
+					if last, ok := lastValues[we.ExerciseID][f.FeatureName]; ok {
+						val = last
+					}
+				}
 				sv := models.WorkoutSessionSetValue{
 					WorkoutSessionSetID: ss.ID,
 					FeatureName:         f.FeatureName,
-					Value:               f.Value,
+					Value:               val,
 				}
 				if err := r.DB().WithContext(ctx).Create(&sv).Error; err != nil {
 					return nil, err
@@ -98,6 +169,24 @@ func (r *WorkoutSessionRepository) StartDay(ctx context.Context, userID, planPro
 		return nil, errors.New("no workouts provided")
 	}
 
+	// Collect all exercise IDs across all workouts for last-value lookup
+	workouts := make([]*models.Workout, 0, len(workoutIDs))
+	allExerciseIDs := make([]uint, 0)
+	for _, wid := range workoutIDs {
+		workout, err := r.workoutByID(ctx, wid)
+		if err != nil {
+			return nil, err
+		}
+		workouts = append(workouts, workout)
+		for _, we := range workout.Exercises {
+			allExerciseIDs = append(allExerciseIDs, we.ExerciseID)
+		}
+	}
+	lastValues, err := r.lastExerciseValues(ctx, userID, allExerciseIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	primaryWorkoutID := workoutIDs[0]
 
 	now := time.Now().UTC()
@@ -113,11 +202,7 @@ func (r *WorkoutSessionRepository) StartDay(ctx context.Context, userID, planPro
 	}
 
 	order := 0
-	for _, wid := range workoutIDs {
-		workout, err := r.workoutByID(ctx, wid)
-		if err != nil {
-			return nil, err
-		}
+	for _, workout := range workouts {
 		for _, we := range workout.Exercises {
 			se := models.WorkoutSessionExercise{
 				WorkoutSessionID:  session.ID,
@@ -140,10 +225,16 @@ func (r *WorkoutSessionRepository) StartDay(ctx context.Context, userID, planPro
 					return nil, err
 				}
 				for _, f := range ws.Features {
+					val := f.Value
+					if val == 0 {
+						if last, ok := lastValues[we.ExerciseID][f.FeatureName]; ok {
+							val = last
+						}
+					}
 					sv := models.WorkoutSessionSetValue{
 						WorkoutSessionSetID: ss.ID,
 						FeatureName:         f.FeatureName,
-						Value:               f.Value,
+						Value:               val,
 					}
 					if err := r.DB().WithContext(ctx).Create(&sv).Error; err != nil {
 						return nil, err
@@ -534,6 +625,63 @@ func (r *WorkoutSessionRepository) GetExerciseLogs(ctx context.Context, exercise
 	}
 
 	return result, cr.Count, nil
+}
+
+type WorkoutSessionSummary struct {
+	ID            uint       `json:"id"`
+	WorkoutID     uint       `json:"workout_id"`
+	WorkoutName   string     `json:"workout_name"`
+	StartedAt     time.Time  `json:"started_at"`
+	EndedAt       *time.Time `json:"ended_at"`
+	ExerciseCount int        `json:"exercise_count"`
+	SetsCompleted int        `json:"sets_completed"`
+}
+
+func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint, workoutID *uint, limit, offset int) ([]WorkoutSessionSummary, int64, error) {
+	db := r.DB().WithContext(ctx).Model(&models.WorkoutSession{}).
+		Where("user_id = ? AND ended_at IS NOT NULL AND deleted_at IS NULL", userID)
+	if workoutID != nil {
+		db = db.Where("workout_id = ?", *workoutID)
+	}
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return nil, 0, nil
+	}
+
+	workoutFilter := ""
+	args := []interface{}{userID}
+	if workoutID != nil {
+		workoutFilter = "AND ws.workout_id = ?"
+		args = append(args, *workoutID)
+	}
+	args = append(args, limit, offset)
+
+	var rows []WorkoutSessionSummary
+	if err := r.DB().WithContext(ctx).Raw(`
+		SELECT
+			ws.id,
+			ws.workout_id,
+			COALESCE(w.name, '') AS workout_name,
+			ws.started_at,
+			ws.ended_at,
+			COUNT(DISTINCT wse.id) AS exercise_count,
+			COUNT(DISTINCT CASE WHEN wss.completed_at IS NOT NULL THEN wss.id END) AS sets_completed
+		FROM workout_sessions ws
+		LEFT JOIN workouts w ON w.id = ws.workout_id AND w.deleted_at IS NULL
+		LEFT JOIN workout_session_exercises wse ON wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
+		LEFT JOIN workout_session_sets wss ON wss.workout_session_exercise_id = wse.id AND wss.deleted_at IS NULL
+		WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL AND ws.deleted_at IS NULL `+workoutFilter+`
+		GROUP BY ws.id, w.name, ws.workout_id, ws.started_at, ws.ended_at
+		ORDER BY ws.started_at DESC
+		LIMIT ? OFFSET ?
+	`, args...).Scan(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return rows, total, nil
 }
 
 func (r *WorkoutSessionRepository) Cancel(ctx context.Context, id, userID uint) (*models.WorkoutSession, error) {
