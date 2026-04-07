@@ -142,6 +142,24 @@
     "primaryLabel": "Primary:",
     "secondaryLabel": "Secondary:",
     "equipmentLabel": "Equipment:",
+    "force": "Force",
+    "forcePlaceholder": "Select force...",
+    "forceValues": {
+      "pull": "Pull",
+      "push": "Push",
+      "static": "Static"
+    },
+    "category": "Category",
+    "categoryPlaceholder": "Select category...",
+    "categoryValues": {
+      "strength": "Strength",
+      "cardio": "Cardio",
+      "stretching": "Stretching"
+    },
+    "info": "Exercise Info",
+    "instructions": "Instructions",
+    "instructionPlaceholder": "Step {number}...",
+    "addInstruction": "Add step",
     "clearImage": "Clear image",
     "image": "Exercise Image",
     "toasts": {
@@ -240,6 +258,15 @@
     "upNext": "Up Next",
     "goToNext": "Go to next",
     "activeSessionExists": "You already have an active workout. End it or go to the active workout first.",
+    "conflictDialog": {
+      "title": "Active workout in progress",
+      "description": "You already have an active workout session. Stop it to start a new one.",
+      "stopAndStart": "Stop current & start {name}",
+      "stopAndStartDay": "Stop current & start this day",
+      "stopping": "Stopping...",
+      "goToCurrent": "Go to current workout",
+      "keepCurrent": "Keep current workout"
+    },
     "cancelWorkout": "Cancel workout",
     "cancelling": "Cancelling...",
     "keepGoing": "Keep going",

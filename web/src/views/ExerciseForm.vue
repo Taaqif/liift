@@ -44,7 +44,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft } from "lucide-vue-next";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Plus, Trash2, GripVertical } from "lucide-vue-next";
+import { VueDraggable } from "vue-draggable-plus";
 
 const route = useRoute();
 const router = useRouter();
@@ -56,7 +64,7 @@ const exerciseId = computed(() => {
 });
 const isEditMode = computed(() => !!exerciseId.value);
 
-const { exercise, loading: exerciseLoading } = useExercise(exerciseId);
+const { exercise, loading: exerciseLoading, fetching: exerciseFetching } = useExercise(exerciseId);
 
 const {
   createExercise,
@@ -78,9 +86,15 @@ const { options: muscleGroupOptions } = useMuscleGroupOptions();
 const { options: equipmentOptions } = useEquipmentOptions();
 const { options: exerciseFeatureOptions } = useExerciseFeatureOptions();
 
+const forceOptions = ["pull", "push", "static"] as const;
+const categoryOptions = ["strength", "cardio", "stretching"] as const;
+
 const formSchema = z.object({
   name: z.string().min(1, t("exercises.validation.nameRequired")),
   description: z.string().optional(),
+  force: z.string().optional(),
+  category: z.string().optional(),
+  instructions: z.array(z.string()).optional(),
   primary_muscle_groups: z
     .array(z.string())
     .min(1, t("exercises.validation.primaryMuscleGroupsRequired")),
@@ -99,6 +113,9 @@ const { handleSubmit, resetForm, meta, setFieldValue } = useForm({
   initialValues: {
     name: "",
     description: "",
+    force: undefined as string | undefined,
+    category: undefined as string | undefined,
+    instructions: [] as string[],
     primary_muscle_groups: [] as string[],
     secondary_muscle_groups: [] as string[],
     equipment: [] as string[],
@@ -154,6 +171,9 @@ const populateForm = (ex: Exercise) => {
     values: {
       name: ex.name,
       description: ex.description || "",
+      force: ex.force ?? undefined,
+      category: ex.category ?? undefined,
+      instructions: ex.instructions ?? [],
       primary_muscle_groups: ex.primary_muscle_groups.map((mg) => mg.name),
       secondary_muscle_groups: ex.secondary_muscle_groups.map((mg) => mg.name),
       equipment: ex.equipment.map((eq) => eq.name),
@@ -175,6 +195,9 @@ const onSubmit = handleSubmit(async (values) => {
         data: {
           name: values.name.trim(),
           description: values.description?.trim() || undefined,
+          force: values.force || undefined,
+          category: values.category || undefined,
+          instructions: values.instructions?.filter((i) => i.trim()) ?? [],
           primary_muscle_groups: values.primary_muscle_groups,
           secondary_muscle_groups:
             values.secondary_muscle_groups &&
@@ -190,6 +213,9 @@ const onSubmit = handleSubmit(async (values) => {
       await createExercise({
         name: values.name.trim(),
         description: values.description?.trim() || undefined,
+        force: values.force || undefined,
+        category: values.category || undefined,
+        instructions: values.instructions?.filter((i) => i.trim()) ?? [],
         primary_muscle_groups: values.primary_muscle_groups,
         secondary_muscle_groups:
           values.secondary_muscle_groups &&
@@ -273,7 +299,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div v-if="isEditMode && exerciseLoading" class="flex items-center justify-center py-24">
+    <div v-if="isEditMode && (exerciseLoading || exerciseFetching)" class="flex items-center justify-center py-24">
       <div class="text-muted-foreground">{{ $t("loading") }}</div>
     </div>
 
@@ -299,6 +325,110 @@ onUnmounted(() => {
             <FormControl>
               <Textarea :placeholder="$t('exercises.descriptionPlaceholder')" rows="3" v-bind="componentField" />
             </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+
+        <div class="grid grid-cols-2 gap-4">
+          <FormField v-slot="{ field, handleChange }" name="force">
+            <FormItem>
+              <FormLabel>{{ $t("exercises.force") }}</FormLabel>
+              <Select
+                :model-value="field.value as string | undefined"
+                @update:model-value="handleChange"
+              >
+                <FormControl>
+                  <SelectTrigger class="w-full">
+                    <SelectValue :placeholder="$t('exercises.forcePlaceholder')" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem v-for="opt in forceOptions" :key="opt" :value="opt">
+                    {{ $t(`exercises.forceValues.${opt}`) }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+
+          <FormField v-slot="{ field, handleChange }" name="category">
+            <FormItem>
+              <FormLabel>{{ $t("exercises.category") }}</FormLabel>
+              <Select
+                :model-value="field.value as string | undefined"
+                @update:model-value="handleChange"
+              >
+                <FormControl>
+                  <SelectTrigger class="w-full">
+                    <SelectValue :placeholder="$t('exercises.categoryPlaceholder')" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem v-for="opt in categoryOptions" :key="opt" :value="opt">
+                    {{ $t(`exercises.categoryValues.${opt}`) }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+        </div>
+
+        <FormField v-slot="{ field }" name="instructions">
+          <FormItem>
+            <FormLabel>{{ $t("exercises.instructions") }}</FormLabel>
+            <div class="space-y-2">
+              <VueDraggable
+                :model-value="(field.value as string[] ?? [])"
+                @update:model-value="field.onChange"
+                handle=".drag-handle"
+                animation="150"
+                class="space-y-2"
+              >
+                <div
+                  v-for="(_, i) in (field.value as string[] ?? [])"
+                  :key="i"
+                  class="flex gap-2 items-center"
+                >
+                  <GripVertical class="drag-handle h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
+                  <Input
+                    :model-value="(field.value as string[])[i]"
+                    @input="(e: Event) => {
+                      const list = [...((field.value as string[]) ?? [])];
+                      list[i] = (e.target as HTMLInputElement).value;
+                      field.onChange(list);
+                    }"
+                    :placeholder="$t('exercises.instructionPlaceholder', { number: i + 1 })"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    @click="() => {
+                      const list = [...((field.value as string[]) ?? [])];
+                      list.splice(i, 1);
+                      field.onChange(list);
+                    }"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </Button>
+                </div>
+              </VueDraggable>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                @click="() => {
+                  const list = [...((field.value as string[]) ?? [])];
+                  list.push('');
+                  field.onChange(list);
+                }"
+              >
+                <Plus class="h-4 w-4 mr-2" />
+                {{ $t("exercises.addInstruction") }}
+              </Button>
+            </div>
             <FormMessage />
           </FormItem>
         </FormField>

@@ -78,6 +78,7 @@ type WorkoutSessionExerciseRefResponse struct {
 	ID                    uint              `json:"id"`
 	Name                  string            `json:"name"`
 	Description           string            `json:"description"`
+	Instructions          []string          `json:"instructions,omitempty"`
 	Image                 string            `json:"image,omitempty"`
 	PrimaryMuscleGroups   []ExerciseRefItem `json:"primary_muscle_groups"`
 	SecondaryMuscleGroups []ExerciseRefItem `json:"secondary_muscle_groups"`
@@ -139,6 +140,7 @@ func mapSessionExerciseToRefResponse(ex *models.Exercise) *WorkoutSessionExercis
 		ID:                    ex.ID,
 		Name:                  ex.Name,
 		Description:           ex.Description,
+		Instructions:          ex.Instructions,
 		Image:                 buildExerciseImagePath(ex.ImageGUID),
 		PrimaryMuscleGroups:   primary,
 		SecondaryMuscleGroups: secondary,

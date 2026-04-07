@@ -73,6 +73,9 @@ type ExerciseResponse struct {
 	Name                  string            `json:"name"`
 	Description           string            `json:"description"`
 	Image                 string            `json:"image,omitempty"`
+	Force                 *string           `json:"force,omitempty"`
+	Category              *string           `json:"category,omitempty"`
+	Instructions          []string          `json:"instructions"`
 	PrimaryMuscleGroups   []ExerciseRefItem `json:"primary_muscle_groups"`
 	SecondaryMuscleGroups []ExerciseRefItem `json:"secondary_muscle_groups"`
 	Equipment             []ExerciseRefItem `json:"equipment"`
@@ -92,6 +95,9 @@ type CreateExerciseRequest struct {
 	Name                  string   `form:"name" json:"name"`
 	Description           string   `form:"description" json:"description,omitempty"`
 	ImageGUID             *string  `form:"image_guid" json:"image_guid,omitempty"`
+	Force                 string   `form:"force" json:"force,omitempty"`
+	Category              string   `form:"category" json:"category,omitempty"`
+	Instructions          []string `form:"instructions" json:"instructions,omitempty"`
 	PrimaryMuscleGroups   []string `form:"primary_muscle_groups" json:"primary_muscle_groups"`
 	SecondaryMuscleGroups []string `form:"secondary_muscle_groups" json:"secondary_muscle_groups,omitempty"`
 	Equipment             []string `form:"equipment" json:"equipment"`
@@ -102,6 +108,9 @@ type UpdateExerciseRequest struct {
 	Name                  string   `form:"name" json:"name"`
 	Description           string   `form:"description" json:"description,omitempty"`
 	ImageGUID             *string  `form:"image_guid" json:"image_guid,omitempty"`
+	Force                 string   `form:"force" json:"force,omitempty"`
+	Category              string   `form:"category" json:"category,omitempty"`
+	Instructions          []string `form:"instructions" json:"instructions,omitempty"`
 	PrimaryMuscleGroups   []string `form:"primary_muscle_groups" json:"primary_muscle_groups"`
 	SecondaryMuscleGroups []string `form:"secondary_muscle_groups" json:"secondary_muscle_groups,omitempty"`
 	Equipment             []string `form:"equipment" json:"equipment"`
@@ -110,11 +119,18 @@ type UpdateExerciseRequest struct {
 
 func mapExerciseToResponse(ex *models.Exercise) ExerciseResponse {
 	primary, secondary, equipment, features := mapExerciseAssociationsToRefItems(ex)
+	instructions := ex.Instructions
+	if instructions == nil {
+		instructions = []string{}
+	}
 	return ExerciseResponse{
 		ID:                    ex.ID,
 		Name:                  ex.Name,
 		Description:           ex.Description,
 		Image:                 buildExerciseImagePath(ex.ImageGUID),
+		Force:                 ex.Force,
+		Category:              ex.Category,
+		Instructions:          instructions,
 		PrimaryMuscleGroups:   primary,
 		SecondaryMuscleGroups: secondary,
 		Equipment:             equipment,
@@ -122,6 +138,26 @@ func mapExerciseToResponse(ex *models.Exercise) ExerciseResponse {
 		CreatedAt:             ex.CreatedAt,
 		UpdatedAt:             ex.UpdatedAt,
 	}
+}
+
+var validForceValues = map[string]bool{"pull": true, "push": true, "static": true}
+var validCategoryValues = map[string]bool{"strength": true, "cardio": true, "stretching": true}
+
+func validateForceCategory(force, category string) error {
+	if force != "" && !validForceValues[force] {
+		return fmt.Errorf("invalid_force")
+	}
+	if category != "" && !validCategoryValues[category] {
+		return fmt.Errorf("invalid_category")
+	}
+	return nil
+}
+
+func strPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func (h *ExerciseHandler) handleImageUpload(c echo.Context, formFieldName string) (*string, error) {
@@ -330,10 +366,17 @@ func (h *ExerciseHandler) CreateExercise(c echo.Context) error {
 		imageGUID = req.ImageGUID
 	}
 
+	if err := validateForceCategory(req.Force, req.Category); err != nil {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: err.Error()})
+	}
+
 	exercise := models.Exercise{
-		Name:        req.Name,
-		Description: req.Description,
-		ImageGUID:   imageGUID,
+		Name:         req.Name,
+		Description:  req.Description,
+		ImageGUID:    imageGUID,
+		Force:        strPtr(req.Force),
+		Category:     strPtr(req.Category),
+		Instructions: req.Instructions,
 	}
 
 	primaryMuscleGroups := make([]models.MuscleGroup, len(req.PrimaryMuscleGroups))
@@ -476,10 +519,17 @@ func (h *ExerciseHandler) UpdateExercise(c echo.Context) error {
 		}
 	}
 
+	if err := validateForceCategory(req.Force, req.Category); err != nil {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: err.Error()})
+	}
+
 	exercise := models.Exercise{
-		Name:        req.Name,
-		Description: req.Description,
-		ImageGUID:   imageGUID,
+		Name:         req.Name,
+		Description:  req.Description,
+		ImageGUID:    imageGUID,
+		Force:        strPtr(req.Force),
+		Category:     strPtr(req.Category),
+		Instructions: req.Instructions,
 	}
 	exercise.ID = uint(id)
 

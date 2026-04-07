@@ -16,6 +16,9 @@ export type Exercise = {
   name: string;
   description?: string;
   image?: string;
+  force?: string;
+  category?: string;
+  instructions?: string[];
   primary_muscle_groups: MuscleGroup[];
   secondary_muscle_groups: MuscleGroup[];
   equipment: Equipment[];

@@ -16,6 +16,7 @@ export type WorkoutSessionExerciseRef = {
   id: number;
   name: string;
   description?: string;
+  instructions?: string[];
   image?: string;
   primary_muscle_groups: { name: string }[];
   secondary_muscle_groups: { name: string }[];

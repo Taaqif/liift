@@ -8,6 +8,9 @@ import { exerciseKeys } from "@/lib/queryKeys";
 export type UpdateExerciseRequest = {
   name: string;
   description?: string;
+  force?: string;
+  category?: string;
+  instructions?: string[];
   primary_muscle_groups?: string[];
   secondary_muscle_groups?: string[];
   equipment?: string[];
@@ -26,6 +29,9 @@ async function updateExercise(
     if (data.description) {
       formData.append("description", data.description);
     }
+    if (data.force) formData.append("force", data.force);
+    if (data.category) formData.append("category", data.category);
+    data.instructions?.forEach((i) => formData.append("instructions", i));
     data.primary_muscle_groups?.forEach((mg) => {
       formData.append("primary_muscle_groups", mg);
     });
@@ -45,6 +51,9 @@ async function updateExercise(
   const jsonData = {
     name: data.name,
     description: data.description,
+    force: data.force,
+    category: data.category,
+    instructions: data.instructions,
     primary_muscle_groups: data.primary_muscle_groups,
     secondary_muscle_groups: data.secondary_muscle_groups,
     equipment: data.equipment,

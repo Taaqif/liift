@@ -101,11 +101,14 @@ func (r *ExerciseRepository) Update(ctx context.Context, exercise *models.Exerci
 	return r.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Use Select to explicitly include ImageGUID even when it's nil, so it can be cleared
 		if err := tx.Model(&models.Exercise{}).Where("id = ?", exercise.ID).
-			Select("name", "description", "image_guid").
+			Select("name", "description", "image_guid", "force", "category", "instructions").
 			Updates(models.Exercise{
-				Name:        exercise.Name,
-				Description: exercise.Description,
-				ImageGUID:   exercise.ImageGUID,
+				Name:         exercise.Name,
+				Description:  exercise.Description,
+				ImageGUID:    exercise.ImageGUID,
+				Force:        exercise.Force,
+				Category:     exercise.Category,
+				Instructions: exercise.Instructions,
 			}).Error; err != nil {
 			return err
 		}

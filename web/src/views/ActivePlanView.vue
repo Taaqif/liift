@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useQueryClient } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
+import { apiClient } from "@/lib/api";
+import { workoutSessionKeys } from "@/lib/queryKeys";
 import { useActivePlanProgress } from "@/features/workout-plans/composables/useActivePlanProgress";
 import { useUpdatePlanPosition } from "@/features/workout-plans/composables/useUpdatePlanPosition";
 import { useCompletePlanProgress } from "@/features/workout-plans/composables/useCompletePlanProgress";
@@ -31,6 +34,7 @@ import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer
 
 const router = useRouter();
 const { t } = useI18n();
+const queryClient = useQueryClient();
 
 const { progress, loading } = useActivePlanProgress();
 const { updatePosition, isPending: isUpdating } = useUpdatePlanPosition();
@@ -120,16 +124,35 @@ async function handleJumpToDay(weekIndex: number, dayIndex: number) {
   viewWeek.value = weekIndex;
 }
 
+const showPlanConflictDialog = ref(false);
+const isStoppingAndStartingDay = ref(false);
+
 async function handleStartDay() {
   if (!progress.value) return;
   try {
     await startDay(progress.value.id);
   } catch (err) {
     if (err instanceof Error && err.message === "active_session_exists") {
-      toast.error(t("workoutSession.activeSessionExists"));
+      showPlanConflictDialog.value = true;
     } else {
       toast.error(t("workoutSession.toasts.saveFailed"));
     }
+  }
+}
+
+async function handleStopAndStartDay() {
+  if (!activeSession.value || !progress.value) return;
+  isStoppingAndStartingDay.value = true;
+  try {
+    await apiClient.post(`/workout-sessions/${activeSession.value.id}/cancel`);
+    queryClient.removeQueries({ queryKey: workoutSessionKeys.active() });
+    queryClient.invalidateQueries({ queryKey: workoutSessionKeys.all });
+    await startDay(progress.value.id);
+    showPlanConflictDialog.value = false;
+  } catch {
+    toast.error(t("workoutSession.toasts.saveFailed"));
+  } finally {
+    isStoppingAndStartingDay.value = false;
   }
 }
 
@@ -480,6 +503,35 @@ function formatValue(name: string, value: number): string {
           {{ $t("workoutPlans.progress.stopPlan") }}
         </Button>
       </div>
+
+      <!-- Active session conflict dialog -->
+      <Dialog v-model:open="showPlanConflictDialog">
+        <DialogContent class="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{{ $t("workoutSession.conflictDialog.title") }}</DialogTitle>
+            <DialogDescription>{{ $t("workoutSession.conflictDialog.description") }}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter class="flex-col gap-2 sm:flex-col">
+            <Button
+              variant="destructive"
+              :disabled="isStoppingAndStartingDay"
+              @click="handleStopAndStartDay"
+            >
+              {{ isStoppingAndStartingDay ? $t("workoutSession.conflictDialog.stopping") : $t("workoutSession.conflictDialog.stopAndStartDay") }}
+            </Button>
+            <Button
+              variant="outline"
+              :disabled="isStoppingAndStartingDay"
+              @click="showPlanConflictDialog = false; router.push({ name: 'active-workout' })"
+            >
+              {{ $t("workoutSession.conflictDialog.goToCurrent") }}
+            </Button>
+            <Button variant="ghost" :disabled="isStoppingAndStartingDay" @click="showPlanConflictDialog = false">
+              {{ $t("cancel") }}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <!-- Complete confirmation dialog -->
       <Dialog v-model:open="showCompleteDialog">

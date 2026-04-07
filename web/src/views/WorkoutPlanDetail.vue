@@ -7,6 +7,7 @@ import type { Workout, WorkoutExercise } from "@/features/workouts/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Calendar, Pencil } from "lucide-vue-next";
+import ExerciseInfoDialog from "@/features/exercises/components/ExerciseInfoDialog.vue";
 import { useI18n } from "vue-i18n";
 
 const route = useRoute();
@@ -138,14 +139,17 @@ const selectedWeek = ref(0);
                           v-for="ex in workoutMap.get(workoutId)!.exercises"
                           :key="ex.id ?? ex.order"
                         >
-                          <div class="flex items-baseline gap-2 mb-1.5">
+                          <div class="flex items-center gap-1 mb-1.5">
                             <span class="text-sm font-medium">{{ ex.exercise?.name ?? `#${ex.exercise_id}` }}</span>
                             <span
                               v-if="ex.exercise?.primary_muscle_groups?.length"
                               class="text-xs text-muted-foreground"
                             >
-                              {{ ex.exercise.primary_muscle_groups.map((m) => m.name).join(", ") }}
+                              · {{ ex.exercise.primary_muscle_groups.map((m) => m.name).join(", ") }}
                             </span>
+                            <ExerciseInfoDialog
+                              :exercise="ex.exercise"
+                            />
                           </div>
 
                           <div v-if="ex.sets.length > 0" class="rounded-md border overflow-hidden text-xs">

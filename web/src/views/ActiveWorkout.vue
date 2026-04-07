@@ -32,6 +32,7 @@ import { Plus, Timer, StopCircle, Check, Circle, ChevronDown, History, ArrowDown
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer.vue";
+import ExerciseInfoDialog from "@/features/exercises/components/ExerciseInfoDialog.vue";
 
 const router = useRouter();
 const { t } = useI18n();
@@ -516,15 +517,18 @@ function toggleExercise(ex: WorkoutSessionExercise) {
                 {{ currentEx.exercise.primary_muscle_groups.map((m) => m.name).join(", ") }}
               </p>
             </div>
-            <Button
-              v-if="currentEx.exercise?.id"
-              variant="ghost"
-              size="icon"
-              class="size-8 shrink-0 text-muted-foreground"
-              @click="openLogs(currentEx.exercise.id, currentEx.exercise.name)"
-            >
-              <History class="size-4" />
-            </Button>
+            <div class="flex items-center gap-1 shrink-0">
+              <ExerciseInfoDialog :exercise="currentEx.exercise" />
+              <Button
+                v-if="currentEx.exercise?.id"
+                variant="ghost"
+                size="icon"
+                class="size-8 text-muted-foreground"
+                @click="openLogs(currentEx.exercise.id, currentEx.exercise.name)"
+              >
+                <History class="size-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent class="space-y-3">
@@ -611,6 +615,7 @@ function toggleExercise(ex: WorkoutSessionExercise) {
                 </p>
               </div>
               <div class="flex items-center gap-1 shrink-0" @click.stop>
+                <ExerciseInfoDialog :exercise="ex.exercise" />
                 <Button
                   v-if="ex.exercise?.id"
                   variant="ghost"

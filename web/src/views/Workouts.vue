@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useQueryClient } from "@tanstack/vue-query";
 import { useWorkouts } from "@/features/workouts/composables/useWorkouts";
 import { useStartWorkout } from "@/features/workout-session/composables/useStartWorkout";
+import { useActiveWorkoutSession } from "@/features/workout-session/composables/useActiveWorkoutSession";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
+import { apiClient } from "@/lib/api";
+import { workoutSessionKeys } from "@/lib/queryKeys";
 import WorkoutList from "@/features/workouts/components/WorkoutList.vue";
 import WorkoutFilter from "@/features/workouts/components/WorkoutFilter.vue";
 import type { Workout } from "@/features/workouts/types";
 import type { WorkoutFilter as WorkoutFilterType } from "@/features/workouts/components/WorkoutFilter.vue";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Pagination,
   PaginationContent,
@@ -21,8 +33,13 @@ import {
 
 const router = useRouter();
 const { t } = useI18n();
+const queryClient = useQueryClient();
 const { startWorkout } = useStartWorkout();
+const { session: activeSession } = useActiveWorkoutSession();
 const startingWorkoutId = ref<number | null>(null);
+const showConflictDialog = ref(false);
+const pendingWorkout = ref<Workout | null>(null);
+const isStoppingAndStarting = ref(false);
 
 const limit = ref(12);
 const offset = ref(0);
@@ -72,13 +89,30 @@ const handleStartWorkout = async (workout: Workout) => {
   } catch (e) {
     const err = e as Error;
     if (err.message === "active_session_exists") {
-      toast.error(t("workoutSession.activeSessionExists"));
-      router.push({ name: "active-workout" });
+      pendingWorkout.value = workout;
+      showConflictDialog.value = true;
     } else {
       toast.error(err.message);
     }
   } finally {
     startingWorkoutId.value = null;
+  }
+};
+
+const handleStopAndStart = async () => {
+  if (!activeSession.value || !pendingWorkout.value) return;
+  isStoppingAndStarting.value = true;
+  try {
+    await apiClient.post(`/workout-sessions/${activeSession.value.id}/cancel`);
+    queryClient.removeQueries({ queryKey: workoutSessionKeys.active() });
+    queryClient.invalidateQueries({ queryKey: workoutSessionKeys.all });
+    await startWorkout(pendingWorkout.value.id);
+    showConflictDialog.value = false;
+    pendingWorkout.value = null;
+  } catch {
+    toast.error(t("workoutSession.toasts.saveFailed"));
+  } finally {
+    isStoppingAndStarting.value = false;
   }
 };
 
@@ -152,4 +186,32 @@ const handleFilter = (newFilter: WorkoutFilterType) => {
       </div>
     </div>
   </div>
+
+  <Dialog v-model:open="showConflictDialog">
+    <DialogContent class="max-w-sm">
+      <DialogHeader>
+        <DialogTitle>{{ $t("workoutSession.conflictDialog.title") }}</DialogTitle>
+        <DialogDescription>{{ $t("workoutSession.conflictDialog.description") }}</DialogDescription>
+      </DialogHeader>
+      <DialogFooter class="flex-col gap-2 sm:flex-col">
+        <Button
+          variant="destructive"
+          :disabled="isStoppingAndStarting"
+          @click="handleStopAndStart"
+        >
+          {{ isStoppingAndStarting ? $t("workoutSession.conflictDialog.stopping") : $t("workoutSession.conflictDialog.stopAndStart", { name: pendingWorkout?.name }) }}
+        </Button>
+        <Button
+          variant="outline"
+          :disabled="isStoppingAndStarting"
+          @click="showConflictDialog = false; pendingWorkout = null; router.push({ name: 'active-workout' })"
+        >
+          {{ $t("workoutSession.conflictDialog.goToCurrent") }}
+        </Button>
+        <Button variant="ghost" :disabled="isStoppingAndStarting" @click="showConflictDialog = false; pendingWorkout = null">
+          {{ $t("cancel") }}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>

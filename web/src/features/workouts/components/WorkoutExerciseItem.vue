@@ -22,12 +22,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, GripVertical } from "lucide-vue-next";
 import { VueDraggable } from "vue-draggable-plus";
+import ExerciseInfoDialog from "@/features/exercises/components/ExerciseInfoDialog.vue";
+import type { Exercise } from "@/features/exercises/types";
 
 const props = defineProps<{
   exerciseIndex: number;
   field: { value: WorkoutExerciseForm; key: string };
   exerciseOptions: { value: number; label: string }[];
   getExerciseFeatures: (exerciseId: number | null) => string[];
+  getExercise: (exerciseId: number | null) => Exercise | undefined;
   drawerScrollRef: HTMLElement | null;
 }>();
 
@@ -114,24 +117,31 @@ const setsForDraggable = computed(
           <FormItem>
             <FormLabel>{{ $t("exercises.title") }}</FormLabel>
             <FormControl>
-              <Select
-                v-model="componentField.modelValue"
-                :disabled="!!field.value?.exercise_id"
-                @update:model-value="emit('exercise-selected', $event)"
-              >
-                <SelectTrigger>
-                  <SelectValue :placeholder="$t('exercises.title')" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem
-                    v-for="option in exerciseOptions"
-                    :key="option.value"
-                    :value="option.value"
-                  >
-                    {{ option.label }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div class="flex items-center gap-1">
+                <Select
+                  class="flex-1"
+                  v-model="componentField.modelValue"
+                  :disabled="!!field.value?.exercise_id"
+                  @update:model-value="emit('exercise-selected', $event)"
+                >
+                  <SelectTrigger>
+                    <SelectValue :placeholder="$t('exercises.title')" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="option in exerciseOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <ExerciseInfoDialog
+                  v-if="field.value?.exercise_id"
+                  :exercise="getExercise(field.value.exercise_id)"
+                />
+              </div>
             </FormControl>
             <FormMessage />
           </FormItem>

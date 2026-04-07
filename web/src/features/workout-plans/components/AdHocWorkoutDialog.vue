@@ -71,6 +71,11 @@ const getExerciseFeatures = (exerciseId: number | null): string[] => {
   return exercise?.exercise_features?.map((f) => f.name) ?? [];
 };
 
+const getExercise = (exerciseId: number | null) => {
+  if (!exerciseId) return undefined;
+  return allExercises.value.find((e) => e.id === exerciseId);
+};
+
 const addExercise = () => {
   pushExercise({
     exercise_id: null,
@@ -246,6 +251,7 @@ const scrollRef = ref<HTMLElement | null>(null);
               :field="(field as { value: WorkoutExerciseForm; key: string })"
               :exercise-options="exerciseOptions"
               :get-exercise-features="getExerciseFeatures"
+              :get-exercise="getExercise"
               :drawer-scroll-ref="scrollRef"
               @exercise-selected="(v) => onExerciseSelected(exerciseIndex, field.value, v)"
               @remove="removeExercise(exerciseIndex)"
