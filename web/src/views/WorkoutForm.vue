@@ -170,13 +170,13 @@ const onExerciseSelected = (
         {
           _key: crypto.randomUUID(),
           order: 0,
-          features: featureNames.map((name) => ({ feature_name: name, value: 0 })),
+          features: featureNames.map((name) => ({ feature_name: name, value: null })),
         },
       ]
     : currentSets.map((set) => {
         const features = featureNames.map((name) => {
           const existing = set.features?.find((f) => f.feature_name === name);
-          return existing ?? { feature_name: name, value: 0 };
+          return existing ?? { feature_name: name, value: null };
         });
         return { ...set, features };
       });
@@ -203,7 +203,7 @@ const onSubmit = handleSubmit(async (values) => {
           return {
             ...(existing?.id != null && { id: existing.id }),
             feature_name: featureName,
-            value: existing?.value || 0,
+            value: existing?.value ?? 0,
           };
         });
         return {

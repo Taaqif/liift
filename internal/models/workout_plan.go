@@ -7,7 +7,6 @@ import (
 )
 
 type PlanDayJSON struct {
-	IsRest      bool   `json:"is_rest"`
 	WorkoutIDs  []uint `json:"workout_ids"`
 	Description string `json:"description,omitempty"`
 }

@@ -48,11 +48,10 @@ const {
   update: updateSet,
 } = useFieldArray<WorkoutSetForm>(setsPath);
 
-const getSetFeatureValue = (
-  set: WorkoutSetForm,
-  featureName: string,
-): number =>
-  set.features?.find((f) => f.feature_name === featureName)?.value ?? 0;
+const getSetFeatureValue = (set: WorkoutSetForm, featureName: string): string => {
+  const val = set.features?.find((f) => f.feature_name === featureName)?.value;
+  return val != null ? String(val) : "";
+};
 
 const addSet = () => {
   const featureNames = props.getExerciseFeatures(
@@ -61,7 +60,7 @@ const addSet = () => {
   pushSet({
     _key: crypto.randomUUID(),
     order: setFields.value.length,
-    features: featureNames.map((name) => ({ feature_name: name, value: 0 })),
+    features: featureNames.map((name) => ({ feature_name: name, value: null })),
   });
 };
 
@@ -75,7 +74,7 @@ const onSetsReorder = (event: { oldIndex?: number; newIndex?: number }) => {
 const updateFeatureValue = (
   setIndex: number,
   featureName: string,
-  value: number,
+  value: number | null,
 ) => {
   const set = setFields.value[setIndex]?.value;
   if (!set) return;
@@ -255,12 +254,14 @@ const setsForDraggable = computed(
                           min="0"
                           :model-value="getSetFeatureValue(setField.value, featureName)"
                           @update:model-value="
-                            (value: string | number) =>
+                            (value: string | number) => {
+                              const num = Number(value);
                               updateFeatureValue(
                                 Number(setIndex),
                                 featureName,
-                                Number(value) || 0,
-                              )
+                                value === '' || Number.isNaN(num) ? null : num,
+                              );
+                            }
                           "
                         />
                       </FormControl>

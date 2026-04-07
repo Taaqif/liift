@@ -22,7 +22,6 @@ func NewWorkoutPlanHandler(repo *repository.WorkoutPlanRepository) *WorkoutPlanH
 }
 
 type PlanDayRequest struct {
-	IsRest      bool   `json:"isRest"`
 	WorkoutIDs  []uint `json:"workoutIds"`
 	Description string `json:"description"`
 }
@@ -48,7 +47,6 @@ type UpdateWorkoutPlanRequest struct {
 }
 
 type PlanDayResponse struct {
-	IsRest      bool   `json:"isRest"`
 	WorkoutIDs  []uint `json:"workoutIds"`
 	Description string `json:"description,omitempty"`
 }
@@ -82,7 +80,7 @@ func mapScheduleToWeeks(s models.ScheduleData) []PlanWeekResponse {
 			Days: utils.Map(w.Days, func(d models.PlanDayJSON) PlanDayResponse {
 				ids := make([]uint, len(d.WorkoutIDs))
 				copy(ids, d.WorkoutIDs)
-				return PlanDayResponse{IsRest: d.IsRest, WorkoutIDs: ids, Description: d.Description}
+				return PlanDayResponse{WorkoutIDs: ids, Description: d.Description}
 			}),
 		}
 	}
@@ -109,7 +107,7 @@ func requestWeeksToSchedule(weeks []PlanWeekRequest) models.ScheduleData {
 			Days: utils.Map(w.Days, func(d PlanDayRequest) models.PlanDayJSON {
 				ids := make([]uint, len(d.WorkoutIDs))
 				copy(ids, d.WorkoutIDs)
-				return models.PlanDayJSON{IsRest: d.IsRest, WorkoutIDs: ids, Description: d.Description}
+				return models.PlanDayJSON{WorkoutIDs: ids, Description: d.Description}
 			}),
 		}
 	}
@@ -185,6 +183,13 @@ func (h *WorkoutPlanHandler) CreateWorkoutPlan(c echo.Context) error {
 	if plan.DaysPerWeek < 1 || plan.DaysPerWeek > 14 {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "invalid_days_per_week"})
 	}
+	for _, w := range plan.Schedule {
+		for _, d := range w.Days {
+			if len(d.WorkoutIDs) == 0 {
+				return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "each_day_requires_at_least_one_workout"})
+			}
+		}
+	}
 
 	if err := h.repo.Create(c.Request().Context(), &plan); err != nil {
 		c.Logger().Errorf("Failed to create workout plan: %v", err)
@@ -238,6 +243,13 @@ func (h *WorkoutPlanHandler) UpdateWorkoutPlan(c echo.Context) error {
 	}
 	if plan.DaysPerWeek < 1 || plan.DaysPerWeek > 14 {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "invalid_days_per_week"})
+	}
+	for _, w := range plan.Schedule {
+		for _, d := range w.Days {
+			if len(d.WorkoutIDs) == 0 {
+				return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "each_day_requires_at_least_one_workout"})
+			}
+		}
 	}
 
 	if err := h.repo.Update(c.Request().Context(), &plan); err != nil {

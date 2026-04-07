@@ -272,7 +272,6 @@
     "schedule": "Schedule",
     "weekLabel": "Week {number}",
     "dayLabel": "Day {number}",
-    "restDay": "Rest day",
     "dayDescriptionPlaceholder": "Notes for this day (optional)...",
     "selectWorkouts": "Select one or more workouts...",
     "addWorkout": "Add workout...",
@@ -289,7 +288,8 @@
       "deleted": "Plan deleted successfully"
     },
     "validation": {
-      "nameRequired": "Plan name is required"
+      "nameRequired": "Plan name is required",
+      "workoutRequired": "Week {week}, Day {day} requires at least one workout"
     },
     "error": "Error",
     "unsavedChangesTitle": "Unsaved changes",

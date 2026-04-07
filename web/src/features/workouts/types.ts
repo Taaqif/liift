@@ -7,7 +7,7 @@ const t = i18n.global.t;
 export const workoutSetFeatureSchema = z.object({
   id: z.number().optional(),
   feature_name: z.string(),
-  value: z.number().min(0),
+  value: z.number().min(0).nullable(),
 });
 
 export const workoutSetSchema = z.object({

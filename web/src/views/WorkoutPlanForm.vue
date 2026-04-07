@@ -14,12 +14,12 @@ import type {
   PlanDay,
   PlanWeek,
 } from "@/features/workout-plans/types";
+import type { Workout } from "@/features/workouts/types";
 import {
   workoutPlanFormSchema,
   createEmptyPlan,
   resizeWeeks,
 } from "@/features/workout-plans/types";
-import type { Workout } from "@/features/workouts/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,11 +39,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Plus } from "lucide-vue-next";
 import WorkoutListSelect from "@/features/workout-plans/components/WorkoutListSelect.vue";
-import AdHocWorkoutDialog from "@/features/workout-plans/components/AdHocWorkoutDialog.vue";
-import EditWorkoutDialog from "@/features/workout-plans/components/EditWorkoutDialog.vue";
+import InlineWorkoutCreator from "@/features/workout-plans/components/InlineWorkoutCreator.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -57,14 +55,23 @@ const isEditMode = computed(() => !!planId.value);
 
 const { plan, loading: planLoading } = useWorkoutPlan(planId);
 
-const { createPlan, isPending: isCreating, error: createError } =
-  useCreateWorkoutPlan();
-const { updatePlan, isPending: isUpdating, error: updateError } =
-  useUpdateWorkoutPlan();
-const { deletePlan, isPending: isDeleting, error: deleteError } =
-  useDeleteWorkoutPlan();
+const {
+  createPlan,
+  isPending: isCreating,
+  error: createError,
+} = useCreateWorkoutPlan();
+const {
+  updatePlan,
+  isPending: isUpdating,
+  error: updateError,
+} = useUpdateWorkoutPlan();
+const {
+  deletePlan,
+  isPending: isDeleting,
+  error: deleteError,
+} = useDeleteWorkoutPlan();
 
-const { handleSubmit, resetForm, meta, values, setFieldValue } =
+const { handleSubmit, resetForm, meta, values, setFieldValue, errors } =
   useForm<WorkoutPlanFormValues>({
     validationSchema: toTypedSchema(workoutPlanFormSchema),
     initialValues: {
@@ -81,7 +88,6 @@ const scheduleWeeks = ref<PlanWeek[]>(createEmptyPlan(3, 4));
 function populateForm(p: WorkoutPlan) {
   const weeks = p.weeks.map((w) => ({
     days: w.days.map((d) => ({
-      isRest: d.isRest,
       workoutIds: [...(d.workoutIds ?? [])],
       description: d.description ?? "",
     })),
@@ -98,16 +104,22 @@ function populateForm(p: WorkoutPlan) {
   scheduleWeeks.value = weeks;
 }
 
-watch(plan, (p) => {
-  if (p) populateForm(p);
-}, { immediate: true });
+watch(
+  plan,
+  (p) => {
+    if (p) populateForm(p);
+  },
+  { immediate: true },
+);
 
 watch(
   () => [values.numberOfWeeks, values.daysPerWeek],
   ([numWeeks, daysPerWeek]) => {
     const n = Number(numWeeks);
     const d = Number(daysPerWeek);
-    const current = scheduleWeeks.value.length ? scheduleWeeks.value : values.weeks;
+    const current = scheduleWeeks.value.length
+      ? scheduleWeeks.value
+      : values.weeks;
     if (
       n >= 1 &&
       d >= 1 &&
@@ -117,39 +129,35 @@ watch(
       const resized = resizeWeeks(current, n, d);
       scheduleWeeks.value = resized;
       setFieldValue("weeks", resized);
+      if (selectedWeek.value >= n) selectedWeek.value = 0;
     }
   },
 );
 
-function updateDay(weekIndex: number, dayIndex: number, patch: Partial<PlanDay>) {
-  const source = scheduleWeeks.value.length ? scheduleWeeks.value : values.weeks;
+function updateDay(
+  weekIndex: number,
+  dayIndex: number,
+  patch: Partial<PlanDay>,
+) {
+  const source = scheduleWeeks.value.length
+    ? scheduleWeeks.value
+    : values.weeks;
   const weeks = (source ?? []).map((w, wi) => {
     if (wi !== weekIndex) return w;
     return {
-      days: w.days.map((d, di) =>
-        di === dayIndex ? { ...d, ...patch } : d,
-      ),
+      days: w.days.map((d, di) => (di === dayIndex ? { ...d, ...patch } : d)),
     };
   });
   scheduleWeeks.value = weeks;
   setFieldValue("weeks", weeks);
 }
 
-function setDayRest(weekIndex: number, dayIndex: number, isRest: boolean) {
-  const current =
-    scheduleWeeks.value[weekIndex]?.days[dayIndex] ??
-    values.weeks[weekIndex]?.days[dayIndex];
-  updateDay(weekIndex, dayIndex, {
-    isRest,
-    workoutIds: isRest ? [] : [...(current?.workoutIds ?? [])],
-  });
-}
-
-function setDayWorkoutIds(weekIndex: number, dayIndex: number, workoutIds: number[]) {
-  updateDay(weekIndex, dayIndex, {
-    isRest: workoutIds.length === 0,
-    workoutIds,
-  });
+function setDayWorkoutIds(
+  weekIndex: number,
+  dayIndex: number,
+  workoutIds: number[],
+) {
+  updateDay(weekIndex, dayIndex, { workoutIds });
 }
 
 const onSubmit = handleSubmit(async (formValues) => {
@@ -161,7 +169,6 @@ const onSubmit = handleSubmit(async (formValues) => {
       daysPerWeek: formValues.daysPerWeek,
       weeks: formValues.weeks.map((w) => ({
         days: w.days.map((d) => ({
-          isRest: d.isRest,
           workoutIds: [...(d.workoutIds ?? [])],
           description: d.description?.trim() ?? "",
         })),
@@ -198,30 +205,22 @@ const isPending = computed(
 );
 const showDeleteDialog = ref(false);
 
-// Ad-hoc workout creation per day
-const adHocDialogOpen = ref(false);
-const adHocTarget = ref<{ weekIndex: number; dayIndex: number } | null>(null);
+// Inline workout creation per day
+const creatorTarget = ref<{ weekIndex: number; dayIndex: number } | null>(null);
 
-// Edit workout dialog
-const editWorkoutDialogOpen = ref(false);
-const editWorkoutId = ref<number | null>(null);
-
-function openEditWorkoutDialog(workoutId: number) {
-  editWorkoutId.value = workoutId;
-  editWorkoutDialogOpen.value = true;
+function openCreator(weekIndex: number, dayIndex: number) {
+  creatorTarget.value = { weekIndex, dayIndex };
 }
 
-function openAdHocDialog(weekIndex: number, dayIndex: number) {
-  adHocTarget.value = { weekIndex, dayIndex };
-  adHocDialogOpen.value = true;
-}
-
-function onAdHocWorkoutCreated(workout: Workout) {
-  if (!adHocTarget.value) return;
-  const { weekIndex, dayIndex } = adHocTarget.value;
+function onWorkoutCreated(
+  weekIndex: number,
+  dayIndex: number,
+  workout: Workout,
+) {
   const current = scheduleWeeks.value[weekIndex]?.days[dayIndex];
   const existingIds = current?.workoutIds ?? [];
   setDayWorkoutIds(weekIndex, dayIndex, [...existingIds, workout.id]);
+  creatorTarget.value = null;
 }
 
 const title = computed(() =>
@@ -240,10 +239,14 @@ const submitButtonText = computed(() => {
 });
 
 const pageScrollRef = ref<HTMLElement | null>(null);
+const selectedWeek = ref(0);
 
 onBeforeRouteLeave(() => {
   if (meta.value.dirty && !isPending.value) {
-    return window.confirm(t("unsavedChanges.confirmLeave") || "You have unsaved changes. Leave anyway?");
+    return window.confirm(
+      t("unsavedChanges.confirmLeave") ||
+        "You have unsaved changes. Leave anyway?",
+    );
   }
 });
 </script>
@@ -251,7 +254,11 @@ onBeforeRouteLeave(() => {
 <template>
   <div ref="pageScrollRef">
     <div class="mb-8 flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="router.push({ name: 'workout-plans' })">
+      <Button
+        variant="ghost"
+        size="icon"
+        @click="router.push({ name: 'workout-plans' })"
+      >
         <ArrowLeft class="h-4 w-4" />
       </Button>
       <div>
@@ -260,12 +267,18 @@ onBeforeRouteLeave(() => {
       </div>
     </div>
 
-    <div v-if="isEditMode && planLoading" class="flex items-center justify-center py-24">
+    <div
+      v-if="isEditMode && planLoading"
+      class="flex items-center justify-center py-24"
+    >
       <div class="text-muted-foreground">{{ $t("loading") }}</div>
     </div>
 
     <div v-else class="space-y-6">
-      <div v-if="error" class="p-4 bg-destructive/10 text-destructive rounded-lg">
+      <div
+        v-if="error"
+        class="p-4 bg-destructive/10 text-destructive rounded-lg"
+      >
         <p>{{ $t("workoutPlans.error") }}: {{ error.message }}</p>
       </div>
 
@@ -320,97 +333,101 @@ onBeforeRouteLeave(() => {
         </div>
 
         <div class="space-y-4">
-          <span class="text-base font-medium">{{ $t("workoutPlans.schedule") }}</span>
-          <div class="space-y-6">
-            <div
-              v-for="(week, weekIndex) in scheduleWeeks"
+          <span class="text-base font-medium">{{
+            $t("workoutPlans.schedule")
+          }}</span>
+          <div class="flex flex-wrap justify-center gap-2">
+            <Button
+              v-for="(_, weekIndex) in scheduleWeeks"
               :key="weekIndex"
-              class="rounded-lg border p-4 space-y-3"
+              type="button"
+              :variant="selectedWeek === weekIndex ? 'default' : 'outline'"
+              class="min-w-12 h-10 text-base font-semibold"
+              @click="selectedWeek = weekIndex"
             >
-              <h4 class="font-medium text-sm text-muted-foreground">
-                {{ $t("workoutPlans.weekLabel", { number: weekIndex + 1 }) }}
-              </h4>
-              <div class="grid gap-3">
+              {{ weekIndex + 1 }}
+            </Button>
+          </div>
+          <div v-if="scheduleWeeks[selectedWeek]" class="grid gap-3">
                 <div
-                  v-for="(day, dayIndex) in week.days"
+                  v-for="(day, dayIndex) in scheduleWeeks[selectedWeek].days"
                   :key="dayIndex"
                   class="rounded border p-4 bg-muted/30 space-y-3"
                 >
                   <h5 class="font-medium text-sm">
                     {{ $t("workoutPlans.dayLabel", { number: dayIndex + 1 }) }}
                   </h5>
-                  <div class="flex items-center gap-2">
-                    <Checkbox
-                      :id="`rest-${weekIndex}-${dayIndex}`"
-                      :model-value="day.isRest"
-                      @update:model-value="(v: boolean | 'indeterminate') => setDayRest(weekIndex, dayIndex, v === true)"
-                    />
-                    <label
-                      :for="`rest-${weekIndex}-${dayIndex}`"
-                      class="text-sm font-medium cursor-pointer select-none"
-                    >
-                      {{ $t("workoutPlans.restDay") }}
-                    </label>
-                  </div>
                   <Textarea
                     :placeholder="$t('workoutPlans.dayDescriptionPlaceholder')"
                     rows="2"
                     :value="day.description ?? ''"
-                    @input="(e: Event) => updateDay(weekIndex, dayIndex, { description: (e.target as HTMLTextAreaElement).value })"
+                    @input="
+                      (e: Event) =>
+                        updateDay(selectedWeek, dayIndex, {
+                          description: (e.target as HTMLTextAreaElement).value,
+                        })
+                    "
                   />
-                  <template v-if="!day.isRest">
-                    <div class="space-y-1">
-                      <span class="text-sm text-muted-foreground block">
-                        {{ $t("workoutPlans.workoutsPerDay") }}
-                      </span>
-                      <WorkoutListSelect
-                        :key="`week-${weekIndex}-day-${dayIndex}`"
-                        :model-value="day.workoutIds ?? []"
-                        :placeholder="$t('workoutPlans.addWorkout')"
-                        :scroll-ref="pageScrollRef"
-                        @update:model-value="(ids) => setDayWorkoutIds(weekIndex, dayIndex, ids)"
-                        @edit="openEditWorkoutDialog"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        class="w-full"
-                        @click="openAdHocDialog(weekIndex, dayIndex)"
-                      >
-                        <Plus class="w-4 h-4 mr-2" />
-                        {{ $t("workoutPlans.adHocWorkout.create") }}
-                      </Button>
-                    </div>
-                  </template>
+                  <div class="space-y-1">
+                    <span class="text-sm text-muted-foreground block">
+                      {{ $t("workoutPlans.workoutsPerDay") }}
+                    </span>
+                    <p
+                      v-if="
+                        errors[
+                          `weeks[${selectedWeek}].days[${dayIndex}].workoutIds`
+                        ]
+                      "
+                      class="text-sm font-medium text-destructive"
+                    >
+                      {{
+                        errors[
+                          `weeks[${selectedWeek}].days[${dayIndex}].workoutIds`
+                        ]
+                      }}
+                    </p>
+                    <WorkoutListSelect
+                      :key="`week-${selectedWeek}-day-${dayIndex}`"
+                      :model-value="day.workoutIds ?? []"
+                      :placeholder="$t('workoutPlans.addWorkout')"
+                      :scroll-ref="pageScrollRef"
+                      @update:model-value="
+                        (ids) => setDayWorkoutIds(selectedWeek, dayIndex, ids)
+                      "
+                    />
+                    <Button
+                      v-if="
+                        !(
+                          creatorTarget?.weekIndex === selectedWeek &&
+                          creatorTarget?.dayIndex === dayIndex
+                        )
+                      "
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      class="w-full"
+                      @click="openCreator(selectedWeek, dayIndex)"
+                    >
+                      <Plus class="w-4 h-4 mr-2" />
+                      {{ $t("workoutPlans.adHocWorkout.create") }}
+                    </Button>
+                  </div>
+                  <InlineWorkoutCreator
+                    v-if="
+                      creatorTarget?.weekIndex === selectedWeek &&
+                      creatorTarget?.dayIndex === dayIndex
+                    "
+                    :save-to-library="false"
+                    :scroll-ref="pageScrollRef"
+                    @workout-created="
+                      (w) => onWorkoutCreated(selectedWeek, dayIndex, w)
+                    "
+                    @close="creatorTarget = null"
+                  />
                 </div>
-              </div>
-            </div>
           </div>
-          <FormField name="weeks">
-            <FormItem>
-              <FormMessage />
-            </FormItem>
-          </FormField>
         </div>
       </form>
-
-      <EditWorkoutDialog
-        v-model:open="editWorkoutDialogOpen"
-        :workout-id="editWorkoutId"
-      />
-
-      <AdHocWorkoutDialog
-        v-model:open="adHocDialogOpen"
-        :day-label="adHocTarget
-          ? $t('workoutPlans.adHocWorkout.dayLabel', {
-              week: adHocTarget.weekIndex + 1,
-              day: adHocTarget.dayIndex + 1,
-            })
-          : ''"
-        :save-to-library="false"
-        @workout-created="onAdHocWorkoutCreated"
-      />
 
       <div class="flex flex-col gap-2 pt-4 border-t">
         <Dialog v-if="isEditMode" v-model:open="showDeleteDialog">
@@ -425,10 +442,18 @@ onBeforeRouteLeave(() => {
               <DialogDescription>{{ $t("areYouSure") }}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" @click="showDeleteDialog = false" :disabled="isDeleting">
+              <Button
+                variant="outline"
+                @click="showDeleteDialog = false"
+                :disabled="isDeleting"
+              >
                 {{ $t("cancel") }}
               </Button>
-              <Button variant="destructive" @click="onDelete" :disabled="isDeleting">
+              <Button
+                variant="destructive"
+                @click="onDelete"
+                :disabled="isDeleting"
+              >
                 {{ isDeleting ? $t("deleting") : $t("delete") }}
               </Button>
             </DialogFooter>
@@ -437,7 +462,10 @@ onBeforeRouteLeave(() => {
         <Button @click="onSubmit" :disabled="isPending" class="flex-1">
           {{ submitButtonText }}
         </Button>
-        <Button variant="outline" @click="router.push({ name: 'workout-plans' })">
+        <Button
+          variant="outline"
+          @click="router.push({ name: 'workout-plans' })"
+        >
           {{ $t("cancel") }}
         </Button>
       </div>

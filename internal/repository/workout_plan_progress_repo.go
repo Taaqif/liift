@@ -97,8 +97,8 @@ func (r *WorkoutPlanProgressRepository) Complete(ctx context.Context, id, userID
 	return r.GetByID(ctx, id, userID)
 }
 
-// AdvanceDay moves the plan progress to the next non-rest day.
-// If already at the last non-rest day, it's a no-op (user must manually complete).
+// AdvanceDay moves the plan progress to the next day.
+// If already at the last day, it's a no-op (user must manually complete).
 func (r *WorkoutPlanProgressRepository) AdvanceDay(ctx context.Context, id uint) error {
 	progress, err := r.GetByID(ctx, id, 0 /* no userID check — internal call */)
 	if err != nil {
@@ -109,25 +109,23 @@ func (r *WorkoutPlanProgressRepository) AdvanceDay(ctx context.Context, id uint)
 	}
 
 	schedule := progress.Plan.Schedule
-	// Find next non-rest day after current position
+	// Find next day after current position
 	for w := progress.CurrentWeek; w < len(schedule); w++ {
 		startDay := 0
 		if w == progress.CurrentWeek {
 			startDay = progress.CurrentDay + 1
 		}
 		for d := startDay; d < len(schedule[w].Days); d++ {
-			if !schedule[w].Days[d].IsRest {
-				return r.DB().WithContext(ctx).
-					Model(&models.WorkoutPlanProgress{}).
-					Where("id = ?", id).
-					Updates(map[string]interface{}{
-						"current_week": w,
-						"current_day":  d,
-					}).Error
-			}
+			return r.DB().WithContext(ctx).
+				Model(&models.WorkoutPlanProgress{}).
+				Where("id = ?", id).
+				Updates(map[string]interface{}{
+					"current_week": w,
+					"current_day":  d,
+				}).Error
 		}
 	}
-	// No next non-rest day found — at end of plan, nothing to do
+	// No next day found — at end of plan, nothing to do
 	return nil
 }
 

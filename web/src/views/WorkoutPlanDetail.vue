@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkoutPlan } from "@/features/workout-plans/composables/useWorkoutPlan";
 import { useWorkouts } from "@/features/workouts/composables/useWorkouts";
@@ -45,6 +45,8 @@ function formatValue(name: string, value: number): string {
 function exerciseFeatureNames(ex: WorkoutExercise): string[] {
   return ex.sets[0]?.features.map((f) => f.feature_name) ?? [];
 }
+
+const selectedWeek = ref(0);
 </script>
 
 <template>
@@ -82,28 +84,32 @@ function exerciseFeatureNames(ex: WorkoutExercise): string[] {
         <span>{{ $t("workoutPlans.weeksDays", { weeks: plan.numberOfWeeks, days: plan.daysPerWeek }) }}</span>
       </div>
 
-      <div class="space-y-10">
-        <section v-for="(week, weekIdx) in plan.weeks" :key="weekIdx">
-          <h2 class="text-base font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-            {{ $t("workoutPlans.weekLabel", { number: weekIdx + 1 }) }}
-          </h2>
+      <div class="flex flex-wrap justify-center gap-2 mb-6">
+        <Button
+          v-for="(_, weekIdx) in plan.weeks"
+          :key="weekIdx"
+          type="button"
+          :variant="selectedWeek === weekIdx ? 'default' : 'outline'"
+          class="min-w-12 h-10 text-base font-semibold"
+          @click="selectedWeek = weekIdx"
+        >
+          {{ weekIdx + 1 }}
+        </Button>
+      </div>
 
-          <div class="space-y-3">
-            <Card v-for="(day, dayIdx) in week.days" :key="dayIdx">
+      <div class="space-y-3">
+        <template v-if="plan.weeks[selectedWeek]">
+            <Card v-for="(day, dayIdx) in plan.weeks[selectedWeek].days" :key="dayIdx">
               <CardHeader class="pb-2">
                 <CardTitle class="text-sm font-semibold flex items-center gap-2">
                   {{ $t("workoutPlans.dayLabel", { number: dayIdx + 1 }) }}
-                  <span v-if="day.isRest" class="font-normal text-muted-foreground">
-                    — {{ $t("workoutPlans.restDay") }}
-                  </span>
                 </CardTitle>
                 <p v-if="day.description" class="text-sm text-muted-foreground mt-0.5">
                   {{ day.description }}
                 </p>
               </CardHeader>
 
-              <template v-if="!day.isRest">
-                <CardContent
+              <CardContent
                   v-if="day.workoutIds.length === 0"
                   class="pt-0 pb-4"
                 >
@@ -189,10 +195,8 @@ function exerciseFeatureNames(ex: WorkoutExercise): string[] {
                     </p>
                   </div>
                 </CardContent>
-              </template>
             </Card>
-          </div>
-        </section>
+        </template>
       </div>
     </template>
   </div>

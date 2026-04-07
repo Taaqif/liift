@@ -22,7 +22,7 @@ const emits = defineEmits<{
 
 function totalWorkoutSlots(plan: WorkoutPlan): number {
   return plan.weeks.reduce(
-    (acc, w) => acc + w.days.filter((d) => !d.isRest && d.workoutIds.length > 0).length,
+    (acc, w) => acc + w.days.filter((d) => d.workoutIds.length > 0).length,
     0,
   );
 }

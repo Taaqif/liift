@@ -26,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, ChevronLeft, ChevronRight, Check, Play, Trophy, Dumbbell, History } from "lucide-vue-next";
+import { ArrowLeft, Check, Play, Trophy, Dumbbell, History, ChevronDown } from "lucide-vue-next";
 import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer.vue";
 
 const router = useRouter();
@@ -85,13 +85,13 @@ function isDayPast(dayIndex: number): boolean {
   return false;
 }
 
-function findNextNonRestDay(fromWeek: number, fromDay: number): { week: number; day: number } | null {
+function findNextDay(fromWeek: number, fromDay: number): { week: number; day: number } | null {
   const ws = weeks.value;
   for (let w = fromWeek; w < ws.length; w++) {
     const weekDays = ws[w]?.days ?? [];
     const startDay = w === fromWeek ? fromDay : 0;
     for (let d = startDay; d < weekDays.length; d++) {
-      if (!weekDays[d]?.isRest) return { week: w, day: d };
+      return { week: w, day: d };
     }
   }
   return null;
@@ -99,7 +99,7 @@ function findNextNonRestDay(fromWeek: number, fromDay: number): { week: number; 
 
 const nextPosition = computed(() => {
   if (!progress.value) return null;
-  return findNextNonRestDay(progress.value.current_week, progress.value.current_day + 1);
+  return findNextDay(progress.value.current_week, progress.value.current_day + 1);
 });
 
 const isOnLastDay = computed(() => nextPosition.value === null);
@@ -167,6 +167,31 @@ function openLogs(exerciseId: number, name?: string) {
   logDrawerOpen.value = true;
 }
 
+const previewDayIndex = ref<number | null>(null);
+
+function togglePreview(dayIndex: number) {
+  previewDayIndex.value = previewDayIndex.value === dayIndex ? null : dayIndex;
+}
+
+const featureUnitMap: Record<string, string> = {
+  weight: "kg",
+  rep: "reps",
+  duration: "s",
+  distance: "m",
+};
+
+function featureLabel(name: string): string {
+  const unit = featureUnitMap[name];
+  const label = name.charAt(0).toUpperCase() + name.slice(1);
+  return unit ? `${label} (${unit})` : label;
+}
+
+function formatValue(name: string, value: number): string {
+  const formatted = Number.isInteger(value) ? value.toString() : value.toFixed(1);
+  const unit = featureUnitMap[name];
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
 </script>
 
 <template>
@@ -208,32 +233,16 @@ function openLogs(exerciseId: number, name?: string) {
       </div>
 
       <!-- Week navigation -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex flex-wrap justify-center gap-2 mb-6">
         <Button
-          variant="outline"
-          size="icon"
-          :disabled="currentViewWeek === 0"
-          @click="viewWeek = currentViewWeek - 1"
+          v-for="(_, weekIdx) in weeks"
+          :key="weekIdx"
+          type="button"
+          :variant="currentViewWeek === weekIdx ? 'default' : 'outline'"
+          class="min-w-12 h-10 text-base font-semibold"
+          @click="viewWeek = weekIdx; previewDayIndex = null"
         >
-          <ChevronLeft class="h-4 w-4" />
-        </Button>
-
-        <div class="text-center">
-          <h2 class="text-xl font-semibold">
-            {{ $t("workoutPlans.weekLabel", { number: currentViewWeek + 1 }) }}
-          </h2>
-          <p class="text-sm text-muted-foreground">
-            {{ $t("workoutPlans.progress.weekOf", { current: currentViewWeek + 1, total: totalWeeks }) }}
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          size="icon"
-          :disabled="currentViewWeek >= totalWeeks - 1"
-          @click="viewWeek = currentViewWeek + 1"
-        >
-          <ChevronRight class="h-4 w-4" />
+          {{ weekIdx + 1 }}
         </Button>
       </div>
 
@@ -282,24 +291,38 @@ function openLogs(exerciseId: number, name?: string) {
                   class="size-2 rounded-full bg-primary shrink-0 inline-block"
                 />
                 {{ $t("workoutPlans.dayLabel", { number: dayIndex + 1 }) }}
-                <span v-if="day.isRest" class="text-xs font-normal text-muted-foreground">
-                  — {{ $t("workoutPlans.restDay") }}
-                </span>
               </CardTitle>
-              <Button
-                v-if="!day.isRest && !isCurrentPosition(dayIndex)"
-                variant="ghost"
-                size="sm"
-                class="text-xs h-7"
-                :disabled="isUpdating || !!activeDaySession"
-                @click="handleJumpToDay(currentViewWeek, dayIndex)"
-              >
-                {{ $t("workoutPlans.progress.jumpHere") }}
-              </Button>
+              <div class="flex items-center gap-1">
+                <Button
+                  v-if="!isCurrentPosition(dayIndex)"
+                  variant="ghost"
+                  size="sm"
+                  class="text-xs h-7"
+                  :disabled="isUpdating || !!activeDaySession"
+                  @click="handleJumpToDay(currentViewWeek, dayIndex)"
+                >
+                  {{ $t("workoutPlans.progress.jumpHere") }}
+                </Button>
+                <Button
+                  v-if="day.workoutIds.length > 0"
+                  variant="ghost"
+                  size="icon"
+                  class="size-7"
+                  @click="togglePreview(dayIndex)"
+                >
+                  <ChevronDown
+                    class="size-4 transition-transform duration-200"
+                    :class="{ 'rotate-180': previewDayIndex === dayIndex }"
+                  />
+                </Button>
+              </div>
             </div>
+            <p v-if="day.description" class="text-sm text-muted-foreground mt-0.5">
+              {{ day.description }}
+            </p>
           </CardHeader>
 
-          <CardContent v-if="!day.isRest">
+          <CardContent class="pb-3">
             <div class="space-y-4">
               <div
                 v-if="day.workoutIds.length === 0"
@@ -308,40 +331,98 @@ function openLogs(exerciseId: number, name?: string) {
                 {{ $t("workoutPlans.progress.noWorkoutsAssigned") }}
               </div>
               <template v-else>
-                <!-- Workouts with their exercises -->
-                <div
-                  v-for="workoutId in day.workoutIds"
-                  :key="`w-${workoutId}`"
-                  class="space-y-1"
-                >
-                  <p class="text-sm font-medium">
-                    {{ getWorkout(workoutId)?.name ?? `#${workoutId}` }}
-                  </p>
-                  <ul class="space-y-1 pl-3">
-                    <li
-                      v-for="we in (getWorkout(workoutId)?.exercises ?? [])"
-                      :key="we.id"
-                      class="flex items-center justify-between gap-2 text-sm text-muted-foreground"
+                <!-- Collapsed: exercise name summary -->
+                <div v-if="previewDayIndex !== dayIndex" class="space-y-1">
+                  <div
+                    v-for="workoutId in day.workoutIds"
+                    :key="`summary-${workoutId}`"
+                  >
+                    <p class="text-sm font-medium">{{ getWorkout(workoutId)?.name ?? `#${workoutId}` }}</p>
+                    <p
+                      v-if="getWorkout(workoutId)?.exercises?.length"
+                      class="text-xs text-muted-foreground truncate"
                     >
-                      <div class="flex items-center gap-2 min-w-0">
-                        <span class="size-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                        <span class="truncate">{{ we.exercise?.name ?? `#${we.exercise_id}` }}</span>
+                      {{ getWorkout(workoutId)!.exercises.map((e) => e.exercise?.name).filter(Boolean).join(" · ") }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Expanded: full workout detail -->
+                <div v-else class="space-y-6">
+                  <div
+                    v-for="workoutId in day.workoutIds"
+                    :key="`preview-${workoutId}`"
+                    class="space-y-3"
+                  >
+                    <p class="text-sm font-semibold">{{ getWorkout(workoutId)?.name ?? `#${workoutId}` }}</p>
+                    <div
+                      v-if="!getWorkout(workoutId)?.exercises?.length"
+                      class="text-sm text-muted-foreground"
+                    >
+                      {{ $t("workoutPlans.detail.noExercises") }}
+                    </div>
+                    <div v-else class="space-y-4">
+                      <div
+                        v-for="ex in getWorkout(workoutId)!.exercises"
+                        :key="ex.id ?? ex.order"
+                      >
+                        <div class="flex items-baseline gap-2 mb-1.5">
+                          <span class="text-sm font-medium">{{ ex.exercise?.name ?? `#${ex.exercise_id}` }}</span>
+                          <span
+                            v-if="ex.exercise?.primary_muscle_groups?.length"
+                            class="text-xs text-muted-foreground"
+                          >
+                            {{ ex.exercise.primary_muscle_groups.map((m) => m.name).join(", ") }}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            class="size-6 ml-auto text-muted-foreground/60 hover:text-foreground"
+                            @click="openLogs(ex.exercise_id, ex.exercise?.name)"
+                          >
+                            <History class="size-3.5" />
+                          </Button>
+                        </div>
+                        <div v-if="ex.sets.length > 0" class="rounded-md border overflow-hidden text-xs">
+                          <table class="w-full">
+                            <thead>
+                              <tr class="bg-muted/50 text-muted-foreground">
+                                <th class="px-3 py-1.5 text-left font-medium w-10">
+                                  {{ $t("exercises.logs.set") }}
+                                </th>
+                                <th
+                                  v-for="feat in ex.sets[0]?.features ?? []"
+                                  :key="feat.feature_name"
+                                  class="px-3 py-1.5 text-right font-medium"
+                                >
+                                  {{ featureLabel(feat.feature_name) }}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border">
+                              <tr
+                                v-for="(set, sIdx) in ex.sets"
+                                :key="set.id ?? sIdx"
+                                class="hover:bg-muted/30"
+                              >
+                                <td class="px-3 py-1.5 text-muted-foreground font-medium">{{ sIdx + 1 }}</td>
+                                <td
+                                  v-for="feat in set.features"
+                                  :key="feat.feature_name"
+                                  class="px-3 py-1.5 text-right tabular-nums"
+                                >
+                                  {{ formatValue(feat.feature_name, feat.value) }}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <p v-if="ex.note" class="text-xs text-muted-foreground mt-1.5 italic">
+                          {{ ex.note }}
+                        </p>
                       </div>
-                      <div class="flex items-center gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          class="size-6 text-muted-foreground/60 hover:text-foreground"
-                          @click="openLogs(we.exercise_id, we.exercise?.name)"
-                        >
-                          <History class="size-3.5" />
-                        </Button>
-                        <span class="text-xs text-muted-foreground/70">
-                          {{ we.sets.length }} {{ setLabel(we.sets.length) }}
-                        </span>
-                      </div>
-                    </li>
-                  </ul>
+                    </div>
+                  </div>
                 </div>
 
                 <template v-if="isCurrentPosition(dayIndex)">

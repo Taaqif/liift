@@ -232,7 +232,7 @@ func (h *WorkoutPlanProgressHandler) StartDay(c echo.Context) error {
 	}
 
 	day := schedule[progress.CurrentWeek].Days[progress.CurrentDay]
-	if day.IsRest || len(day.WorkoutIDs) == 0 {
+	if len(day.WorkoutIDs) == 0 {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "no_workouts_for_day"})
 	}
 

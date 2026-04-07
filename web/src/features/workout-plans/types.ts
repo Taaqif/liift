@@ -4,7 +4,6 @@ import { i18n } from "@/i18n";
 const t = i18n.global.t;
 
 export const planDaySchema = z.object({
-  isRest: z.boolean(),
   workoutIds: z.array(z.number().int().positive()),
   description: z.string().optional(),
 });
@@ -13,13 +12,30 @@ export const planWeekSchema = z.object({
   days: z.array(planDaySchema),
 });
 
-export const workoutPlanFormSchema = z.object({
-  name: z.string().min(1, t("workoutPlans.validation.nameRequired")),
-  description: z.string().optional(),
-  numberOfWeeks: z.coerce.number().int().min(1).max(52),
-  daysPerWeek: z.coerce.number().int().min(1).max(14),
-  weeks: z.array(planWeekSchema),
-});
+export const workoutPlanFormSchema = z
+  .object({
+    name: z.string().min(1, t("workoutPlans.validation.nameRequired")),
+    description: z.string().optional(),
+    numberOfWeeks: z.coerce.number().int().min(1).max(52),
+    daysPerWeek: z.coerce.number().int().min(1).max(14),
+    weeks: z.array(planWeekSchema),
+  })
+  .superRefine((data, ctx) => {
+    data.weeks.forEach((week, weekIdx) => {
+      week.days.forEach((day, dayIdx) => {
+        if (day.workoutIds.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t("workoutPlans.validation.workoutRequired", {
+              week: weekIdx + 1,
+              day: dayIdx + 1,
+            }),
+            path: ["weeks", weekIdx, "days", dayIdx, "workoutIds"],
+          });
+        }
+      });
+    });
+  });
 
 export type PlanDay = z.infer<typeof planDaySchema>;
 export type PlanWeek = z.infer<typeof planWeekSchema>;
@@ -43,7 +59,7 @@ export type WorkoutPlanProgress = {
 };
 
 export function createEmptyDay(): PlanDay {
-  return { isRest: false, workoutIds: [] };
+  return { workoutIds: [] };
 }
 
 export function createEmptyWeek(daysPerWeek: number): PlanWeek {

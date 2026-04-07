@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { GripVertical, X, Pencil } from "lucide-vue-next";
+import { GripVertical, X, ChevronDown } from "lucide-vue-next";
+import InlineWorkoutEditor from "./InlineWorkoutEditor.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -27,11 +28,11 @@ const props = withDefaults(
 
 const emits = defineEmits<{
   (e: "update:modelValue", value: number[]): void;
-  (e: "edit", workoutId: number): void;
 }>();
 
 const { workouts, loading } = useWorkouts({ limit: 500, includeAll: true });
 const selectedIdToAdd = ref<string | undefined>(undefined);
+const expandedId = ref<number | null>(null);
 
 const ids = computed(() => props.modelValue ?? []);
 
@@ -49,7 +50,9 @@ const options = computed(() =>
 );
 
 const orderedItems = computed(() =>
-  ids.value.map((id) => workoutById.value.get(id)).filter((w): w is Workout => !!w),
+  ids.value
+    .map((id) => workoutById.value.get(id))
+    .filter((w): w is Workout => !!w),
 );
 
 watch(selectedIdToAdd, (val) => {
@@ -63,8 +66,14 @@ watch(selectedIdToAdd, (val) => {
 });
 
 function removeAt(index: number) {
+  const id = ids.value[index];
+  if (expandedId.value === id) expandedId.value = null;
   const next = ids.value.filter((_, i) => i !== index);
   emits("update:modelValue", next);
+}
+
+function toggleExpand(id: number) {
+  expandedId.value = expandedId.value === id ? null : id;
 }
 
 function onReorder(event: { oldIndex?: number; newIndex?: number }) {
@@ -80,26 +89,13 @@ function onReorder(event: { oldIndex?: number; newIndex?: number }) {
 
 <template>
   <div class="space-y-2" :class="props.class">
-    <Select
-      v-model="selectedIdToAdd"
-      :disabled="loading || options.length === 0"
-    >
-      <SelectTrigger class="w-full">
-        <SelectValue :placeholder="placeholder" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem
-          v-for="opt in options"
-          :key="opt.value"
-          :value="opt.value"
-        >
-          {{ opt.label }}
-        </SelectItem>
-      </SelectContent>
-    </Select>
-
     <p
-      v-if="!loading && workouts.length > 0 && options.length === 0 && ids.length > 0"
+      v-if="
+        !loading &&
+        workouts.length > 0 &&
+        options.length === 0 &&
+        ids.length > 0
+      "
       class="text-xs text-muted-foreground"
     >
       {{ $t("workoutPlans.allWorkoutsAdded") }}
@@ -131,35 +127,67 @@ function onReorder(event: { oldIndex?: number; newIndex?: number }) {
       <div
         v-for="(item, index) in orderedItems"
         :key="item.id"
-        class="flex items-center gap-2 rounded border bg-background px-3 py-2 text-sm"
+        class="rounded border bg-background text-sm overflow-hidden"
       >
-        <span
-          class="workout-list-drag-handle cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-          aria-hidden="true"
+        <div class="flex items-center gap-2 px-3 py-2">
+          <span
+            class="workout-list-drag-handle cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+            aria-hidden="true"
+          >
+            <GripVertical class="h-4 w-4" />
+          </span>
+          <span class="flex-1 min-w-0 truncate">{{ item.name }}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 shrink-0"
+            @click="toggleExpand(item.id)"
+          >
+            <ChevronDown
+              class="h-4 w-4 transition-transform duration-200"
+              :class="{ 'rotate-180': expandedId === item.id }"
+            />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 shrink-0"
+            @click="removeAt(index)"
+          >
+            <X class="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div
+          v-if="expandedId !== item.id && item.exercises?.length"
+          class="px-3 pb-2 text-xs text-muted-foreground truncate"
         >
-          <GripVertical class="h-4 w-4" />
-        </span>
-        <span class="flex-1">{{ item.name }}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          class="h-8 w-8 shrink-0"
-          @click="emits('edit', item.id)"
-        >
-          <Pencil class="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          class="h-8 w-8 shrink-0"
-          @click="removeAt(index)"
-        >
-          <X class="h-4 w-4" />
-        </Button>
+          {{ item.exercises.map((e) => e.exercise?.name).filter(Boolean).join(" · ") }}
+        </div>
+
+        <InlineWorkoutEditor
+          v-if="expandedId === item.id"
+          :workout-id="item.id"
+          :scroll-ref="scrollRef"
+          @close="expandedId = null"
+        />
       </div>
     </VueDraggable>
+    <Select
+      v-model="selectedIdToAdd"
+      :disabled="loading || options.length === 0"
+    >
+      <SelectTrigger class="w-full">
+        <SelectValue :placeholder="placeholder" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem v-for="opt in options" :key="opt.value" :value="opt.value">
+          {{ opt.label }}
+        </SelectItem>
+      </SelectContent>
+    </Select>
   </div>
 </template>
 
