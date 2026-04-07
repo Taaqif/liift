@@ -12,13 +12,6 @@ import (
 func Migrate(db *gorm.DB) error {
 	log.Println("Running database migrations...")
 
-	if err := renameOrderToSortOrder(db); err != nil {
-		return err
-	}
-	if err := workoutSessionExerciseAdHocColumns(db); err != nil {
-		return err
-	}
-
 	err := db.AutoMigrate(
 		&models.Equipment{},
 		&models.MuscleGroup{},
@@ -38,6 +31,13 @@ func Migrate(db *gorm.DB) error {
 		&models.WorkoutPlanProgress{},
 	)
 	if err != nil {
+		return err
+	}
+
+	if err := renameOrderToSortOrder(db); err != nil {
+		return err
+	}
+	if err := workoutSessionExerciseAdHocColumns(db); err != nil {
 		return err
 	}
 

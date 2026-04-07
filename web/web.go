@@ -1,12 +1,11 @@
+//go:build !dev
+
 // Package web provides HTTP handlers for serving the frontend application.
 package web
 
 import (
 	"embed"
-	"log"
 	"net/http"
-	"net/url"
-	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -24,49 +23,16 @@ var (
 )
 
 func RegisterHandlers(e *echo.Echo) {
-	if os.Getenv("ENV") == "dev" {
-		log.Println("Running in dev mode")
-		setupDevProxy(e)
-		return
-	}
-	// Use the static assets from the dist directory
 	e.FileFS("/", "index.html", distIndexHTML)
 	e.StaticFS("/", distDirFS)
-	// This is needed to serve the index.html file for all routes that are not /api/*
-	// neede for SPA to work when loading a specific url directly
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
 		Skipper: func(c echo.Context) bool {
-			// Skip the proxy if the prefix is /api
 			return len(c.Path()) >= 4 && c.Path()[:4] == "/api"
 		},
-		// Root directory from where the static content is served.
-		Root: "/",
-		// Enable HTML5 mode by forwarding all not-found requests to root so that
-		// SPA (single-page application) can handle the routing.
+		Root:       "/",
 		HTML5:      true,
 		Browse:     false,
 		IgnoreBase: true,
 		Filesystem: http.FS(distDirFS),
 	}))
 }
-
-func setupDevProxy(e *echo.Echo) {
-	url, err := url.Parse("http://localhost:5173")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// This proxy handles both HTTP and WebSocket connections for HMR
-	balancer := middleware.NewRoundRobinBalancer([]*middleware.ProxyTarget{
-		{
-			URL: url,
-		},
-	})
-	e.Use(middleware.ProxyWithConfig(middleware.ProxyConfig{
-		Balancer: balancer,
-		Skipper: func(c echo.Context) bool {
-			// Skip the proxy if the prefix is /api
-			return len(c.Path()) >= 4 && c.Path()[:4] == "/api"
-		},
-	}))
-}
-
