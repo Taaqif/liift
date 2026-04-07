@@ -35,7 +35,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { Plus, Minus, Timer, StopCircle, Check, Circle, History, ChevronLeft, ChevronRight, LayoutList } from "lucide-vue-next";
+import { Plus, Minus, Timer, StopCircle, Check, Circle, History, ChevronLeft, ChevronRight, LayoutList, Trash2 } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer.vue";
@@ -169,6 +169,7 @@ async function setCompleted(
   ex: WorkoutSessionExercise,
   setIdx: number,
   checked: boolean,
+  force = false,
 ) {
   if (!localSession.value) return;
   const exIndex = localSession.value.exercises.findIndex((e) => e.id === ex.id);
@@ -177,6 +178,13 @@ async function setCompleted(
   if (!sets || setIdx < 0 || setIdx >= sets.length) return;
   const s = sets[setIdx];
   if (!s) return;
+
+  // If completing the last set while earlier sets are still unchecked, ask first
+  if (!force && checked && setIdx === sets.length - 1 && sets.slice(0, setIdx).some((s) => !s.completed_at)) {
+    pendingSetCompletion.value = { ex, setIdx };
+    showSkippedSetsDialog.value = true;
+    return;
+  }
 
   s.completed_at = checked ? new Date().toISOString() : null;
 
@@ -191,6 +199,8 @@ async function setCompleted(
   }
 
   const viewedExIndex = activeExIndex.value;
+  const isLastExercise = exIndex === localSession.value.exercises.length - 1;
+  const isLastSet = setIdx === sets.length - 1;
 
   if (sessionId.value === 0) return;
   const payload = buildPayload();
@@ -206,13 +216,28 @@ async function setCompleted(
     return;
   }
 
-  // Auto-advance only if the user is still viewing the exercise that just became fully complete
-  if (checked && viewedExIndex === activeExIndex.value) {
-    const ex = localSession.value?.exercises[viewedExIndex];
-    if (ex && isExerciseComplete(ex) && viewedExIndex < (localSession.value?.exercises.length ?? 1) - 1) {
-      setTimeout(() => { activeExIndex.value++; }, 400);
+  if (checked) {
+    // Prompt to end if this was the last set of the last exercise
+    if (isLastExercise && isLastSet) {
+      showEndDialog.value = true;
+      return;
+    }
+    // Auto-advance only if the user is still viewing the exercise that just became fully complete
+    if (viewedExIndex === activeExIndex.value) {
+      const ex = localSession.value?.exercises[viewedExIndex];
+      if (ex && isExerciseComplete(ex) && viewedExIndex < (localSession.value?.exercises.length ?? 1) - 1) {
+        setTimeout(() => { activeExIndex.value++; }, 400);
+      }
     }
   }
+}
+
+async function confirmSkippedSets() {
+  showSkippedSetsDialog.value = false;
+  const pending = pendingSetCompletion.value;
+  pendingSetCompletion.value = null;
+  if (!pending) return;
+  await setCompleted(pending.ex, pending.setIdx, true, true);
 }
 
 function isSetCheckboxDisabled(ex: WorkoutSessionExercise, setIdx: number): boolean {
@@ -264,6 +289,31 @@ function addSet(ex: WorkoutSessionExercise) {
       })) ?? [],
   };
   exItem.sets.push(newSet);
+  save();
+}
+
+const showSkippedSetsDialog = ref(false);
+const pendingSetCompletion = ref<{ ex: WorkoutSessionExercise; setIdx: number } | null>(null);
+
+const showRemoveExerciseDialog = ref(false);
+const exerciseToRemove = ref<WorkoutSessionExercise | null>(null);
+
+function confirmRemoveExercise(ex: WorkoutSessionExercise) {
+  exerciseToRemove.value = ex;
+  showRemoveExerciseDialog.value = true;
+}
+
+function removeExercise() {
+  const ex = exerciseToRemove.value;
+  if (!ex || !localSession.value) return;
+  showRemoveExerciseDialog.value = false;
+  const idx = localSession.value.exercises.findIndex((e) => e.id === ex.id);
+  if (idx === -1) return;
+  localSession.value.exercises.splice(idx, 1);
+  // Clamp activeExIndex so it stays in bounds
+  if (activeExIndex.value >= localSession.value.exercises.length) {
+    activeExIndex.value = Math.max(0, localSession.value.exercises.length - 1);
+  }
   save();
 }
 
@@ -502,6 +552,9 @@ const showWorkoutSheet = ref(false);
             <DialogTitle>{{ $t("workoutSession.endDialog.title") }}</DialogTitle>
             <DialogDescription>{{ $t("workoutSession.endDialog.description") }}</DialogDescription>
           </DialogHeader>
+          <div v-if="!allExercisesComplete" class="rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+            {{ $t("workoutSession.endDialog.incompleteWarning") }}
+          </div>
           <div class="flex flex-col gap-2 pt-2">
             <Button
               class="bg-green-600 hover:bg-green-700 text-white"
@@ -511,6 +564,42 @@ const showWorkoutSheet = ref(false);
               {{ endingWorkout ? $t("workoutSession.ending") : $t("workoutSession.completeWorkout") }}
             </Button>
             <Button variant="outline" :disabled="endingWorkout" @click="showEndDialog = false">
+              {{ $t("cancel") }}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog v-model:open="showSkippedSetsDialog">
+        <DialogContent class="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{{ $t("workoutSession.skippedSetsDialog.title") }}</DialogTitle>
+            <DialogDescription>{{ $t("workoutSession.skippedSetsDialog.description") }}</DialogDescription>
+          </DialogHeader>
+          <div class="flex flex-col gap-2 pt-2">
+            <Button @click="confirmSkippedSets">
+              {{ $t("workoutSession.skippedSetsDialog.confirm") }}
+            </Button>
+            <Button variant="outline" @click="showSkippedSetsDialog = false">
+              {{ $t("cancel") }}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog v-model:open="showRemoveExerciseDialog">
+        <DialogContent class="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{{ $t("workoutSession.removeExerciseDialog.title") }}</DialogTitle>
+            <DialogDescription>
+              {{ $t("workoutSession.removeExerciseDialog.description", { name: exerciseToRemove?.exercise?.name ?? '' }) }}
+            </DialogDescription>
+          </DialogHeader>
+          <div class="flex flex-col gap-2 pt-2">
+            <Button variant="destructive" @click="removeExercise">
+              {{ $t("workoutSession.removeExerciseDialog.confirm") }}
+            </Button>
+            <Button variant="outline" @click="showRemoveExerciseDialog = false">
               {{ $t("cancel") }}
             </Button>
           </div>
@@ -556,15 +645,17 @@ const showWorkoutSheet = ref(false);
         <CardHeader class="pb-2">
           <!-- Segmented exercise progress bar -->
           <div class="flex gap-1 mb-3">
-            <div
+            <button
               v-for="(ex, idx) in exercises"
               :key="ex.id"
-              class="h-1.5 flex-1 rounded-full transition-colors duration-300"
+              type="button"
+              class="h-1.5 flex-1 rounded-full transition-colors duration-300 cursor-pointer"
               :class="idx === activeExIndex
                 ? 'bg-primary'
                 : isExerciseComplete(ex)
                   ? 'bg-green-500'
                   : 'bg-muted'"
+              @click="activeExIndex = idx"
             />
           </div>
           <div class="flex items-start justify-between gap-3">
@@ -587,6 +678,15 @@ const showWorkoutSheet = ref(false);
                 @click="openLogs(currentEx.exercise.id, currentEx.exercise.name)"
               >
                 <History class="size-4" />
+              </Button>
+              <Button
+                v-if="isActive && currentEx.workout_exercise_id === 0"
+                variant="ghost"
+                size="icon"
+                class="size-8 text-destructive hover:text-destructive"
+                @click="confirmRemoveExercise(currentEx)"
+              >
+                <Trash2 class="size-4" />
               </Button>
             </div>
           </div>
