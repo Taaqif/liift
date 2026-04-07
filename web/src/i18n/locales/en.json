@@ -276,6 +276,11 @@
     },
     "setsCompleted": "{count} set completed | {count} sets completed",
     "completeWorkout": "Complete Workout",
+    "viewFullWorkout": "View full workout",
+    "previewTitle": "Workout Overview",
+    "done": "Done",
+    "previous": "Previous",
+    "inProgress": "In progress",
     "endDialog": {
       "title": "Complete workout?",
       "description": "Are you sure you want to end this workout? This cannot be undone."
