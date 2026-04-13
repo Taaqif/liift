@@ -134,6 +134,9 @@ async function save(): Promise<void> {
 
 const defaultRestSeconds = 60;
 
+// Donut timer: r=8 in a 20×20 viewBox, stroke-width=3 leaves a visible hole
+const REST_CIRC = 2 * Math.PI * 8; // ≈ 50.265
+
 function startRestTimer(ex: WorkoutSessionExercise, setIdx: number) {
   const restSeconds = ex.rest_timer > 0 ? ex.rest_timer : defaultRestSeconds;
   restRemaining.value = restSeconds;
@@ -223,7 +226,7 @@ async function setCompleted(
   if (checked) {
     // Prompt to end if this was the last set of the last exercise
     if (isLastExercise && isLastSet) {
-      showEndDialog.value = true;
+      openFinishDialog();
       return;
     }
     // Auto-advance only if the user is still viewing the exercise that just became fully complete
@@ -245,6 +248,10 @@ async function confirmSkippedSets() {
 }
 
 function isSetCheckboxDisabled(ex: WorkoutSessionExercise, setIdx: number): boolean {
+  const set = ex.sets[setIdx];
+  // Already ticked — always allow unchecking
+  if (set?.completed_at) return false;
+  // Unticked — only disable if the previous set isn't done yet
   if (setIdx === 0) return false;
   const prev = ex.sets[setIdx - 1];
   return !prev?.completed_at;
@@ -296,7 +303,18 @@ function addSet(ex: WorkoutSessionExercise) {
   save();
 }
 
+function removeSet(ex: WorkoutSessionExercise, setIdx: number) {
+  if (!localSession.value) return;
+  const exItem = localSession.value.exercises.find((e) => e.id === ex.id);
+  if (!exItem || exItem.sets.length <= 1) return;
+  exItem.sets.splice(setIdx, 1);
+  // Re-number orders
+  exItem.sets.forEach((s, i) => { s.order = i; });
+  save();
+}
+
 const showSkippedSetsDialog = ref(false);
+// showCancelDialog / showEndDialog removed — use openFinishDialog("cancel"/"complete")
 const pendingSetCompletion = ref<{ ex: WorkoutSessionExercise; setIdx: number } | null>(null);
 
 const showRemoveExerciseDialog = ref(false);
@@ -357,13 +375,26 @@ function formatElapsed(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const showEndDialog = ref(false);
-const showCancelDialog = ref(false);
+// ── Unified finish dialog ─────────────────────────────────
+const showFinishDialog = ref(false);
 const cancellingWorkout = ref(false);
+
+function openFinishDialog() {
+  showFinishDialog.value = true;
+}
+
+const incompleteSets = computed(() => {
+  const exs = localSession.value?.exercises ?? [];
+  return exs.flatMap((ex) =>
+    ex.sets
+      .map((s, i) => ({ ex, setIdx: i, set: s }))
+      .filter(({ set }) => !set.completed_at),
+  );
+});
 
 async function handleCancelWorkout() {
   if (sessionId.value === 0) return;
-  showCancelDialog.value = false;
+  showFinishDialog.value = false;
   cancellingWorkout.value = true;
   try {
     await cancelSessionMutation.cancelSession();
@@ -377,7 +408,7 @@ async function handleCancelWorkout() {
 
 async function handleEndWorkout() {
   if (sessionId.value === 0) return;
-  showEndDialog.value = false;
+  showFinishDialog.value = false;
   endingWorkout.value = true;
   try {
     await endSessionMutation.endSession();
@@ -388,6 +419,7 @@ async function handleEndWorkout() {
     endingWorkout.value = false;
   }
 }
+
 
 watch(
   [loading, session],
@@ -476,7 +508,7 @@ const allExercisesComplete = computed(() => {
 
 watch(allExercisesComplete, (complete) => {
   if (complete && isActive.value) {
-    showEndDialog.value = true;
+    openFinishDialog();
   }
 });
 
@@ -506,12 +538,30 @@ function chunk2<T>(arr: T[]): T[][] {
             <span class="tabular-nums">{{ formatElapsed(elapsedSeconds) }}</span>
           </div>
         </div>
+
+        <!-- Rest countdown donut -->
+        <Transition name="rest-fade">
+          <div v-if="restRemaining !== null" class="flex items-center gap-1.5 shrink-0 px-1">
+            <svg viewBox="0 0 20 20" class="size-5 -rotate-90" aria-hidden="true">
+              <circle cx="10" cy="10" r="8" fill="none" stroke-width="3"
+                class="text-muted-foreground/20" stroke="currentColor" />
+              <circle cx="10" cy="10" r="8" fill="none" stroke-width="3"
+                stroke-linecap="round" class="text-green-500" stroke="currentColor"
+                :stroke-dasharray="REST_CIRC"
+                :stroke-dashoffset="REST_CIRC * (1 - restRemaining / restTotal)"
+                style="transition: stroke-dashoffset 0.95s linear"
+              />
+            </svg>
+            <span class="tabular-nums text-sm font-semibold text-green-600 dark:text-green-400">{{ restRemaining }}s</span>
+          </div>
+        </Transition>
+
         <Button
           v-if="isActive"
           type="button"
           variant="ghost"
           size="icon"
-          class="size-8 shrink-0"
+          class="size-9 shrink-0"
           :disabled="addExerciseMutation.isPending.value"
           @click="showAddExercisePicker = true"
         >
@@ -521,19 +571,20 @@ function chunk2<T>(arr: T[]): T[][] {
           type="button"
           variant="ghost"
           size="icon"
-          class="size-8 shrink-0"
+          class="size-9 shrink-0"
           @click="showWorkoutSheet = true"
         >
           <LayoutList class="w-4 h-4" />
         </Button>
+
         <Button
           v-if="isActive"
           type="button"
           variant="ghost"
           size="icon"
-          class="size-8 shrink-0 text-green-600 hover:text-green-700"
-          :disabled="endingWorkout || endSessionMutation.isPending.value"
-          @click="showEndDialog = true"
+          class="size-9 shrink-0 text-green-600 hover:text-green-700"
+          :disabled="endingWorkout || cancellingWorkout"
+          @click="showFinishDialog = true"
         >
           <StopCircle class="w-4 h-4" />
         </Button>
@@ -545,9 +596,31 @@ function chunk2<T>(arr: T[]): T[][] {
           <h1 class="text-2xl font-bold">
             {{ localSession.workout?.name ?? $t("workoutSession.activeWorkout") }}
           </h1>
-          <div class="flex items-center gap-2 mt-2 text-muted-foreground">
-            <Timer class="w-4 h-4 shrink-0" />
-            <span>{{ $t("workoutSession.startedAt") }} {{ formatElapsed(elapsedSeconds) }}</span>
+          <div class="flex items-center gap-3 mt-2 text-muted-foreground">
+            <div class="flex items-center gap-1">
+              <Timer class="w-4 h-4 shrink-0" />
+              <span>{{ $t("workoutSession.startedAt") }} {{ formatElapsed(elapsedSeconds) }}</span>
+            </div>
+            <!-- Rest countdown circle -->
+            <Transition name="rest-fade">
+              <div v-if="restRemaining !== null" class="flex items-center gap-1.5">
+                <svg
+                  viewBox="0 0 20 20"
+                  class="size-5 -rotate-90"
+                  aria-hidden="true"
+                >
+                  <circle cx="10" cy="10" r="8" fill="none" stroke-width="3"
+                    class="text-muted-foreground/20" stroke="currentColor" />
+                  <circle cx="10" cy="10" r="8" fill="none" stroke-width="3"
+                    stroke-linecap="round" class="text-green-500" stroke="currentColor"
+                    :stroke-dasharray="REST_CIRC"
+                    :stroke-dashoffset="REST_CIRC * (1 - restRemaining / restTotal)"
+                    style="transition: stroke-dashoffset 0.95s linear"
+                  />
+                </svg>
+                <span class="tabular-nums text-sm font-semibold text-green-600 dark:text-green-400">{{ restRemaining }}s</span>
+              </div>
+            </Transition>
           </div>
         </div>
         <div v-if="isActive" class="flex flex-wrap gap-2">
@@ -562,7 +635,7 @@ function chunk2<T>(arr: T[]): T[][] {
           <Button
             variant="destructive"
             :disabled="endingWorkout || endSessionMutation.isPending.value"
-            @click="showEndDialog = true"
+            @click="openFinishDialog()"
           >
             <StopCircle class="w-4 h-4 mr-2" />
             {{ endingWorkout || endSessionMutation.isPending.value ? $t("workoutSession.ending") : $t("workoutSession.endWorkout") }}
@@ -571,53 +644,67 @@ function chunk2<T>(arr: T[]): T[][] {
             variant="ghost"
             class="text-muted-foreground hover:text-destructive"
             :disabled="cancellingWorkout || cancelSessionMutation.isPending.value"
-            @click="showCancelDialog = true"
+            @click="openFinishDialog()"
           >
             {{ $t("workoutSession.cancelWorkout") }}
           </Button>
         </div>
       </div>
 
-      <Dialog v-model:open="showCancelDialog">
-        <DialogContent class="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{{ $t("workoutSession.cancelDialog.title") }}</DialogTitle>
-            <DialogDescription>{{ $t("workoutSession.cancelDialog.description") }}</DialogDescription>
-          </DialogHeader>
-          <div class="flex flex-col gap-2 pt-2">
-            <Button
-              variant="destructive"
-              :disabled="cancellingWorkout"
-              @click="handleCancelWorkout"
-            >
-              {{ cancellingWorkout ? $t("workoutSession.cancelling") : $t("workoutSession.cancelWorkout") }}
-            </Button>
-            <Button variant="outline" :disabled="cancellingWorkout" @click="showCancelDialog = false">
-              {{ $t("workoutSession.keepGoing") }}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog v-model:open="showEndDialog">
+      <!-- Unified finish dialog (complete / cancel) -->
+      <Dialog v-model:open="showFinishDialog">
         <DialogContent class="max-w-sm">
           <DialogHeader>
             <DialogTitle>{{ $t("workoutSession.endDialog.title") }}</DialogTitle>
             <DialogDescription>{{ $t("workoutSession.endDialog.description") }}</DialogDescription>
           </DialogHeader>
-          <div v-if="!allExercisesComplete" class="rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
-            {{ $t("workoutSession.endDialog.incompleteWarning") }}
+
+          <!-- Incomplete sets list -->
+          <div
+            v-if="incompleteSets.length > 0"
+            class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-2.5 space-y-1.5"
+          >
+            <p class="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wide">
+              {{ incompleteSets.length }} incomplete {{ incompleteSets.length === 1 ? 'set' : 'sets' }}
+            </p>
+            <ul class="space-y-0.5">
+              <li
+                v-for="({ ex, setIdx }) in incompleteSets.slice(0, 5)"
+                :key="`${ex.id}-${setIdx}`"
+                class="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5"
+              >
+                <span class="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
+                {{ ex.exercise?.name ?? $t("workoutHistory.unknownExercise") }}
+                <span class="text-amber-500">· set {{ setIdx + 1 }}</span>
+              </li>
+              <li v-if="incompleteSets.length > 5" class="text-xs text-amber-500">
+                +{{ incompleteSets.length - 5 }} more
+              </li>
+            </ul>
           </div>
-          <div class="flex flex-col gap-2 pt-2">
+
+          <div class="flex flex-col gap-2 pt-1">
             <Button
               class="bg-green-600 hover:bg-green-700 text-white"
-              :disabled="endingWorkout"
+              :disabled="endingWorkout || cancellingWorkout"
               @click="handleEndWorkout"
             >
               {{ endingWorkout ? $t("workoutSession.ending") : $t("workoutSession.completeWorkout") }}
             </Button>
-            <Button variant="outline" :disabled="endingWorkout" @click="showEndDialog = false">
-              {{ $t("cancel") }}
+            <Button
+              variant="outline"
+              :disabled="endingWorkout || cancellingWorkout"
+              @click="showFinishDialog = false"
+            >
+              {{ $t("workoutSession.keepGoing") }}
+            </Button>
+            <Button
+              variant="ghost"
+              class="text-destructive hover:text-destructive hover:bg-destructive/10"
+              :disabled="endingWorkout || cancellingWorkout"
+              @click="handleCancelWorkout"
+            >
+              {{ cancellingWorkout ? $t("workoutSession.cancelling") : $t("workoutSession.cancelWorkout") }}
             </Button>
           </div>
         </DialogContent>
@@ -671,18 +758,18 @@ function chunk2<T>(arr: T[]): T[][] {
       <!-- Current exercise interactive panel -->
       <Card v-if="currentEx" class="mb-3 ring-1 ring-primary/25">
         <CardHeader class="pb-2">
-          <!-- Segmented exercise progress bar -->
-          <div class="flex gap-1 mb-3">
+          <!-- Exercise progress dots -->
+          <div class="flex justify-center gap-1.5 mb-3">
             <button
               v-for="(ex, idx) in exercises"
               :key="ex.id"
               type="button"
-              class="h-1.5 flex-1 rounded-full transition-colors duration-300 cursor-pointer"
+              class="rounded-full transition-all duration-300 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               :class="idx === activeExIndex
-                ? 'bg-primary'
+                ? 'w-4 h-2 bg-primary'
                 : isExerciseComplete(ex)
-                  ? 'bg-green-500'
-                  : 'bg-muted'"
+                  ? 'w-2 h-2 bg-green-500'
+                  : 'w-2 h-2 bg-muted-foreground/25'"
               @click="activeExIndex = idx"
             />
           </div>
@@ -762,10 +849,23 @@ function chunk2<T>(arr: T[]): T[][] {
                 :key="chunkIdx"
                 class="flex items-center gap-2"
               >
-                <!-- Set number on first row, spacer on subsequent -->
-                <span class="w-8 shrink-0 text-sm font-semibold text-muted-foreground text-center">
-                  {{ chunkIdx === 0 ? setIdx + 1 : '' }}
-                </span>
+                <!-- Set number / remove button on first row -->
+                <div class="w-8 shrink-0 flex items-center justify-center">
+                  <button
+                    v-if="chunkIdx === 0 && isActive && !set.completed_at && currentEx!.sets.length > 1"
+                    type="button"
+                    class="size-7 flex items-center justify-center rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 active:text-destructive active:bg-destructive/10 transition-colors"
+                    @click="removeSet(currentEx!, setIdx)"
+                  >
+                    <Trash2 class="size-3.5" />
+                  </button>
+                  <span
+                    v-else
+                    class="text-sm font-semibold text-muted-foreground"
+                  >
+                    {{ chunkIdx === 0 ? setIdx + 1 : '' }}
+                  </span>
+                </div>
 
                 <!-- Inputs -->
                 <div class="flex flex-1 gap-2">
@@ -872,72 +972,24 @@ function chunk2<T>(arr: T[]): T[][] {
             <span class="text-xs font-medium uppercase tracking-wide">{{ $t("workoutSession.upNext") }}</span>
             <ChevronRight class="size-3.5 ml-auto" />
           </div>
-          <p class="font-semibold text-sm leading-snug line-clamp-2">{{ nextEx.exercise?.name }}</p>
-          <p v-if="nextEx.exercise?.primary_muscle_groups?.length" class="text-xs text-muted-foreground mt-1 truncate">
+          <p class="font-semibold text-sm leading-snug line-clamp-1">{{ nextEx.exercise?.name }}</p>
+          <p v-if="nextEx.exercise?.primary_muscle_groups?.length" class="text-xs text-muted-foreground mt-0.5 truncate">
             {{ nextEx.exercise.primary_muscle_groups.map((m) => m.name).join(", ") }}
           </p>
-          <!-- Set preview table -->
-          <table v-if="nextEx.sets.length" class="w-full mt-3 text-xs">
-            <thead>
-              <tr class="text-muted-foreground">
-                <th class="text-left font-medium pb-1 w-8">{{ $t("exercises.logs.set") }}</th>
-                <th
-                  v-for="fv in nextEx.sets[0]?.values ?? []"
-                  :key="fv.feature_name"
-                  class="text-right font-medium pb-1"
-                >
-                  {{ $t(`exerciseFeature.${fv.feature_name}`) }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-              <template v-for="(set, setIdx) in nextEx.sets.slice(0, 3)" :key="set.id || setIdx">
-                <!-- Rest bar spanning full row -->
-                <tr v-if="restExerciseId === nextEx.id && restSetIdx === setIdx && restRemaining !== null && restRemaining > 0">
-                  <td :colspan="1 + (set.values.length)" class="py-1">
-                    <div class="flex items-center gap-2">
-                      <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          class="h-full bg-green-500 rounded-full"
-                          :style="{ width: `${(restRemaining / restTotal) * 100}%`, transition: 'width 0.2s ease-out' }"
-                        />
-                      </div>
-                      <span class="tabular-nums text-green-600 dark:text-green-400 font-medium shrink-0">{{ restRemaining }}s</span>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="py-1.5 text-muted-foreground font-medium">{{ setIdx + 1 }}</td>
-                  <td
-                    v-for="fv in set.values"
-                    :key="fv.feature_name"
-                    class="py-1.5 text-right tabular-nums font-medium"
-                    :class="fv.value ? 'text-foreground' : 'text-muted-foreground'"
-                  >
-                    {{ fv.value || '—' }}
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-          <p v-if="nextEx.sets.length > 3" class="text-xs text-muted-foreground mt-1">
-            +{{ nextEx.sets.length - 3 }} more sets
-          </p>
-          <div class="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-            <Timer class="size-3" />
-            <span>{{ nextEx.rest_timer > 0 ? nextEx.rest_timer : defaultRestSeconds }}s rest</span>
-          </div>
-          <div class="flex items-center justify-end gap-1 mt-2" @click.stop>
-            <ExerciseInfoDialog :exercise="nextEx.exercise" />
-            <Button
-              v-if="nextEx.exercise?.id"
-              variant="ghost"
-              size="icon"
-              class="size-7 text-muted-foreground"
-              @click="openLogs(nextEx.exercise.id, nextEx.exercise.name)"
-            >
-              <History class="size-3.5" />
-            </Button>
+          <!-- Compact set + rest summary -->
+          <div class="flex flex-wrap items-center gap-1.5 mt-2.5">
+            <span class="text-xs font-medium bg-muted px-2 py-0.5 rounded-full tabular-nums">
+              {{ nextEx.sets.length }} {{ $t("workouts.sets") }}
+            </span>
+            <template v-for="fv in nextEx.sets[0]?.values ?? []" :key="fv.feature_name">
+              <span v-if="fv.value" class="text-xs text-muted-foreground tabular-nums">
+                {{ fv.value }} {{ $t(`exerciseFeature.${fv.feature_name}`) }}
+              </span>
+            </template>
+            <span class="text-xs text-muted-foreground flex items-center gap-0.5 ml-auto">
+              <Timer class="size-3 shrink-0" />
+              {{ nextEx.rest_timer > 0 ? nextEx.rest_timer : defaultRestSeconds }}s
+            </span>
           </div>
         </button>
       </div>
@@ -1003,7 +1055,7 @@ function chunk2<T>(arr: T[]): T[][] {
         <Button
           class="w-full bg-green-600 hover:bg-green-700 text-white"
           :disabled="endingWorkout || endSessionMutation.isPending.value"
-          @click="showEndDialog = true"
+          @click="openFinishDialog()"
         >
           <StopCircle class="w-4 h-4 mr-2" />
           {{ endingWorkout || endSessionMutation.isPending.value ? $t("workoutSession.ending") : $t("workoutSession.completeWorkout") }}
@@ -1012,7 +1064,7 @@ function chunk2<T>(arr: T[]): T[][] {
           variant="ghost"
           class="w-full text-muted-foreground hover:text-destructive"
           :disabled="cancellingWorkout || cancelSessionMutation.isPending.value"
-          @click="showCancelDialog = true"
+          @click="openFinishDialog()"
         >
           {{ cancellingWorkout ? $t("workoutSession.cancelling") : $t("workoutSession.cancelWorkout") }}
         </Button>
@@ -1026,3 +1078,15 @@ function chunk2<T>(arr: T[]): T[][] {
     :exercise-name="logExerciseName"
   />
 </template>
+
+<style scoped>
+.rest-fade-enter-active,
+.rest-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.rest-fade-enter-from,
+.rest-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+</style>

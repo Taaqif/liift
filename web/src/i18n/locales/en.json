@@ -216,8 +216,8 @@
     "namePlaceholder": "e.g., Push Day",
     "description": "Description",
     "descriptionPlaceholder": "Describe the workout...",
-    "exercises": "exercise | exercises",
-    "sets": "set | sets",
+    "exercises": "Exercise | Exercises",
+    "sets": "Set | Sets",
     "noWorkouts": "No workouts found.",
     "errorLoading": "Error loading workouts: {message}",
     "filter": {

@@ -30,9 +30,9 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       <slot />
       <DialogClose
         data-slot="sheet-close"
-        class="ring-offset-background focus:ring-ring data-[state=open]:bg-accent absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+        class="absolute top-3 right-3 flex items-center justify-center size-10 rounded-lg opacity-60 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
       >
-        <X />
+        <X class="size-5" />
         <span class="sr-only">Close</span>
       </DialogClose>
     </DialogContent>
