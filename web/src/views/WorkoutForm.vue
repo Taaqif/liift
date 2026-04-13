@@ -97,23 +97,43 @@ const {
   update: updateExercise,
 } = useFieldArray<WorkoutExerciseForm>("exercises");
 
+const getExerciseFeatures = (exerciseId: number | null): string[] => {
+  if (!exerciseId) return [];
+  const exercise = allExercises.value.find((e) => e.id === exerciseId);
+  return exercise?.exercise_features?.map((f) => f.name) || [];
+};
+
 const populateForm = (w: Workout) => {
-  const exercises = (w.exercises || []).map((ex) => ({
-    id: ex.id,
-    exercise_id: ex.exercise_id,
-    rest_timer: ex.rest_timer,
-    note: ex.note || "",
-    order: ex.order,
-    sets: (ex.sets || []).map((set) => ({
-      id: set.id,
-      order: set.order,
-      features: (set.features || []).map((f) => ({
-        id: f.id,
-        feature_name: f.feature_name,
-        value: f.value,
-      })),
-    })),
-  }));
+  const exercises = (w.exercises || []).map((ex) => {
+    // Merge saved features with current exercise feature list so new features
+    // added after the workout was created are included with null values.
+    const featureNames = getExerciseFeatures(ex.exercise_id);
+    return {
+      id: ex.id,
+      exercise_id: ex.exercise_id,
+      rest_timer: ex.rest_timer,
+      note: ex.note || "",
+      order: ex.order,
+      sets: (ex.sets || []).map((set) => {
+        const savedFeatures = set.features || [];
+        const features = featureNames.length > 0
+          ? featureNames.map((name) => {
+              const saved = savedFeatures.find((f) => f.feature_name === name);
+              return {
+                ...(saved?.id != null && { id: saved.id }),
+                feature_name: name,
+                value: saved?.value || null,
+              };
+            })
+          : savedFeatures.map((f) => ({
+              id: f.id,
+              feature_name: f.feature_name,
+              value: f.value || null,
+            }));
+        return { id: set.id, order: set.order, features };
+      }),
+    };
+  });
   resetForm({
     values: {
       name: w.name,
@@ -123,19 +143,16 @@ const populateForm = (w: Workout) => {
   });
 };
 
-watch(workout, (w) => {
-  if (w) populateForm(w);
+// Wait for both workout and allExercises before populating so getExerciseFeatures works
+const formPopulated = ref(false);
+watch([workout, allExercises], ([w]) => {
+  if (w && allExercises.value.length > 0 && !formPopulated.value) {
+    populateForm(w);
+    formPopulated.value = true;
+  }
 }, { immediate: true });
 
 const showExercisePicker = ref(false);
-
-const addedExerciseIds = computed(() => {
-  const ids = new Set<number>();
-  exerciseFields.value.forEach((f) => {
-    if (f.value.exercise_id != null) ids.add(f.value.exercise_id);
-  });
-  return ids;
-});
 
 const addExercise = () => {
   showExercisePicker.value = true;
@@ -173,12 +190,6 @@ const onExercisesReorder = (event: { oldIndex?: number; newIndex?: number }) => 
   const newIndex = event.newIndex ?? 0;
   if (oldIndex === newIndex) return;
   moveExercise(oldIndex, newIndex);
-};
-
-const getExerciseFeatures = (exerciseId: number | null): string[] => {
-  if (!exerciseId) return [];
-  const exercise = allExercises.value.find((e) => e.id === exerciseId);
-  return exercise?.exercise_features?.map((f) => f.name) || [];
 };
 
 const getExercise = (exerciseId: number | null) => {
@@ -234,7 +245,7 @@ const onSubmit = handleSubmit(async (values) => {
           return {
             ...(existing?.id != null && { id: existing.id }),
             feature_name: featureName,
-            value: existing?.value ?? 0,
+            value: existing?.value ?? null,
           };
         });
         return {
@@ -473,7 +484,6 @@ onBeforeRouteLeave(() => {
 
     <ExercisePickerSheet
       v-model:open="showExercisePicker"
-      :exclude-ids="addedExerciseIds"
       @add="handleExercisesAdded"
     />
   </div>

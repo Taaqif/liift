@@ -90,176 +90,174 @@ const updateFeatureValue = (
 const setsForDraggable = computed(
   () => props.field.value?.sets ?? [],
 );
-
 </script>
 
 <template>
-  <div class="border rounded-lg p-4 space-y-4">
-    <div class="flex items-start justify-between gap-4">
+  <div class="border rounded-lg overflow-hidden">
+    <!-- Exercise header -->
+    <div class="flex items-center gap-2 px-3 py-2.5 bg-muted/40 border-b">
       <button
         type="button"
-        class="exercise-drag-handle mt-1 p-1.5 rounded-md cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground hover:bg-muted/80 touch-none transition-colors"
+        class="exercise-drag-handle p-1 rounded cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
         tabindex="-1"
       >
         <GripVertical class="w-4 h-4" />
       </button>
-      <div class="flex-1 space-y-4 min-w-0">
-        <div class="flex items-center gap-1">
-          <p class="flex-1 text-sm font-medium truncate">
-            {{ exerciseOptions.find(o => o.value === field.value?.exercise_id)?.label ?? $t('exercises.title') }}
-          </p>
-          <ExerciseInfoDialog
-            v-if="field.value?.exercise_id"
-            :exercise="getExercise(field.value.exercise_id)"
-          />
-        </div>
-
-        <template v-if="field.value?.exercise_id">
-          <div class="grid grid-cols-2 gap-4">
-            <FormField
-              v-slot="{ componentField }"
-              :name="`exercises.${exerciseIndex}.rest_timer`"
-            >
-              <FormItem>
-                <FormLabel>{{ $t("workouts.restTimer") }}</FormLabel>
-                <FormControl>
-                  <Input type="number" min="0" v-bind="componentField" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-
-            <FormField
-              v-slot="{ componentField }"
-              :name="`exercises.${exerciseIndex}.note`"
-            >
-              <FormItem>
-                <FormLabel>{{ $t("workouts.note") }}</FormLabel>
-                <FormControl>
-                  <Textarea
-                    :placeholder="$t('workouts.notePlaceholder')"
-                    rows="2"
-                    v-bind="componentField"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-          </div>
-
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <Label class="text-base font-medium">{{ $t("workouts.sets") }}</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                @click="addSet"
-                :disabled="!field.value?.exercise_id"
-              >
-                <Plus class="w-4 h-4 mr-2" />
-                {{ $t("workouts.addSet") }}
-              </Button>
-            </div>
-            <FormField :name="`exercises.${exerciseIndex}.sets`" v-slot>
-              <FormItem>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-            <VueDraggable
-              :model-value="setsForDraggable"
-              :custom-update="(e: { oldIndex?: number; newIndex?: number }) => onSetsReorder(e)"
-              handle=".set-drag-handle"
-              :force-fallback="true"
-              :fallback-on-body="true"
-              ghost-class="workout-drag-ghost-set"
-              chosen-class="workout-drag-chosen"
-              fallback-class="workout-drag-fallback-set"
-              :animation="150"
-              :scroll="drawerScrollRef || true"
-              :bubble-scroll="true"
-              :scroll-sensitivity="80"
-              :scroll-speed="16"
-              class="space-y-2"
-            >
-              <div
-                v-for="(setField, setIndex) in setFields"
-                :key="setField.key"
-                class="border rounded p-3 space-y-2"
-              >
-                <div class="flex items-center justify-between">
-                  <button
-                    type="button"
-                    class="set-drag-handle p-1 rounded cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground hover:bg-muted/80 touch-none transition-colors"
-                    tabindex="-1"
-                  >
-                    <GripVertical class="w-4 h-4" />
-                  </button>
-                  <Label class="text-sm font-medium flex-1">
-                    {{ $t("workouts.setNumber", { number: setIndex + 1 }) }}
-                  </Label>
-                  <Button
-                    v-if="setFields.length > 1"
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    @click="removeSet(setIndex)"
-                  >
-                    <Trash2 class="w-4 h-4" />
-                  </Button>
-                </div>
-
-                <div
-                  v-if="field.value?.exercise_id"
-                  class="grid grid-cols-2 gap-2"
-                >
-                  <FormField
-                    v-for="featureName in getExerciseFeatures(
-                      field.value.exercise_id,
-                    )"
-                    :key="featureName"
-                    :name="`exercises.${exerciseIndex}.sets.${setIndex}.features.${getExerciseFeatures(field.value.exercise_id).indexOf(featureName)}.value`"
-                  >
-                    <FormItem>
-                      <FormLabel class="text-sm capitalize">
-                        {{ $t(`exerciseFeature.${featureName}`) }}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          :model-value="getSetFeatureValue(setField.value, featureName)"
-                          @update:model-value="
-                            (value: string | number) => {
-                              const num = Number(value);
-                              updateFeatureValue(
-                                Number(setIndex),
-                                featureName,
-                                value === '' || Number.isNaN(num) ? null : num,
-                              );
-                            }
-                          "
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  </FormField>
-                </div>
-              </div>
-            </VueDraggable>
-          </div>
-        </template>
-      </div>
+      <span class="flex-1 text-sm font-semibold truncate">
+        {{ exerciseOptions.find(o => o.value === field.value?.exercise_id)?.label ?? $t('exercises.title') }}
+      </span>
+      <ExerciseInfoDialog
+        v-if="field.value?.exercise_id"
+        :exercise="getExercise(field.value.exercise_id)"
+      />
       <Button
         type="button"
         variant="ghost"
-        size="sm"
+        size="icon"
+        class="size-7 text-muted-foreground hover:text-destructive shrink-0"
         @click="emit('remove')"
-        class="shrink-0"
       >
-        <Trash2 class="w-4 h-4" />
+        <Trash2 class="w-3.5 h-3.5" />
       </Button>
+    </div>
+
+    <div class="p-3 space-y-3">
+      <!-- Rest timer + note -->
+      <div class="flex gap-3">
+        <FormField
+          v-slot="{ componentField }"
+          :name="`exercises.${exerciseIndex}.rest_timer`"
+        >
+          <FormItem class="w-28 shrink-0">
+            <FormLabel class="text-xs">{{ $t("workouts.restTimer") }}</FormLabel>
+            <FormControl>
+              <Input type="number" min="0" class="h-8 text-sm" v-bind="componentField" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+
+        <FormField
+          v-slot="{ componentField }"
+          :name="`exercises.${exerciseIndex}.note`"
+        >
+          <FormItem class="flex-1">
+            <FormLabel class="text-xs">{{ $t("workouts.note") }}</FormLabel>
+            <FormControl>
+              <Textarea
+                :placeholder="$t('workouts.notePlaceholder')"
+                rows="1"
+                class="text-sm resize-none"
+                v-bind="componentField"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+      </div>
+
+      <!-- Sets -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <Label class="text-xs font-medium text-muted-foreground uppercase tracking-wide">{{ $t("workouts.sets") }}</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="h-7 px-2 text-xs"
+            @click="addSet"
+            :disabled="!field.value?.exercise_id"
+          >
+            <Plus class="w-3.5 h-3.5 mr-1" />
+            {{ $t("workouts.addSet") }}
+          </Button>
+        </div>
+        <FormField :name="`exercises.${exerciseIndex}.sets`" v-slot>
+          <FormItem>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+        <VueDraggable
+          :model-value="setsForDraggable"
+          :custom-update="(e: { oldIndex?: number; newIndex?: number }) => onSetsReorder(e)"
+          handle=".set-drag-handle"
+          :force-fallback="true"
+          :fallback-on-body="true"
+          ghost-class="workout-drag-ghost-set"
+          chosen-class="workout-drag-chosen"
+          fallback-class="workout-drag-fallback-set"
+          :animation="150"
+          :scroll="drawerScrollRef || true"
+          :bubble-scroll="true"
+          :scroll-sensitivity="80"
+          :scroll-speed="16"
+          class="space-y-2"
+        >
+          <div
+            v-for="(setField, setIndex) in setFields"
+            :key="setField.key"
+            class="flex items-center gap-2 bg-muted/30 rounded-md px-2 py-2"
+          >
+            <button
+              type="button"
+              class="set-drag-handle p-0.5 text-muted-foreground/50 hover:text-muted-foreground touch-none cursor-grab active:cursor-grabbing shrink-0"
+              tabindex="-1"
+            >
+              <GripVertical class="w-3.5 h-3.5" />
+            </button>
+            <span class="text-xs font-medium text-muted-foreground w-8 shrink-0">
+              {{ $t("workouts.setNumber", { number: setIndex + 1 }) }}
+            </span>
+            <div
+              v-if="field.value?.exercise_id"
+              class="flex flex-1 gap-2 min-w-0"
+            >
+              <FormField
+                v-for="featureName in getExerciseFeatures(field.value.exercise_id)"
+                :key="featureName"
+                :name="`exercises.${exerciseIndex}.sets.${setIndex}.features.${getExerciseFeatures(field.value.exercise_id).indexOf(featureName)}.value`"
+              >
+                <FormItem class="flex-1 min-w-0">
+                  <FormLabel class="text-xs text-muted-foreground capitalize sr-only">
+                    {{ $t(`exerciseFeature.${featureName}`) }}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      :placeholder="$t(`exerciseFeature.${featureName}`)"
+                      class="h-8 text-sm"
+                      :model-value="getSetFeatureValue(setField.value, featureName)"
+                      @update:model-value="
+                        (value: string | number) => {
+                          const num = Number(value);
+                          updateFeatureValue(
+                            Number(setIndex),
+                            featureName,
+                            value === '' || Number.isNaN(num) ? null : num,
+                          );
+                        }
+                      "
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+            </div>
+            <Button
+              v-if="setFields.length > 1"
+              type="button"
+              variant="ghost"
+              size="icon"
+              class="size-7 text-muted-foreground hover:text-destructive shrink-0"
+              @click="removeSet(setIndex)"
+            >
+              <Trash2 class="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </VueDraggable>
+      </div>
     </div>
   </div>
 </template>

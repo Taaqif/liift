@@ -6,7 +6,8 @@ import { useUpdateWorkoutSession } from "@/features/workout-session/composables/
 import { useEndWorkoutSession } from "@/features/workout-session/composables/useEndWorkoutSession";
 import { useCancelWorkoutSession } from "@/features/workout-session/composables/useCancelWorkoutSession";
 import { useAddExerciseToSession } from "@/features/workout-session/composables/useAddExerciseToSession";
-import { useExercises } from "@/features/exercises/composables/useExercises";
+import type { Exercise } from "@/features/exercises/types";
+import ExercisePickerSheet from "@/features/exercises/components/ExercisePickerSheet.vue";
 import type {
   WorkoutSession,
   WorkoutSessionExercise,
@@ -74,10 +75,7 @@ const cancelSessionMutation = useCancelWorkoutSession(sessionId);
 const updateSessionMutation = useUpdateWorkoutSession(sessionId);
 const addExerciseMutation = useAddExerciseToSession(sessionId);
 
-const showAddExerciseDialog = ref(false);
-const { exercises: libraryExercises, loading: exercisesLoading } = useExercises(
-  computed(() => ({ limit: 200 })),
-);
+const showAddExercisePicker = ref(false);
 
 async function onSelectExercise(exerciseId: number) {
   if (sessionId.value === 0) return;
@@ -89,10 +87,16 @@ async function onSelectExercise(exerciseId: number) {
     if (updated) {
       localSession.value = JSON.parse(JSON.stringify(updated));
     }
-    showAddExerciseDialog.value = false;
+    showAddExercisePicker.value = false;
   } catch (err) {
     console.error("Failed to add exercise:", err);
     toast.error(t("workoutSession.toasts.saveFailed"));
+  }
+}
+
+async function handleAddExercises(exercises: Exercise[]) {
+  for (const ex of exercises) {
+    await onSelectExercise(ex.id);
   }
 }
 
@@ -478,6 +482,12 @@ watch(allExercisesComplete, (complete) => {
 
 const showWorkoutSheet = ref(false);
 
+function chunk2<T>(arr: T[]): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += 2) result.push(arr.slice(i, i + 2));
+  return result;
+}
+
 </script>
 
 <template>
@@ -487,7 +497,50 @@ const showWorkoutSheet = ref(false);
     </div>
 
     <template v-else-if="localSession">
-      <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <!-- Mobile sticky header -->
+      <div class="md:hidden sticky top-0 z-10 -mx-4 -mt-6 px-4 py-2.5 bg-background border-b flex items-center gap-2 mb-4">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold truncate">{{ localSession.workout?.name ?? $t("workoutSession.activeWorkout") }}</p>
+          <div class="flex items-center gap-1 text-xs text-muted-foreground">
+            <Timer class="w-3 h-3 shrink-0" />
+            <span class="tabular-nums">{{ formatElapsed(elapsedSeconds) }}</span>
+          </div>
+        </div>
+        <Button
+          v-if="isActive"
+          type="button"
+          variant="ghost"
+          size="icon"
+          class="size-8 shrink-0"
+          :disabled="addExerciseMutation.isPending.value"
+          @click="showAddExercisePicker = true"
+        >
+          <Plus class="w-4 h-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          class="size-8 shrink-0"
+          @click="showWorkoutSheet = true"
+        >
+          <LayoutList class="w-4 h-4" />
+        </Button>
+        <Button
+          v-if="isActive"
+          type="button"
+          variant="ghost"
+          size="icon"
+          class="size-8 shrink-0 text-green-600 hover:text-green-700"
+          :disabled="endingWorkout || endSessionMutation.isPending.value"
+          @click="showEndDialog = true"
+        >
+          <StopCircle class="w-4 h-4" />
+        </Button>
+      </div>
+
+      <!-- Desktop header -->
+      <div class="hidden md:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 class="text-2xl font-bold">
             {{ localSession.workout?.name ?? $t("workoutSession.activeWorkout") }}
@@ -501,7 +554,7 @@ const showWorkoutSheet = ref(false);
           <Button
             variant="outline"
             :disabled="addExerciseMutation.isPending.value"
-            @click="showAddExerciseDialog = true"
+            @click="showAddExercisePicker = true"
           >
             <Plus class="w-4 h-4 mr-2" />
             {{ $t("workoutSession.addExercise") }}
@@ -606,35 +659,10 @@ const showWorkoutSheet = ref(false);
         </DialogContent>
       </Dialog>
 
-      <Dialog v-model:open="showAddExerciseDialog">
-        <DialogContent class="max-w-md max-h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{{ $t("workoutSession.addExercise") }}</DialogTitle>
-            <DialogDescription>
-              {{ $t("workoutSession.addExerciseDescription") }}
-            </DialogDescription>
-          </DialogHeader>
-          <div class="flex-1 overflow-y-auto -mx-6 px-6">
-            <p v-if="exercisesLoading" class="text-muted-foreground text-sm py-4">{{ $t("workoutSession.loading") }}</p>
-            <ul v-else class="space-y-1">
-              <li
-                v-for="ex in libraryExercises"
-                :key="ex.id"
-                class="flex items-center justify-between gap-2 py-2 px-3 rounded-md hover:bg-muted cursor-pointer"
-                @click="onSelectExercise(ex.id)"
-              >
-                <span class="font-medium">{{ ex.name }}</span>
-                <span v-if="ex.primary_muscle_groups?.length" class="text-sm text-muted-foreground truncate">
-                  {{ ex.primary_muscle_groups.map((m) => m.name).join(", ") }}
-                </span>
-              </li>
-              <li v-if="!exercisesLoading && libraryExercises.length === 0" class="text-muted-foreground text-sm py-4">
-                {{ $t("exercises.noExercises") }}
-              </li>
-            </ul>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ExercisePickerSheet
+        v-model:open="showAddExercisePicker"
+        @add="handleAddExercises"
+      />
 
       <div v-if="error" class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
         <p>{{ (error as Error).message }}</p>
@@ -691,84 +719,116 @@ const showWorkoutSheet = ref(false);
             </div>
           </div>
         </CardHeader>
-        <CardContent class="space-y-3">
-          <div class="space-y-2">
-            <template v-for="(set, setIdx) in currentEx.sets" :key="set.id || setIdx">
-              <!-- Rest bar above this set -->
-              <div
-                v-if="restExerciseId === currentEx.id && restSetIdx === setIdx && restRemaining !== null && restRemaining > 0"
-                class="flex items-center gap-2 px-3"
-              >
-                <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    class="h-full bg-green-500 rounded-full"
-                    :style="{ width: `${(restRemaining / restTotal) * 100}%`, transition: 'width 0.2s ease-out' }"
-                  />
-                </div>
-                <span class="text-xs tabular-nums text-green-600 dark:text-green-400 font-medium shrink-0">{{ restRemaining }}s</span>
+        <CardContent class="space-y-1 px-2 pb-3">
+          <!-- Column headers — chunked 2 per row -->
+          <template v-for="(chunk, chunkIdx) in chunk2(currentEx.sets[0]?.values ?? [])" :key="chunkIdx">
+            <div class="flex items-center gap-2 px-2" :class="chunkIdx === 0 ? 'pb-0.5' : 'pt-1 pb-0.5'">
+              <span class="w-8 shrink-0" />
+              <div class="flex flex-1 gap-2">
+                <span
+                  v-for="fv in chunk"
+                  :key="fv.feature_name"
+                  class="flex-1 text-center text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                >
+                  {{ $t(`exerciseFeature.${fv.feature_name}`) }}
+                </span>
               </div>
+              <span class="w-12 shrink-0" />
+            </div>
+          </template>
+
+          <template v-for="(set, setIdx) in currentEx.sets" :key="set.id || setIdx">
+            <!-- Rest bar -->
+            <div
+              v-if="restExerciseId === currentEx.id && restSetIdx === setIdx && restRemaining !== null && restRemaining > 0"
+              class="flex items-center gap-2 px-2 py-1"
+            >
+              <div class="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                <div
+                  class="h-full bg-green-500 rounded-full transition-all duration-200"
+                  :style="{ width: `${(restRemaining / restTotal) * 100}%` }"
+                />
+              </div>
+              <span class="text-xs tabular-nums text-green-600 dark:text-green-400 font-medium shrink-0 w-8 text-right">{{ restRemaining }}s</span>
+            </div>
+
+            <!-- Set row — inputs chunked 2 per row -->
+            <div
+              class="flex flex-col gap-1 px-2 py-1.5 rounded-lg transition-colors"
+              :class="set.completed_at ? 'bg-green-600/10 dark:bg-green-500/10' : ''"
+            >
               <div
-                class="flex flex-wrap items-center gap-3 py-2 px-3 rounded-md border-b border-border/50 last:border-0 transition-colors"
-                :class="{ 'bg-green-600/15 dark:bg-green-500/15': set.completed_at }"
+                v-for="(chunk, chunkIdx) in chunk2(set.values)"
+                :key="chunkIdx"
+                class="flex items-center gap-2"
               >
-                <span class="text-sm text-muted-foreground w-6">{{ setIdx + 1 }}.</span>
-                <div class="flex flex-wrap gap-3 flex-1 items-end">
-                  <template v-for="(fv, vIdx) in set.values" :key="fv.feature_name">
-                    <GymValueInput
-                      :feature-name="fv.feature_name"
-                      :model-value="fv.value"
-                      :label="$t(`exerciseFeature.${fv.feature_name}`)"
-                      :disabled="!isActive"
-                      @update:model-value="(val: number) => updateSetValue(currentEx!, set, vIdx, val)"
-                      @blur="save()"
-                      @change="save()"
-                    />
-                  </template>
+                <!-- Set number on first row, spacer on subsequent -->
+                <span class="w-8 shrink-0 text-sm font-semibold text-muted-foreground text-center">
+                  {{ chunkIdx === 0 ? setIdx + 1 : '' }}
+                </span>
+
+                <!-- Inputs -->
+                <div class="flex flex-1 gap-2">
+                  <GymValueInput
+                    v-for="(fv, chunkVIdx) in chunk"
+                    :key="fv.feature_name"
+                    :feature-name="fv.feature_name"
+                    :model-value="fv.value"
+                    :disabled="!isActive"
+                    class="flex-1"
+                    @update:model-value="(val: number) => updateSetValue(currentEx!, set, chunkIdx * 2 + chunkVIdx, val)"
+                    @blur="save()"
+                    @change="save()"
+                  />
+                  <!-- Pad last chunk if odd number of features -->
+                  <div v-if="chunk.length === 1" class="flex-1" />
                 </div>
-                <Button
+
+                <!-- Complete button on first row only -->
+                <button
+                  v-if="chunkIdx === 0"
                   type="button"
-                  variant="outline"
-                  size="icon"
                   :disabled="!isActive || isSetCheckboxDisabled(currentEx, setIdx)"
-                  :class="[
-                    'shrink-0 size-9',
-                    set.completed_at
-                      ? 'bg-green-600 border-green-600 text-white hover:bg-green-700 hover:text-white'
-                      : '',
-                  ]"
+                  class="shrink-0 w-12 h-11 rounded-lg border-2 flex items-center justify-center transition-colors disabled:opacity-30"
+                  :class="set.completed_at
+                    ? 'bg-green-600 border-green-600 text-white'
+                    : 'border-border text-muted-foreground hover:border-green-500 hover:text-green-600'"
                   @click="setCompleted(currentEx!, setIdx, !set.completed_at)"
                 >
                   <Check v-if="set.completed_at" class="size-5" />
                   <Circle v-else class="size-5" />
-                </Button>
+                </button>
+                <!-- Spacer to keep alignment on subsequent rows -->
+                <span v-else class="w-12 shrink-0" />
               </div>
-            </template>
-          </div>
+            </div>
+          </template>
 
-          <div class="flex items-center gap-2">
-            <Button v-if="isActive" type="button" variant="outline" size="sm" @click="addSet(currentEx!)">
-              <Plus class="w-4 h-4 mr-2" />
+          <!-- Add set + rest timer -->
+          <div class="flex items-center gap-2 pt-2 px-2">
+            <Button v-if="isActive" type="button" variant="ghost" size="sm" class="text-muted-foreground h-9 px-3" @click="addSet(currentEx!)">
+              <Plus class="w-4 h-4 mr-1.5" />
               {{ $t("workoutSession.addSet") }}
             </Button>
             <div class="flex items-center gap-1 ml-auto">
-              <Timer class="size-4 text-muted-foreground" />
-              <Button v-if="isActive" type="button" variant="ghost" size="icon" class="size-7" @click="adjustRestTimer(currentEx!, -15)">
-                <Minus class="size-3" />
+              <Timer class="size-3.5 text-muted-foreground" />
+              <Button v-if="isActive" type="button" variant="ghost" size="icon" class="size-8" @click="adjustRestTimer(currentEx!, -15)">
+                <Minus class="size-3.5" />
               </Button>
               <span class="text-sm tabular-nums w-10 text-center">{{ currentEx.rest_timer > 0 ? currentEx.rest_timer : defaultRestSeconds }}s</span>
-              <Button v-if="isActive" type="button" variant="ghost" size="icon" class="size-7" @click="adjustRestTimer(currentEx!, 15)">
-                <Plus class="size-3" />
+              <Button v-if="isActive" type="button" variant="ghost" size="icon" class="size-8" @click="adjustRestTimer(currentEx!, 15)">
+                <Plus class="size-3.5" />
               </Button>
             </div>
           </div>
 
-          <div class="pt-2">
-            <Label class="text-sm text-muted-foreground">{{ $t("workouts.note") }}</Label>
+          <!-- Note -->
+          <div class="pt-1 px-2">
             <Textarea
-              class="mt-1"
               :model-value="currentEx.note"
               :placeholder="$t('workouts.notePlaceholder')"
               rows="2"
+              class="text-sm resize-none"
               :disabled="!isActive"
               @update:model-value="(val: string | number) => updateNote(currentEx!, typeof val === 'string' ? val : '')"
               @blur="save()"
@@ -851,9 +911,10 @@ const showWorkoutSheet = ref(false);
                   <td
                     v-for="fv in set.values"
                     :key="fv.feature_name"
-                    class="py-1.5 text-right tabular-nums font-medium text-foreground"
+                    class="py-1.5 text-right tabular-nums font-medium"
+                    :class="fv.value ? 'text-foreground' : 'text-muted-foreground'"
                   >
-                    {{ fv.value }}
+                    {{ fv.value || '—' }}
                   </td>
                 </tr>
               </template>
@@ -881,8 +942,8 @@ const showWorkoutSheet = ref(false);
         </button>
       </div>
 
-      <!-- Full workout sheet trigger -->
-      <Button variant="ghost" size="sm" class="w-full text-muted-foreground mb-6" @click="showWorkoutSheet = true">
+      <!-- Full workout sheet trigger (desktop only — mobile has it in sticky header) -->
+      <Button variant="ghost" size="sm" class="hidden md:flex w-full text-muted-foreground mb-6" @click="showWorkoutSheet = true">
         <LayoutList class="size-4 mr-2" />
         {{ $t("workoutSession.viewFullWorkout") }}
       </Button>
@@ -953,7 +1014,7 @@ const showWorkoutSheet = ref(false);
           :disabled="cancellingWorkout || cancelSessionMutation.isPending.value"
           @click="showCancelDialog = true"
         >
-          {{ $t("workoutSession.cancelWorkout") }}
+          {{ cancellingWorkout ? $t("workoutSession.cancelling") : $t("workoutSession.cancelWorkout") }}
         </Button>
       </div>
     </template>

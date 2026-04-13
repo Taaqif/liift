@@ -105,43 +105,39 @@ const inputStep = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1">
+  <div class="flex flex-col gap-1 min-w-0">
     <label v-if="label" class="text-xs text-muted-foreground whitespace-nowrap">
       {{ label }}
     </label>
-    <div class="flex items-center gap-0.5 rounded-md border border-input bg-transparent overflow-hidden">
+    <div class="flex items-center rounded-lg border border-input bg-transparent overflow-hidden min-w-0">
       <template v-if="featureName === 'rep'">
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
-          class="h-8 w-8 shrink-0 rounded-none"
+          class="h-11 w-10 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 transition-colors"
           :disabled="disabled || modelValue <= 0"
           @click="stepDown"
         >
           <Minus class="size-4" />
-        </Button>
+        </button>
         <input
           type="number"
           inputmode="numeric"
           :value="modelValue"
           min="0"
           step="1"
-          class="h-8 w-14 border-0 bg-transparent text-center text-sm focus:outline-none focus:ring-0 disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          class="h-11 w-0 flex-1 border-0 bg-transparent text-center text-base font-semibold focus:outline-none focus:ring-0 disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           :disabled="disabled"
           @input="(e) => { const n = parseInt((e.target as HTMLInputElement).value, 10); if (!Number.isNaN(n) && n >= 0) emit('update:modelValue', n); }"
           @blur="emit('blur')"
         />
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
-          class="h-8 w-8 shrink-0 rounded-none"
+          class="h-11 w-10 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 transition-colors"
           :disabled="disabled"
           @click="stepUp"
         >
           <Plus class="size-4" />
-        </Button>
+        </button>
       </template>
       <template v-else>
         <input
@@ -150,7 +146,7 @@ const inputStep = computed(() => {
           :value="featureName === 'weight' || featureName === 'distance' ? displayValue : modelValue"
           :min="min"
           :step="inputStep"
-          class="h-8 min-w-0 flex-1 border-0 bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-0 disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          class="h-11 w-0 flex-1 border-0 bg-transparent px-2 text-center text-base font-semibold focus:outline-none focus:ring-0 disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           :disabled="disabled"
           @input="onNumericInput"
           @blur="emit('blur')"
@@ -158,7 +154,7 @@ const inputStep = computed(() => {
         <template v-if="featureName === 'weight'">
           <button
             type="button"
-            class="shrink-0 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground border-l border-input"
+            class="shrink-0 h-11 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground border-l border-input"
             :disabled="disabled"
             @click="weightUnit = weightUnit === 'kg' ? 'lbs' : 'kg'"
           >
@@ -168,7 +164,7 @@ const inputStep = computed(() => {
         <template v-else-if="featureName === 'distance'">
           <button
             type="button"
-            class="shrink-0 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground border-l border-input"
+            class="shrink-0 h-11 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground border-l border-input"
             :disabled="disabled"
             @click="distanceUnit = distanceUnit === 'km' ? 'mi' : 'km'"
           >
@@ -176,7 +172,7 @@ const inputStep = computed(() => {
           </button>
         </template>
         <template v-else-if="featureName === 'duration'">
-          <span class="shrink-0 px-2 py-1 text-xs text-muted-foreground border-l border-input">
+          <span class="shrink-0 h-11 px-2.5 flex items-center text-xs text-muted-foreground border-l border-input">
             sec
           </span>
         </template>

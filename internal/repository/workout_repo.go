@@ -199,7 +199,7 @@ func syncWorkoutTree(tx *gorm.DB, w *models.Workout) error {
 		ex.WorkoutID = w.ID
 		if ex.ID != 0 {
 			if err := tx.Model(&models.WorkoutExercise{}).Where("id = ? AND workout_id = ?", ex.ID, w.ID).
-				Updates(map[string]interface{}{"exercise_id": ex.ExerciseID, "rest_timer": ex.RestTimer, "note": ex.Note, "order": ex.Order}).Error; err != nil {
+				Updates(map[string]interface{}{"exercise_id": ex.ExerciseID, "rest_timer": ex.RestTimer, "note": ex.Note, `"order"`: ex.Order}).Error; err != nil {
 				return err
 			}
 		} else {
@@ -213,7 +213,7 @@ func syncWorkoutTree(tx *gorm.DB, w *models.Workout) error {
 			set := &ex.Sets[j]
 			set.WorkoutExerciseID = ex.ID
 			if set.ID != 0 {
-				if err := tx.Model(&models.WorkoutSet{}).Where("id = ? AND workout_exercise_id = ?", set.ID, ex.ID).Updates(map[string]interface{}{"order": set.Order}).Error; err != nil {
+				if err := tx.Model(&models.WorkoutSet{}).Where("id = ? AND workout_exercise_id = ?", set.ID, ex.ID).Updates(map[string]interface{}{`"order"`: set.Order}).Error; err != nil {
 					return err
 				}
 			} else {

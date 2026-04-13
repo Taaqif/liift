@@ -18,8 +18,6 @@ import { ChevronLeft, ChevronRight } from "lucide-vue-next";
 
 const props = defineProps<{
   open: boolean;
-  /** IDs already added to the workout — excluded from selection */
-  excludeIds?: Set<number>;
 }>();
 
 const emit = defineEmits<{
@@ -54,7 +52,6 @@ function handleSearchInput(value: string) {
 }
 
 function handleSelect(exercise: Exercise) {
-  if (props.excludeIds?.has(exercise.id)) return;
   const next = new Set(selectedIds.value);
   if (next.has(exercise.id)) {
     next.delete(exercise.id);
@@ -136,7 +133,7 @@ watch(() => props.open, (open) => {
           :loading="loading"
           :selectable="true"
           :selected-ids="selectedIds"
-          @select="handleSelect"
+@select="handleSelect"
         />
       </div>
 

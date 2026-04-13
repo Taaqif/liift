@@ -73,22 +73,26 @@ function populateForm(w: typeof workout.value) {
     values: {
       name: w.name,
       description: w.description || "",
-      exercises: (w.exercises || []).map((ex) => ({
-        id: ex.id,
-        exercise_id: ex.exercise_id,
-        rest_timer: ex.rest_timer,
-        note: ex.note || "",
-        order: ex.order,
-        sets: (ex.sets || []).map((set) => ({
-          id: set.id,
-          order: set.order,
-          features: (set.features || []).map((f) => ({
-            id: f.id,
-            feature_name: f.feature_name,
-            value: f.value,
-          })),
-        })),
-      })),
+      exercises: (w.exercises || []).map((ex) => {
+        const featureNames = getExerciseFeatures(ex.exercise_id);
+        return {
+          id: ex.id,
+          exercise_id: ex.exercise_id,
+          rest_timer: ex.rest_timer,
+          note: ex.note || "",
+          order: ex.order,
+          sets: (ex.sets || []).map((set) => {
+            const savedFeatures = set.features || [];
+            const features = featureNames.length > 0
+              ? featureNames.map((name) => {
+                  const saved = savedFeatures.find((f) => f.feature_name === name);
+                  return { ...(saved?.id != null && { id: saved.id }), feature_name: name, value: saved?.value || null };
+                })
+              : savedFeatures.map((f) => ({ id: f.id, feature_name: f.feature_name, value: f.value || null }));
+            return { id: set.id, order: set.order, features };
+          }),
+        };
+      }),
     },
   });
 }
@@ -134,14 +138,14 @@ const onExerciseSelected = (
           {
             _key: generateId(),
             order: 0,
-            features: featureNames.map((name) => ({ feature_name: name, value: 0 })),
+            features: featureNames.map((name) => ({ feature_name: name, value: null })),
           },
         ]
       : currentSets.map((set) => ({
           ...set,
           features: featureNames.map((name) => {
             const existing = set.features?.find((f) => f.feature_name === name);
-            return existing ?? { feature_name: name, value: 0 };
+            return existing ?? { feature_name: name, value: null };
           }),
         }));
   updateExercise(exerciseIndex, { ...exercise, exercise_id: exerciseId, sets: newSets });
@@ -179,7 +183,7 @@ const onSubmit = handleSubmit(async (formValues) => {
           order: setIdx,
           features: featureNames.map((name) => {
             const existing = set.features?.find((f) => f.feature_name === name);
-            return { id: existing?.id, feature_name: name, value: existing?.value ?? 0 };
+            return { id: existing?.id, feature_name: name, value: existing?.value ?? null };
           }),
         })),
       };

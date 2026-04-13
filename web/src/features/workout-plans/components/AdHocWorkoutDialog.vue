@@ -144,7 +144,7 @@ const onSubmit = handleSubmit(async (formValues) => {
           order: setIdx,
           features: featureNames.map((name) => {
             const existing = set.features?.find((f) => f.feature_name === name);
-            return { feature_name: name, value: existing?.value ?? 0 };
+            return { feature_name: name, value: existing?.value ?? null };
           }),
         })),
       };
