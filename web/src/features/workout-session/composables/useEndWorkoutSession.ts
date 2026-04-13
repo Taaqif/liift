@@ -23,7 +23,7 @@ export function useEndWorkoutSession(sessionId: MaybeRefOrGetter<number>) {
     mutationFn: () => endWorkoutSession(toValue(sessionId)),
     onSuccess: (data) => {
       queryClient.setQueryData(workoutSessionKeys.detail(data.id), data);
-      queryClient.removeQueries({ queryKey: workoutSessionKeys.active() });
+      queryClient.setQueryData(workoutSessionKeys.active(), null);
       queryClient.invalidateQueries({ queryKey: workoutSessionKeys.all });
       queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
       if (data.plan_progress_id) {

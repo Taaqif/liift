@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { VueQueryDevtools } from "@tanstack/vue-query-devtools";
 import {
@@ -20,10 +20,53 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/lib/auth/composables/useAuth";
+import { useActiveWorkoutSession } from "@/features/workout-session/composables/useActiveWorkoutSession";
+import { Dumbbell, Timer } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout, initAuth } = useAuth();
 const router = useRouter();
 const mobileMenuOpen = ref(false);
+const { session: activeSession } = useActiveWorkoutSession();
+
+// Live elapsed timer for the active workout pill
+const elapsedSeconds = ref(0);
+let elapsedTimerId: ReturnType<typeof setInterval> | null = null;
+
+function tickElapsed() {
+  if (!activeSession.value?.started_at) { elapsedSeconds.value = 0; return; }
+  elapsedSeconds.value = Math.floor((Date.now() - new Date(activeSession.value.started_at).getTime()) / 1000);
+}
+
+function formatElapsed(s: number): string {
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}h ${(m % 60)}m`;
+  return `${m}m`;
+}
+
+// Start/stop timer based on active session
+import { watch } from "vue";
+watch(activeSession, (s) => {
+  if (s) {
+    tickElapsed();
+    if (!elapsedTimerId) elapsedTimerId = setInterval(tickElapsed, 10000);
+  } else {
+    if (elapsedTimerId) { clearInterval(elapsedTimerId); elapsedTimerId = null; }
+    elapsedSeconds.value = 0;
+  }
+}, { immediate: true });
+
+onUnmounted(() => { if (elapsedTimerId) clearInterval(elapsedTimerId); });
+
+const activeSetsCompleted = computed(() => {
+  if (!activeSession.value) return 0;
+  return activeSession.value.exercises.flatMap((e) => e.sets).filter((s) => s.completed_at).length;
+});
+
+const activeTotalSets = computed(() => {
+  if (!activeSession.value) return 0;
+  return activeSession.value.exercises.flatMap((e) => e.sets).length;
+});
 
 onMounted(() => {
   initAuth();
@@ -41,7 +84,6 @@ function handleLogout() {
 const navLinks = [
   { to: "/", labelKey: "nav.home" },
   { to: "/workouts", labelKey: "nav.workouts" },
-  { to: "/workouts/active", labelKey: "workoutSession.activeWorkout" },
   { to: "/workout-plans", labelKey: "nav.workoutPlans" },
   { to: "/workout-plans/active", labelKey: "workoutPlans.progress.title" },
   { to: "/exercises", labelKey: "nav.exercises" },
@@ -69,8 +111,34 @@ const navLinks = [
       <!-- Mobile: app name -->
       <router-link to="/" class="md:hidden font-semibold text-lg">Liift</router-link>
 
-      <!-- Right side -->
+      <!-- Right side: active workout pill + auth + hamburger -->
       <div class="flex items-center gap-2 ml-auto">
+
+      <!-- Active workout pill -->
+      <router-link
+        v-if="activeSession"
+        to="/workouts/active"
+        class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-500/20 transition-colors text-sm font-medium shrink-0"
+      >
+        <span class="relative flex size-2 shrink-0">
+          <span class="absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75 animate-ping" />
+          <span class="relative inline-flex size-2 rounded-full bg-green-500" />
+        </span>
+        <Dumbbell class="size-3.5 shrink-0" />
+        <!-- Name (sm+) -->
+        <span class="hidden sm:inline font-semibold truncate max-w-28 md:max-w-36">
+          {{ activeSession.workout?.name ?? $t("workoutSession.activeWorkout") }}
+        </span>
+        <!-- Timer (always) -->
+        <span class="flex items-center gap-0.5 text-xs opacity-80 tabular-nums">
+          <Timer class="size-3 shrink-0" />
+          {{ formatElapsed(elapsedSeconds) }}
+        </span>
+        <!-- Sets ratio (sm+) -->
+        <span class="hidden sm:inline text-xs opacity-80 tabular-nums">
+          · {{ activeSetsCompleted }}/{{ activeTotalSets }} sets
+        </span>
+      </router-link>
         <!-- Desktop auth -->
         <template v-if="isAuthenticated && user">
           <DropdownMenu>
