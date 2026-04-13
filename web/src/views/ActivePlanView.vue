@@ -219,14 +219,12 @@ function formatValue(name: string, value: number): string {
 
 <template>
   <div>
-    <div class="mb-8 flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="router.push({ name: 'workout-plans' })">
-        <ArrowLeft class="h-4 w-4" />
-      </Button>
-      <div>
-        <h1 class="text-3xl font-bold">{{ $t("workoutPlans.progress.title") }}</h1>
-        <p v-if="plan" class="text-muted-foreground">{{ plan.name }}</p>
-      </div>
+    <div class="mb-8">
+      <button class="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1" @click="router.push({ name: 'workout-plans' })">
+        ← {{ $t("nav.workoutPlans") }}
+      </button>
+      <h1 class="text-3xl font-bold">{{ $t("workoutPlans.progress.title") }}</h1>
+      <p v-if="plan" class="text-muted-foreground">{{ plan.name }}</p>
     </div>
 
     <div v-if="loading" class="flex items-center justify-center py-24">

@@ -229,6 +229,8 @@
       "equipmentPlaceholder": "Equipment"
     },
     "addExercise": "Add Exercise",
+    "addExercisesCount": "Add {count} exercise | Add {count} exercises",
+    "exercisesSelected": "{count} selected",
     "removeExercise": "Remove Exercise",
     "restTimer": "Rest Timer (seconds)",
     "note": "Note",

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { generateId } from "@/lib/utils";
 import { useFieldArray } from "vee-validate";
 import type { WorkoutExerciseForm, WorkoutSetForm, WorkoutSetFeatureForm } from "../types";
 import {
@@ -12,13 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, GripVertical } from "lucide-vue-next";
 import { VueDraggable } from "vue-draggable-plus";
@@ -35,7 +29,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "exercise-selected", value: unknown): void;
   (e: "remove"): void;
 }>();
 
@@ -61,7 +54,7 @@ const addSet = () => {
     props.field.value?.exercise_id ?? null,
   );
   pushSet({
-    _key: crypto.randomUUID(),
+    _key: generateId(),
     order: setFields.value.length,
     features: featureNames.map((name) => ({ feature_name: name, value: null })),
   });
@@ -97,6 +90,7 @@ const updateFeatureValue = (
 const setsForDraggable = computed(
   () => props.field.value?.sets ?? [],
 );
+
 </script>
 
 <template>
@@ -110,42 +104,15 @@ const setsForDraggable = computed(
         <GripVertical class="w-4 h-4" />
       </button>
       <div class="flex-1 space-y-4 min-w-0">
-        <FormField
-          v-slot="{ componentField }"
-          :name="`exercises.${exerciseIndex}.exercise_id`"
-        >
-          <FormItem>
-            <FormLabel>{{ $t("exercises.title") }}</FormLabel>
-            <FormControl>
-              <div class="flex items-center gap-1">
-                <Select
-                  class="flex-1"
-                  v-model="componentField.modelValue"
-                  :disabled="!!field.value?.exercise_id"
-                  @update:model-value="emit('exercise-selected', $event)"
-                >
-                  <SelectTrigger>
-                    <SelectValue :placeholder="$t('exercises.title')" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      v-for="option in exerciseOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <ExerciseInfoDialog
-                  v-if="field.value?.exercise_id"
-                  :exercise="getExercise(field.value.exercise_id)"
-                />
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <div class="flex items-center gap-1">
+          <p class="flex-1 text-sm font-medium truncate">
+            {{ exerciseOptions.find(o => o.value === field.value?.exercise_id)?.label ?? $t('exercises.title') }}
+          </p>
+          <ExerciseInfoDialog
+            v-if="field.value?.exercise_id"
+            :exercise="getExercise(field.value.exercise_id)"
+          />
+        </div>
 
         <template v-if="field.value?.exercise_id">
           <div class="grid grid-cols-2 gap-4">

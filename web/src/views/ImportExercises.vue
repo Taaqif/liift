@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelectTags } from "@/components/ui/multi-select-tags";
+import { Textarea } from "@/components/ui/textarea";
 import { useMuscleGroupOptions } from "@/features/reference/composables/useMuscleGroupOptions";
 import { useEquipmentOptions } from "@/features/reference/composables/useEquipmentOptions";
 import { useExerciseFeatureOptions } from "@/features/reference/composables/useExerciseFeatureOptions";
@@ -588,6 +589,35 @@ async function runImport() {
                   :options="featureOptions"
                   placeholder="Select features…"
                 />
+              </div>
+
+              <!-- Instructions -->
+              <div class="sm:col-span-2">
+                <label class="text-xs font-medium text-muted-foreground mb-1.5 block">Instructions</label>
+                <div class="space-y-2">
+                  <div v-for="(_, i) in ex.instructions" :key="i" class="flex gap-2 items-start">
+                    <span class="text-xs text-muted-foreground mt-2.5 w-5 shrink-0 text-right">{{ i + 1 }}.</span>
+                    <Textarea
+                      :model-value="ex.instructions[i]"
+                      :placeholder="`Step ${i + 1}…`"
+                      rows="2"
+                      class="flex-1 resize-none"
+                      @input="(e: Event) => ex.instructions[i] = (e.target as HTMLTextAreaElement).value"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      class="mt-0.5 shrink-0"
+                      @click="ex.instructions.splice(i, 1)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </Button>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" @click="ex.instructions.push('')">
+                    + Add step
+                  </Button>
+                </div>
               </div>
             </div>
             <div class="mt-3 flex justify-end">

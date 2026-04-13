@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, unref } from "vue";
+import { generateId } from "@/lib/utils";
 import { useForm, useFieldArray } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { useI18n } from "vue-i18n";
@@ -84,7 +85,7 @@ const onExerciseSelected = (
   const currentSets = exercise.sets ?? [];
   const newSets =
     currentSets.length === 0
-      ? [{ _key: crypto.randomUUID(), order: 0, features: featureNames.map((name) => ({ feature_name: name, value: null })) }]
+      ? [{ _key: generateId(), order: 0, features: featureNames.map((name) => ({ feature_name: name, value: null })) }]
       : currentSets.map((set) => ({
           ...set,
           features: featureNames.map((name) => {

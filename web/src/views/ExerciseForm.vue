@@ -289,14 +289,12 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <div class="mb-8 flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="router.push({ name: 'exercises' })">
-        <ArrowLeft class="h-4 w-4" />
-      </Button>
-      <div>
-        <h1 class="text-3xl font-bold">{{ title }}</h1>
-        <p class="text-muted-foreground">{{ description }}</p>
-      </div>
+    <div class="mb-8">
+      <button class="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1" @click="router.push({ name: 'exercises' })">
+        ← {{ $t("nav.exercises") }}
+      </button>
+      <h1 class="text-3xl font-bold">{{ title }}</h1>
+      <p class="text-muted-foreground">{{ description }}</p>
     </div>
 
     <div v-if="isEditMode && (exerciseLoading || exerciseFetching)" class="flex items-center justify-center py-24">
@@ -392,14 +390,16 @@ onUnmounted(() => {
                   class="flex gap-2 items-center"
                 >
                   <GripVertical class="drag-handle h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
-                  <Input
+                  <Textarea
                     :model-value="(field.value as string[])[i]"
                     @input="(e: Event) => {
                       const list = [...((field.value as string[]) ?? [])];
-                      list[i] = (e.target as HTMLInputElement).value;
+                      list[i] = (e.target as HTMLTextAreaElement).value;
                       field.onChange(list);
                     }"
                     :placeholder="$t('exercises.instructionPlaceholder', { number: i + 1 })"
+                    rows="2"
+                    class="resize-none"
                   />
                   <Button
                     type="button"

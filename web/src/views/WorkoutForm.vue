@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch, ref, unref } from "vue";
+import { generateId } from "@/lib/utils";
 import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 import { useForm, useFieldArray } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
@@ -35,9 +36,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus } from "lucide-vue-next";
+import { ArrowLeft, Plus, Trash2 } from "lucide-vue-next";
 import { VueDraggable } from "vue-draggable-plus";
 import WorkoutExerciseItem from "@/features/workouts/components/WorkoutExerciseItem.vue";
+import ExercisePickerSheet from "@/features/exercises/components/ExercisePickerSheet.vue";
+import type { Exercise } from "@/features/exercises/types";
 
 const route = useRoute();
 const router = useRouter();
@@ -124,13 +127,36 @@ watch(workout, (w) => {
   if (w) populateForm(w);
 }, { immediate: true });
 
+const showExercisePicker = ref(false);
+
+const addedExerciseIds = computed(() => {
+  const ids = new Set<number>();
+  exerciseFields.value.forEach((f) => {
+    if (f.value.exercise_id != null) ids.add(f.value.exercise_id);
+  });
+  return ids;
+});
+
 const addExercise = () => {
-  pushExercise({
-    exercise_id: null,
-    rest_timer: 60,
-    note: "",
-    order: exerciseFields.value.length,
-    sets: [],
+  showExercisePicker.value = true;
+};
+
+const handleExercisesAdded = (exercises: Exercise[]) => {
+  exercises.forEach((exercise) => {
+    const featureNames = exercise.exercise_features?.map((f) => f.name) || [];
+    pushExercise({
+      exercise_id: exercise.id,
+      rest_timer: 60,
+      note: "",
+      order: exerciseFields.value.length,
+      sets: [
+        {
+          _key: generateId(),
+          order: 0,
+          features: featureNames.map((name) => ({ feature_name: name, value: null })),
+        },
+      ],
+    });
   });
 };
 
@@ -173,7 +199,7 @@ const onExerciseSelected = (
   const newSets = needsInitialSet
     ? [
         {
-          _key: crypto.randomUUID(),
+          _key: generateId(),
           order: 0,
           features: featureNames.map((name) => ({ feature_name: name, value: null })),
         },
@@ -296,14 +322,45 @@ onBeforeRouteLeave(() => {
 
 <template>
   <div ref="pageScrollRef">
-    <div class="mb-8 flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="router.push({ name: 'workouts' })">
-        <ArrowLeft class="h-4 w-4" />
+    <!-- Mobile header -->
+    <div class="md:hidden sticky top-0 z-10 -mx-4 px-4 py-3 bg-background border-b flex items-center gap-3 mb-6">
+      <Button type="button" variant="ghost" size="icon" class="shrink-0 -ml-2" @click="router.push({ name: 'workouts' })">
+        <ArrowLeft class="w-5 h-5" />
       </Button>
-      <div>
-        <h1 class="text-3xl font-bold">{{ title }}</h1>
-        <p class="text-muted-foreground">{{ description }}</p>
-      </div>
+      <h1 class="flex-1 text-base font-semibold truncate">{{ title }}</h1>
+      <Dialog v-if="isEditMode" v-model:open="showDeleteDialog">
+        <DialogTrigger as-child>
+          <Button type="button" variant="ghost" size="icon" class="shrink-0 text-destructive hover:text-destructive" :disabled="isPending">
+            <Trash2 class="w-4 h-4" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{{ $t("delete") }}</DialogTitle>
+            <DialogDescription>{{ $t("areYouSure") }}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" @click="showDeleteDialog = false" :disabled="isDeleting">
+              {{ $t("cancel") }}
+            </Button>
+            <Button variant="destructive" @click="onDelete" :disabled="isDeleting">
+              {{ isDeleting ? $t("deleting") : $t("delete") }}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Button type="button" size="sm" :disabled="isPending" @click="onSubmit">
+        {{ submitButtonText }}
+      </Button>
+    </div>
+
+    <!-- Desktop header -->
+    <div class="hidden md:block mb-8">
+      <button class="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1" @click="router.push({ name: 'workouts' })">
+        ← {{ $t("nav.workouts") }}
+      </button>
+      <h1 class="text-3xl font-bold">{{ title }}</h1>
+      <p class="text-muted-foreground">{{ description }}</p>
     </div>
 
     <div v-if="isEditMode && workoutLoading" class="flex items-center justify-center py-24">
@@ -370,7 +427,6 @@ onBeforeRouteLeave(() => {
               :get-exercise-features="getExerciseFeatures"
               :get-exercise="getExercise"
               :drawer-scroll-ref="pageScrollRef"
-              @exercise-selected="(v) => onExerciseSelected(exerciseIndex, field.value, v)"
               @remove="removeExerciseAtIndex(exerciseIndex)"
             />
           </VueDraggable>
@@ -383,7 +439,8 @@ onBeforeRouteLeave(() => {
         </div>
       </form>
 
-      <div class="flex flex-col gap-2 pt-4 border-t">
+      <!-- Desktop action buttons -->
+      <div class="hidden md:flex flex-col gap-2 pt-4 border-t">
         <Dialog v-if="isEditMode" v-model:open="showDeleteDialog">
           <DialogTrigger as-child>
             <Button type="button" variant="destructive" :disabled="isPending">
@@ -413,6 +470,12 @@ onBeforeRouteLeave(() => {
         </Button>
       </div>
     </div>
+
+    <ExercisePickerSheet
+      v-model:open="showExercisePicker"
+      :exclude-ids="addedExerciseIds"
+      @add="handleExercisesAdded"
+    />
   </div>
 </template>
 

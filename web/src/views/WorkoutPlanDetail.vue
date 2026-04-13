@@ -52,24 +52,26 @@ const selectedWeek = ref(0);
 
 <template>
   <div>
-    <div class="mb-8 flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="router.push({ name: 'workout-plans' })">
-        <ArrowLeft class="h-4 w-4" />
-      </Button>
-      <div class="flex-1 min-w-0">
-        <div v-if="loading" class="h-8 w-48 bg-muted animate-pulse rounded" />
-        <h1 v-else class="text-3xl font-bold">{{ plan?.name }}</h1>
-        <p v-if="plan?.description" class="text-muted-foreground mt-1">{{ plan.description }}</p>
-      </div>
-      <Button
-        v-if="plan"
+    <div class="mb-8">
+      <button class="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1" @click="router.push({ name: 'workout-plans' })">
+        ← {{ $t("nav.workoutPlans") }}
+      </button>
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div v-if="loading" class="h-8 w-48 bg-muted animate-pulse rounded" />
+          <h1 v-else class="text-3xl font-bold">{{ plan?.name }}</h1>
+          <p v-if="plan?.description" class="text-muted-foreground mt-1">{{ plan.description }}</p>
+        </div>
+        <Button
+          v-if="plan"
         variant="outline"
         size="sm"
         @click="router.push({ name: 'workout-plan-edit', params: { id: planId } })"
       >
         <Pencil class="h-4 w-4 mr-2" />
         {{ $t("edit") }}
-      </Button>
+        </Button>
+      </div>
     </div>
 
     <div v-if="loading" class="space-y-6">
