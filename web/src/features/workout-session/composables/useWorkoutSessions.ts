@@ -24,27 +24,36 @@ export function useWorkoutSessions(
   limit: MaybeRefOrGetter<number> = 20,
   offset: MaybeRefOrGetter<number> = 0,
   workoutId: MaybeRefOrGetter<number | null> = null,
+  date: MaybeRefOrGetter<string | null> = null,
 ) {
   const params = computed(() => ({
     limit: toValue(limit),
     offset: toValue(offset),
     workoutId: toValue(workoutId),
+    date: toValue(date),
   }));
 
   const { data, isLoading, error } = useQuery({
     queryKey: computed(() =>
-      workoutSessionKeys.list({ limit: params.value.limit, offset: params.value.offset, workoutId: params.value.workoutId ?? undefined }),
+      workoutSessionKeys.list({
+        limit: params.value.limit,
+        offset: params.value.offset,
+        workoutId: params.value.workoutId ?? undefined,
+        date: params.value.date ?? undefined,
+      }),
     ),
     queryFn: () => {
       const l = toValue(limit);
       const o = toValue(offset);
       const wid = toValue(workoutId);
-      const url = wid
-        ? `/workout-sessions?limit=${l}&offset=${o}&workout_id=${wid}`
-        : `/workout-sessions?limit=${l}&offset=${o}`;
-      return apiClient.get<WorkoutSessionsResponse>(url);
+      const d = toValue(date);
+      const qs = new URLSearchParams({ limit: String(l), offset: String(o) });
+      if (wid) qs.set("workout_id", String(wid));
+      if (d) qs.set("date", d);
+      return apiClient.get<WorkoutSessionsResponse>(`/workout-sessions?${qs}`);
     },
     staleTime: 0,
+    enabled: computed(() => toValue(date) !== null || toValue(workoutId) !== null || (toValue(limit) > 0)),
   });
 
   return {

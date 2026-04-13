@@ -637,11 +637,16 @@ type WorkoutSessionSummary struct {
 	SetsCompleted int        `json:"sets_completed"`
 }
 
-func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint, workoutID *uint, limit, offset int) ([]WorkoutSessionSummary, int64, error) {
+func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint, workoutID *uint, date *time.Time, limit, offset int) ([]WorkoutSessionSummary, int64, error) {
 	db := r.DB().WithContext(ctx).Model(&models.WorkoutSession{}).
 		Where("user_id = ? AND ended_at IS NOT NULL AND deleted_at IS NULL", userID)
 	if workoutID != nil {
 		db = db.Where("workout_id = ?", *workoutID)
+	}
+	if date != nil {
+		dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+		dayEnd := dayStart.AddDate(0, 0, 1)
+		db = db.Where("started_at >= ? AND started_at < ?", dayStart, dayEnd)
 	}
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
@@ -651,11 +656,17 @@ func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint
 		return nil, 0, nil
 	}
 
-	workoutFilter := ""
+	extraFilters := ""
 	args := []interface{}{userID}
 	if workoutID != nil {
-		workoutFilter = "AND ws.workout_id = ?"
+		extraFilters += " AND ws.workout_id = ?"
 		args = append(args, *workoutID)
+	}
+	if date != nil {
+		dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+		dayEnd := dayStart.AddDate(0, 0, 1)
+		extraFilters += " AND ws.started_at >= ? AND ws.started_at < ?"
+		args = append(args, dayStart, dayEnd)
 	}
 	args = append(args, limit, offset)
 
@@ -673,7 +684,7 @@ func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint
 		LEFT JOIN workouts w ON w.id = ws.workout_id AND w.deleted_at IS NULL
 		LEFT JOIN workout_session_exercises wse ON wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
 		LEFT JOIN workout_session_sets wss ON wss.workout_session_exercise_id = wse.id AND wss.deleted_at IS NULL
-		WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL AND ws.deleted_at IS NULL `+workoutFilter+`
+		WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL AND ws.deleted_at IS NULL`+extraFilters+`
 		GROUP BY ws.id, w.name, ws.workout_id, ws.started_at, ws.ended_at
 		ORDER BY ws.started_at DESC
 		LIMIT ? OFFSET ?
@@ -682,6 +693,35 @@ func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint
 	}
 
 	return rows, total, nil
+}
+
+// ListActivityDates returns distinct "YYYY-MM-DD" dates that have completed sessions
+// for the given user in the given year/month.
+func (r *WorkoutSessionRepository) ListActivityDates(ctx context.Context, userID uint, year, month int) ([]string, error) {
+	start := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	end := start.AddDate(0, 1, 0)
+
+	var sessions []struct {
+		StartedAt time.Time
+	}
+	if err := r.DB().WithContext(ctx).
+		Model(&models.WorkoutSession{}).
+		Select("started_at").
+		Where("user_id = ? AND ended_at IS NOT NULL AND deleted_at IS NULL AND started_at >= ? AND started_at < ?", userID, start, end).
+		Find(&sessions).Error; err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]struct{})
+	var dates []string
+	for _, s := range sessions {
+		key := s.StartedAt.UTC().Format("2006-01-02")
+		if _, exists := seen[key]; !exists {
+			seen[key] = struct{}{}
+			dates = append(dates, key)
+		}
+	}
+	return dates, nil
 }
 
 func (r *WorkoutSessionRepository) Cancel(ctx context.Context, id, userID uint) (*models.WorkoutSession, error) {

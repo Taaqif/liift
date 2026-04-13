@@ -76,14 +76,17 @@ const workoutSessionBase = ["workout-sessions"] as const;
 
 export const workoutSessionKeys = {
   all: workoutSessionBase,
-  list: (params?: { limit?: number; offset?: number; workoutId?: number }) =>
+  list: (params?: { limit?: number; offset?: number; workoutId?: number; date?: string }) =>
     [
       ...workoutSessionBase,
       "list",
       params?.limit ?? 20,
       params?.offset ?? 0,
       params?.workoutId ?? null,
+      params?.date ?? null,
     ] as const,
+  activityDates: (year: number, month: number) =>
+    [...workoutSessionBase, "activity", year, month] as const,
   active: () => [...workoutSessionBase, "active"] as const,
   detail: (id: number) => [...workoutSessionBase, id] as const,
 } as const;

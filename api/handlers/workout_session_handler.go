@@ -470,7 +470,14 @@ func (h *WorkoutSessionHandler) ListSessions(c echo.Context) error {
 		workoutID = &id
 	}
 
-	sessions, total, err := h.repo.ListByUserID(c.Request().Context(), userID, workoutID, limit, offset)
+	var date *time.Time
+	if ds := c.QueryParam("date"); ds != "" {
+		if parsed, err := time.Parse("2006-01-02", ds); err == nil {
+			date = &parsed
+		}
+	}
+
+	sessions, total, err := h.repo.ListByUserID(c.Request().Context(), userID, workoutID, date, limit, offset)
 	if err != nil {
 		c.Logger().Errorf("Failed to list workout sessions: %v", err)
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_fetch_sessions"})
@@ -497,10 +504,42 @@ func (h *WorkoutSessionHandler) ListSessions(c echo.Context) error {
 	})
 }
 
+func (h *WorkoutSessionHandler) GetActivityDates(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{Error: "authorization_header_missing"})
+	}
+
+	year := time.Now().Year()
+	month := int(time.Now().Month())
+	if v, err := strconv.Atoi(c.QueryParam("year")); err == nil && v > 0 {
+		year = v
+	}
+	if v, err := strconv.Atoi(c.QueryParam("month")); err == nil && v >= 1 && v <= 12 {
+		month = v
+	}
+
+	dates, err := h.repo.ListActivityDates(c.Request().Context(), userID, year, month)
+	if err != nil {
+		c.Logger().Errorf("Failed to list activity dates: %v", err)
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_fetch_activity_dates"})
+	}
+	if dates == nil {
+		dates = []string{}
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"dates": dates,
+		"year":  year,
+		"month": month,
+	})
+}
+
 func RegisterWorkoutSessionRoutes(api *echo.Group, handler *WorkoutSessionHandler) {
 	api.POST("/workouts/:id/start", handler.StartWorkout)
 	api.GET("/workout-sessions", handler.ListSessions)
 	api.GET("/workout-sessions/active", handler.GetActive)
+	api.GET("/workout-sessions/activity", handler.GetActivityDates)
 	api.POST("/workout-sessions/:id/exercises", handler.AddExercise)
 	api.POST("/workout-sessions/:id/end", handler.EndSession)
 	api.POST("/workout-sessions/:id/cancel", handler.CancelSession)

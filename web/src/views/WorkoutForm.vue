@@ -36,7 +36,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Trash2 } from "lucide-vue-next";
+import { Plus, Trash2 } from "lucide-vue-next";
 import { VueDraggable } from "vue-draggable-plus";
 import WorkoutExerciseItem from "@/features/workouts/components/WorkoutExerciseItem.vue";
 import ExercisePickerSheet from "@/features/exercises/components/ExercisePickerSheet.vue";
@@ -333,40 +333,8 @@ onBeforeRouteLeave(() => {
 
 <template>
   <div ref="pageScrollRef">
-    <!-- Mobile header -->
-    <div class="md:hidden sticky top-0 z-10 -mx-4 px-4 py-3 bg-background border-b flex items-center gap-3 mb-6">
-      <Button type="button" variant="ghost" size="icon" class="shrink-0 -ml-2" @click="router.push({ name: 'workouts' })">
-        <ArrowLeft class="w-5 h-5" />
-      </Button>
-      <h1 class="flex-1 text-base font-semibold truncate">{{ title }}</h1>
-      <Dialog v-if="isEditMode" v-model:open="showDeleteDialog">
-        <DialogTrigger as-child>
-          <Button type="button" variant="ghost" size="icon" class="shrink-0 text-destructive hover:text-destructive" :disabled="isPending">
-            <Trash2 class="w-4 h-4" />
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{{ $t("delete") }}</DialogTitle>
-            <DialogDescription>{{ $t("areYouSure") }}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" @click="showDeleteDialog = false" :disabled="isDeleting">
-              {{ $t("cancel") }}
-            </Button>
-            <Button variant="destructive" @click="onDelete" :disabled="isDeleting">
-              {{ isDeleting ? $t("deleting") : $t("delete") }}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Button type="button" size="sm" :disabled="isPending" @click="onSubmit">
-        {{ submitButtonText }}
-      </Button>
-    </div>
-
-    <!-- Desktop header -->
-    <div class="hidden md:block mb-8">
+    <!-- Header -->
+    <div class="mb-8">
       <button class="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1" @click="router.push({ name: 'workouts' })">
         ← {{ $t("nav.workouts") }}
       </button>
@@ -450,8 +418,8 @@ onBeforeRouteLeave(() => {
         </div>
       </form>
 
-      <!-- Desktop action buttons -->
-      <div class="hidden md:flex flex-col gap-2 pt-4 border-t">
+      <!-- Action buttons -->
+      <div class="flex flex-col gap-2 pt-4 border-t">
         <Dialog v-if="isEditMode" v-model:open="showDeleteDialog">
           <DialogTrigger as-child>
             <Button type="button" variant="destructive" :disabled="isPending">
