@@ -54,6 +54,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/exercises/import",
+      name: "exercise-import",
+      component: () => import("../views/ImportExercises.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/exercises/new",
       name: "exercise-create",
       component: () => import("../views/ExerciseForm.vue"),

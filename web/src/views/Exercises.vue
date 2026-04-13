@@ -80,9 +80,12 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
           {{ $t("exercises.subtitle") }}
         </p>
       </div>
-      <Button @click="router.push({ name: 'exercise-create' })">
-        {{ $t("exercises.createNew") }}
-      </Button>
+      <div class="flex gap-2">
+        <Button variant="outline" @click="router.push({ name: 'exercise-import' })">Import</Button>
+        <Button @click="router.push({ name: 'exercise-create' })">
+          {{ $t("exercises.createNew") }}
+        </Button>
+      </div>
     </div>
 
     <div v-if="error" class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
