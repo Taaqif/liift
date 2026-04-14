@@ -109,6 +109,20 @@ function clearFilters() {
   levelFilter.value = [];
 }
 
+const filterGroups = computed(() => [
+  { label: "Category", options: CATEGORY_OPTIONS, model: categoryFilter },
+  { label: "Equipment", options: EQUIPMENT_OPTIONS, model: equipmentFilter },
+  { label: "Muscle", options: MUSCLE_OPTIONS, model: muscleFilter },
+  { label: "Force", options: FORCE_OPTIONS, model: forceFilter },
+  { label: "Level", options: LEVEL_OPTIONS, model: levelFilter },
+]);
+
+function toggleFilter(model: typeof categoryFilter, value: string) {
+  const idx = model.value.indexOf(value);
+  if (idx === -1) model.value = [...model.value, value];
+  else model.value = model.value.filter((v) => v !== value);
+}
+
 // --- Filtered results ---
 const filtered = computed(() => {
   const q = searchQuery.value.toLowerCase().trim();
@@ -330,117 +344,111 @@ async function runImport() {
         {{ loadError }}
       </div>
       <template v-else>
-        <!-- Filters -->
-        <div class="flex flex-col gap-4 p-4 border rounded-lg bg-card">
-          <div class="flex flex-col sm:flex-row gap-3">
-            <Input
-              v-model="searchQuery"
-              placeholder="Search exercises…"
-              class="sm:flex-1"
-            />
-            <MultiSelectTags
-              v-model="categoryFilter"
-              :options="CATEGORY_OPTIONS"
-              placeholder="Category"
-              class="sm:flex-1"
-            />
-            <MultiSelectTags
-              v-model="equipmentFilter"
-              :options="EQUIPMENT_OPTIONS"
-              placeholder="Equipment"
-              class="sm:flex-1"
-            />
-            <MultiSelectTags
-              v-model="muscleFilter"
-              :options="MUSCLE_OPTIONS"
-              placeholder="Muscle group"
-              class="sm:flex-1"
-            />
-            <MultiSelectTags
-              v-model="forceFilter"
-              :options="FORCE_OPTIONS"
-              placeholder="Force"
-              class="sm:flex-1"
-            />
-            <MultiSelectTags
-              v-model="levelFilter"
-              :options="LEVEL_OPTIONS"
-              placeholder="Level"
-              class="sm:flex-1"
-            />
-          </div>
-          <div class="flex gap-2">
-            <Button variant="outline" class="flex-1 sm:flex-none" :disabled="!hasActiveFilters" @click="clearFilters">
-              Clear
+        <div class="flex gap-6 items-start">
+          <!-- Sidebar filters -->
+          <aside class="w-48 shrink-0 hidden md:flex flex-col gap-5">
+            <Input v-model="searchQuery" placeholder="Search…" />
+
+            <div v-for="group in filterGroups" :key="group.label" class="flex flex-col gap-1.5">
+              <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{{ group.label }}</p>
+              <label
+                v-for="opt in group.options"
+                :key="opt.value"
+                class="flex items-center gap-2 text-sm cursor-pointer select-none py-0.5 hover:text-foreground text-muted-foreground transition-colors"
+                :class="{ 'text-foreground font-medium': group.model.value.includes(opt.value) }"
+              >
+                <Checkbox
+                  :model-value="group.model.value.includes(opt.value)"
+                  @update:model-value="() => toggleFilter(group.model, opt.value)"
+                />
+                {{ opt.label }}
+              </label>
+            </div>
+
+            <Button v-if="hasActiveFilters" variant="ghost" size="sm" class="justify-start px-0 text-muted-foreground h-auto" @click="clearFilters">
+              Clear filters
             </Button>
-          </div>
-        </div>
+          </aside>
 
-        <!-- Exercise list -->
-        <div class="rounded-lg border overflow-hidden">
-          <!-- Table header -->
-          <div class="flex items-center gap-3 px-4 py-2.5 bg-muted/40 border-b text-xs font-medium text-muted-foreground">
-            <Checkbox :model-value="visibleAllSelected" @update:model-value="toggleAllVisible" />
-            <span class="flex-1">
-              Exercise
-              <span class="font-normal ml-1 text-muted-foreground/70">
-                ({{ visibleExercises.length
-                }}<template v-if="filtered.length > VISIBLE_LIMIT"> of {{ filtered.length }}</template>)
+          <!-- Mobile search + filter strip -->
+          <div class="flex flex-col gap-3 flex-1 min-w-0 md:hidden mb-1">
+            <Input v-model="searchQuery" placeholder="Search exercises…" />
+            <div class="flex flex-wrap gap-2">
+              <MultiSelectTags v-model="categoryFilter" :options="CATEGORY_OPTIONS" placeholder="Category" class="flex-1 min-w-28" />
+              <MultiSelectTags v-model="equipmentFilter" :options="EQUIPMENT_OPTIONS" placeholder="Equipment" class="flex-1 min-w-28" />
+              <MultiSelectTags v-model="muscleFilter" :options="MUSCLE_OPTIONS" placeholder="Muscle" class="flex-1 min-w-28" />
+              <MultiSelectTags v-model="forceFilter" :options="FORCE_OPTIONS" placeholder="Force" class="flex-1 min-w-28" />
+              <MultiSelectTags v-model="levelFilter" :options="LEVEL_OPTIONS" placeholder="Level" class="flex-1 min-w-28" />
+              <Button v-if="hasActiveFilters" variant="outline" size="sm" @click="clearFilters">Clear</Button>
+            </div>
+          </div>
+
+          <!-- Exercise list -->
+          <div class="flex-1 min-w-0 rounded-lg border overflow-hidden">
+            <!-- Table header -->
+            <div class="flex items-center gap-3 px-4 py-2.5 bg-muted/40 border-b text-xs font-medium text-muted-foreground">
+              <Checkbox :model-value="visibleAllSelected" @update:model-value="toggleAllVisible" />
+              <span class="flex-1">
+                Exercise
+                <span class="font-normal ml-1 text-muted-foreground/70">
+                  ({{ visibleExercises.length
+                  }}<template v-if="filtered.length > VISIBLE_LIMIT"> of {{ filtered.length }}</template>)
+                </span>
               </span>
-            </span>
-            <span class="w-32 hidden sm:block">Muscles</span>
-            <span class="w-24 hidden md:block">Equipment</span>
-            <span class="w-20 text-right hidden sm:block">Category</span>
-          </div>
+              <span class="w-32 hidden lg:block">Muscles</span>
+              <span class="w-24 hidden xl:block">Equipment</span>
+              <span class="w-20 text-right hidden lg:block">Category</span>
+            </div>
 
-          <!-- Rows -->
-          <div
-            v-for="ex in visibleExercises"
-            :key="ex.id"
-            class="flex items-center gap-3 px-4 py-3 border-b last:border-0 hover:bg-muted/20 cursor-pointer transition-colors"
-            :class="{ 'bg-primary/5': isSelected(ex.id) }"
-            @click="toggleSelect(ex.id)"
-          >
-            <Checkbox
-              :model-value="isSelected(ex.id)"
-              @update:model-value="() => toggleSelect(ex.id)"
-              @click.stop
-            />
-            <div class="w-9 h-9 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
-              <img
-                v-if="thumbUrl(ex)"
-                :src="thumbUrl(ex)!"
-                :alt="ex.name"
-                class="w-full h-full object-cover"
-                loading="lazy"
+            <!-- Rows -->
+            <div
+              v-for="ex in visibleExercises"
+              :key="ex.id"
+              class="flex items-center gap-3 px-4 py-3.5 border-b last:border-0 hover:bg-muted/20 cursor-pointer transition-colors"
+              :class="{ 'bg-primary/5': isSelected(ex.id) }"
+              @click="toggleSelect(ex.id)"
+            >
+              <Checkbox
+                :model-value="isSelected(ex.id)"
+                @update:model-value="() => toggleSelect(ex.id)"
+                @click.stop
               />
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground/40">
-                <rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 9 6 6m0-6-6 6"/>
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium truncate">{{ ex.name }}</p>
-              <p class="text-xs text-muted-foreground capitalize sm:hidden">
+              <div class="w-12 h-12 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+                <img
+                  v-if="thumbUrl(ex)"
+                  :src="thumbUrl(ex)!"
+                  :alt="ex.name"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground/40">
+                  <rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 9 6 6m0-6-6 6"/>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate">{{ ex.name }}</p>
+                <p class="text-xs text-muted-foreground capitalize lg:hidden">
+                  {{ ex.primaryMuscles.slice(0, 2).join(", ") }}
+                  <span v-if="ex.equipment"> · {{ ex.equipment }}</span>
+                </p>
+              </div>
+              <span class="w-32 text-xs text-muted-foreground hidden lg:block truncate capitalize">
                 {{ ex.primaryMuscles.slice(0, 2).join(", ") }}
-                <span v-if="ex.equipment"> · {{ ex.equipment }}</span>
-              </p>
+              </span>
+              <span class="w-24 text-xs text-muted-foreground hidden xl:block truncate capitalize">
+                {{ ex.equipment ?? "—" }}
+              </span>
+              <span class="w-20 text-right text-xs text-muted-foreground capitalize shrink-0 hidden lg:block">
+                {{ ex.category }}
+              </span>
             </div>
-            <span class="w-32 text-xs text-muted-foreground hidden sm:block truncate capitalize">
-              {{ ex.primaryMuscles.slice(0, 2).join(", ") }}
-            </span>
-            <span class="w-24 text-xs text-muted-foreground hidden md:block truncate capitalize">
-              {{ ex.equipment ?? "—" }}
-            </span>
-            <span class="w-20 text-right text-xs text-muted-foreground capitalize shrink-0 hidden sm:block">
-              {{ ex.category }}
-            </span>
-          </div>
 
-          <div v-if="filtered.length > VISIBLE_LIMIT" class="px-4 py-3 text-xs text-muted-foreground text-center border-t bg-muted/20">
-            {{ filtered.length - VISIBLE_LIMIT }} more — refine filters to narrow results
-          </div>
-          <div v-if="filtered.length === 0" class="py-16 text-center text-sm text-muted-foreground">
-            No exercises match your filters
+            <div v-if="filtered.length > VISIBLE_LIMIT" class="px-4 py-3 text-xs text-muted-foreground text-center border-t bg-muted/20">
+              {{ filtered.length - VISIBLE_LIMIT }} more — refine filters to narrow results
+            </div>
+            <div v-if="filtered.length === 0" class="py-16 text-center text-sm text-muted-foreground">
+              No exercises match your filters
+            </div>
           </div>
         </div>
       </template>
@@ -463,7 +471,7 @@ async function runImport() {
             :class="{ 'bg-muted/10': isExpanded(ex.source.id) }"
             @click="toggleExpand(ex.source.id)"
           >
-            <div class="w-9 h-9 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+            <div class="w-12 h-12 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
               <img
                 v-if="ex.imageUrl"
                 :src="ex.imageUrl"

@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/vue-query";
 import { workoutSessionKeys } from "@/lib/queryKeys";
 import { useWorkoutSessions } from "@/features/workout-session/composables/useWorkoutSessions";
 import { useWorkoutSession } from "@/features/workout-session/composables/useWorkoutSession";
+import { useDeleteWorkoutSession } from "@/features/workout-session/composables/useDeleteWorkoutSession";
 import {
   Sheet,
   SheetContent,
@@ -12,9 +13,17 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight } from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, Trash2 } from "lucide-vue-next";
 
 const props = defineProps<{
   open: boolean;
@@ -53,6 +62,16 @@ const { sessions, total, loading } = useWorkoutSessions(
 const { session: detailSession, loading: detailLoading } = useWorkoutSession(
   computed(() => selectedSessionId.value) as unknown as number | null,
 );
+
+const { deleteSession, isPending: isDeleting } = useDeleteWorkoutSession();
+const deleteDialogOpen = ref(false);
+
+async function handleDelete() {
+  if (!selectedSessionId.value) return;
+  await deleteSession(selectedSessionId.value);
+  deleteDialogOpen.value = false;
+  selectedSessionId.value = null;
+}
 
 const currentPage = computed(() => Math.floor(offset.value / limit) + 1);
 const totalPages = computed(() => Math.ceil(total.value / limit));
@@ -113,6 +132,24 @@ const completedExercises = computed(() => {
 
 <template>
   <Sheet :open="open" @update:open="(v: boolean) => emit('update:open', v)">
+    <!-- Delete confirmation dialog — inside Sheet so it layers above the sheet overlay -->
+    <Dialog v-model:open="deleteDialogOpen">
+      <DialogContent class="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{{ $t("workoutHistory.deleteConfirmTitle") }}</DialogTitle>
+          <DialogDescription>{{ $t("workoutHistory.deleteConfirmDescription") }}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="flex-col gap-2 sm:flex-row">
+          <Button variant="outline" :disabled="isDeleting" @click="deleteDialogOpen = false">
+            {{ $t("cancel") }}
+          </Button>
+          <Button variant="destructive" :disabled="isDeleting" @click="handleDelete">
+            {{ isDeleting ? $t("deleting") : $t("delete") }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <SheetContent class="sm:max-w-md flex flex-col gap-0 p-0">
       <!-- Detail view -->
       <template v-if="selectedSessionId">
@@ -121,7 +158,7 @@ const completedExercises = computed(() => {
             <Button variant="ghost" size="icon" class="size-7 shrink-0" @click="selectedSessionId = null">
               <ChevronLeft class="size-4" />
             </Button>
-            <div>
+            <div class="flex-1 min-w-0">
               <SheetTitle>{{ workoutName ?? $t("workoutHistory.unnamedWorkout") }}</SheetTitle>
               <SheetDescription v-if="detailSession">
                 {{ formatDate(detailSession.started_at) }}
@@ -195,6 +232,13 @@ const completedExercises = computed(() => {
             <p class="text-muted-foreground text-sm">{{ $t("workoutHistory.noSetsCompleted") }}</p>
           </div>
         </div>
+
+        <SheetFooter class="px-6 pb-6 pt-2">
+          <Button variant="ghost" class="w-full text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteDialogOpen = true">
+            <Trash2 class="size-4 mr-2" />
+            {{ $t("workoutHistory.deleteRecord") }}
+          </Button>
+        </SheetFooter>
       </template>
 
       <!-- List view -->

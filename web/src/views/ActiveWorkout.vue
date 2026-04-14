@@ -2,11 +2,14 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useElapsedTimer, formatElapsed } from "@/composables/useElapsedTimer";
 import { useRouter } from "vue-router";
+import { useQueryClient } from "@tanstack/vue-query";
 import { useActiveWorkoutSession } from "@/features/workout-session/composables/useActiveWorkoutSession";
 import { useUpdateWorkoutSession } from "@/features/workout-session/composables/useUpdateWorkoutSession";
 import { useEndWorkoutSession } from "@/features/workout-session/composables/useEndWorkoutSession";
 import { useCancelWorkoutSession } from "@/features/workout-session/composables/useCancelWorkoutSession";
+import { useDeleteWorkoutSession } from "@/features/workout-session/composables/useDeleteWorkoutSession";
 import { useAddExerciseToSession } from "@/features/workout-session/composables/useAddExerciseToSession";
+import { workoutSessionKeys } from "@/lib/queryKeys";
 import type { Exercise } from "@/features/exercises/types";
 import ExercisePickerSheet from "@/features/exercises/components/ExercisePickerSheet.vue";
 import type {
@@ -44,6 +47,7 @@ import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer
 import ExerciseInfoDialog from "@/features/exercises/components/ExerciseInfoDialog.vue";
 
 const router = useRouter();
+const queryClient = useQueryClient();
 const { t } = useI18n();
 const { session, loading, error, refetch } = useActiveWorkoutSession();
 const endingWorkout = ref(false);
@@ -72,6 +76,7 @@ const sessionId = computed(() => localSession.value?.id ?? 0);
 const isActive = computed(() => !!localSession.value && !localSession.value.ended_at);
 const endSessionMutation = useEndWorkoutSession(sessionId);
 const cancelSessionMutation = useCancelWorkoutSession(sessionId);
+const deleteSessionMutation = useDeleteWorkoutSession();
 const updateSessionMutation = useUpdateWorkoutSession(sessionId);
 const addExerciseMutation = useAddExerciseToSession(sessionId);
 
@@ -394,6 +399,13 @@ const incompleteSets = computed(() => {
   );
 });
 
+// Blank quick-start session with zero completed sets — no activity worth keeping
+const isBlankWithNoActivity = computed(() => {
+  const s = localSession.value;
+  if (!s || s.workout) return false;
+  return !s.exercises.some((ex) => ex.sets.some((set) => set.completed_at));
+});
+
 async function handleCancelWorkout() {
   if (sessionId.value === 0) return;
   showFinishDialog.value = false;
@@ -413,7 +425,13 @@ async function handleEndWorkout() {
   showFinishDialog.value = false;
   endingWorkout.value = true;
   try {
-    await endSessionMutation.endSession();
+    if (isBlankWithNoActivity.value) {
+      await deleteSessionMutation.deleteSession(sessionId.value);
+      queryClient.setQueryData(workoutSessionKeys.active(), null);
+      router.push({ name: "workouts" });
+    } else {
+      await endSessionMutation.endSession();
+    }
   } catch (err) {
     toast.error(t("workoutSession.toasts.endFailed"));
     console.error("Failed to end workout:", err);
