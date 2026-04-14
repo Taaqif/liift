@@ -29,6 +29,8 @@ import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-vue-next";
 import { VueDraggable } from "vue-draggable-plus";
 import WorkoutExerciseItem from "@/features/workouts/components/WorkoutExerciseItem.vue";
+import ExercisePickerSheet from "@/features/exercises/components/ExercisePickerSheet.vue";
+import type { Exercise } from "@/features/exercises/types";
 
 const props = defineProps<{
   open: boolean;
@@ -63,7 +65,6 @@ const {
   push: pushExercise,
   remove: removeExercise,
   move: moveExercise,
-  update: updateExercise,
 } = useFieldArray<WorkoutExerciseForm>("exercises");
 
 const getExerciseFeatures = (exerciseId: number | null): string[] => {
@@ -77,42 +78,23 @@ const getExercise = (exerciseId: number | null) => {
   return allExercises.value.find((e) => e.id === exerciseId);
 };
 
+const showExercisePicker = ref(false);
+
 const addExercise = () => {
-  pushExercise({
-    exercise_id: null,
-    rest_timer: 60,
-    note: "",
-    order: exerciseFields.value.length,
-    sets: [],
-  });
+  showExercisePicker.value = true;
 };
 
-const onExerciseSelected = (
-  exerciseIndex: number,
-  exercise: WorkoutExerciseForm | undefined,
-  value: unknown,
-) => {
-  if (!value || !exercise) return;
-  const exerciseId = Number(value);
-  const featureNames = getExerciseFeatures(exerciseId);
-  const currentSets = exercise.sets ?? [];
-  const newSets =
-    currentSets.length === 0
-      ? [
-          {
-            _key: generateId(),
-            order: 0,
-            features: featureNames.map((name) => ({ feature_name: name, value: null })),
-          },
-        ]
-      : currentSets.map((set) => ({
-          ...set,
-          features: featureNames.map((name) => {
-            const existing = set.features?.find((f) => f.feature_name === name);
-            return existing ?? { feature_name: name, value: null };
-          }),
-        }));
-  updateExercise(exerciseIndex, { ...exercise, exercise_id: exerciseId, sets: newSets });
+const handleExercisesAdded = (exercises: Exercise[]) => {
+  exercises.forEach((exercise) => {
+    const featureNames = exercise.exercise_features?.map((f) => f.name) || [];
+    pushExercise({
+      exercise_id: exercise.id,
+      rest_timer: 60,
+      note: "",
+      order: exerciseFields.value.length,
+      sets: [{ _key: generateId(), order: 0, features: featureNames.map((name) => ({ feature_name: name, value: null })) }],
+    });
+  });
 };
 
 const exercisesForDraggable = computed(
@@ -254,7 +236,6 @@ const scrollRef = ref<HTMLElement | null>(null);
               :get-exercise-features="getExerciseFeatures"
               :get-exercise="getExercise"
               :drawer-scroll-ref="scrollRef"
-              @exercise-selected="(v) => onExerciseSelected(exerciseIndex, field.value, v)"
               @remove="removeExercise(exerciseIndex)"
             />
           </VueDraggable>
@@ -277,4 +258,6 @@ const scrollRef = ref<HTMLElement | null>(null);
       </div>
     </DialogContent>
   </Dialog>
+
+  <ExercisePickerSheet v-model:open="showExercisePicker" @add="handleExercisesAdded" />
 </template>

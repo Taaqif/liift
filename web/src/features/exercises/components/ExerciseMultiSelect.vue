@@ -8,9 +8,13 @@ const props = withDefaults(
     modelValue: number[];
     placeholder?: string;
     class?: string;
+    listMode?: boolean;
+    single?: boolean;
   }>(),
   {
     placeholder: "Select exercises...",
+    listMode: false,
+    single: false,
   },
 );
 
@@ -49,5 +53,5 @@ function onUpdate(value: string[]) {
 
 <template>
   <MultiSelectTags :model-value="innerValue" :options="options" :placeholder="placeholder" :disabled="loading"
-    :class="props.class" @update:model-value="onUpdate" />
+    :class="props.class" :list-mode="props.listMode" @update:model-value="onUpdate" />
 </template>

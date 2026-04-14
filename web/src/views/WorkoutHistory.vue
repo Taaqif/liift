@@ -6,6 +6,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { useWorkoutActivityDates } from "@/features/workout-session/composables/useWorkoutActivityDates";
 import { useWorkoutSessions } from "@/features/workout-session/composables/useWorkoutSessions";
 import { useWorkoutSession } from "@/features/workout-session/composables/useWorkoutSession";
+import { useDeleteWorkoutSession } from "@/features/workout-session/composables/useDeleteWorkoutSession";
 import type { WorkoutSessionSummary } from "@/features/workout-session/composables/useWorkoutSessions";
 import {
   Sheet,
@@ -14,10 +15,19 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Card from "@/components/ui/card/Card.vue";
 import CardContent from "@/components/ui/card/CardContent.vue";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dumbbell, ChevronRight, CalendarDays, Clock, Layers, Flame } from "lucide-vue-next";
+import { Dumbbell, ChevronRight, CalendarDays, Clock, Layers, Flame, Trash2 } from "lucide-vue-next";
 
 // ── Date state ────────────────────────────────────────────
 const t = today(getLocalTimeZone());
@@ -46,10 +56,20 @@ const drawerOpen = ref(false);
 
 // Pass reactive ref directly — useWorkoutSession now accepts MaybeRefOrGetter
 const { session: detailSession, loading: detailLoading } = useWorkoutSession(selectedSessionId);
+const { deleteSession, isPending: isDeleting } = useDeleteWorkoutSession();
 
 function openSession(s: WorkoutSessionSummary) {
   selectedSessionId.value = s.id;
   drawerOpen.value = true;
+}
+
+const deleteDialogOpen = ref(false);
+
+async function handleDelete() {
+  if (!selectedSessionId.value) return;
+  await deleteSession(selectedSessionId.value);
+  deleteDialogOpen.value = false;
+  drawerOpen.value = false;
 }
 
 watch(drawerOpen, (open) => {
@@ -124,117 +144,144 @@ const completedExercises = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-lg mx-auto px-4 sm:px-6 space-y-5 pb-10">
+  <div class="pb-10">
     <!-- Header -->
-    <div class="pt-2">
-      <h1 class="text-2xl font-bold">{{ $t("workoutHistory.title") }}</h1>
-      <p class="text-muted-foreground text-sm mt-0.5">{{ $t("workoutHistory.subtitle") }}</p>
-    </div>
-
-    <!-- Calendar -->
-    <Card class="overflow-hidden">
-      <CardContent class="p-0">
-        <Calendar
-          :model-value="selectedDate"
-          @update:model-value="(v: any) => { if (v) selectedDate = v }"
-          v-model:placeholder="calendarPlaceholder"
-          :activity-dates="activityDates"
-          :fixed-weeks="true"
-        />
-      </CardContent>
-    </Card>
-
-    <!-- Subtle month-load indicator -->
-    <div v-if="activityLoading" class="h-0.5 rounded-full bg-muted overflow-hidden">
-      <div class="h-full w-2/5 bg-primary/50 rounded-full animate-pulse mx-auto" />
-    </div>
-
-    <!-- Date label + stats row -->
-    <div class="flex items-baseline justify-between gap-2 min-h-[1.5rem]">
-      <span class="font-semibold text-base">{{ selectedDateLabel }}</span>
-      <div v-if="daySessions.length > 0" class="flex gap-3 text-xs text-muted-foreground">
-        <span class="flex items-center gap-1"><Layers class="w-3.5 h-3.5" />{{ dayStats.exercises }}</span>
-        <span class="flex items-center gap-1"><Flame class="w-3.5 h-3.5" />{{ dayStats.sets }} sets</span>
-        <span v-if="dayStats.durationMs > 0" class="flex items-center gap-1"><Clock class="w-3.5 h-3.5" />{{ formatMs(dayStats.durationMs) }}</span>
+    <div class="mb-8 flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold mb-2">{{ $t("workoutHistory.title") }}</h1>
+        <p class="text-muted-foreground">{{ $t("workoutHistory.subtitle") }}</p>
       </div>
     </div>
 
-    <!-- Skeletons -->
-    <div v-if="dayLoading" class="space-y-3">
-      <Skeleton v-for="i in 2" :key="i" class="h-24 w-full rounded-2xl" />
+    <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
+
+    <!-- Left: calendar sidebar -->
+    <div class="lg:w-72 lg:shrink-0 space-y-3">
+      <Card class="overflow-hidden">
+        <CardContent class="p-0">
+          <Calendar
+            :model-value="selectedDate"
+            @update:model-value="(v: any) => { if (v) selectedDate = v }"
+            v-model:placeholder="calendarPlaceholder"
+            :activity-dates="activityDates"
+            :fixed-weeks="true"
+          />
+        </CardContent>
+      </Card>
+
+      <!-- Subtle month-load indicator -->
+      <div v-if="activityLoading" class="h-0.5 rounded-full bg-muted overflow-hidden">
+        <div class="h-full w-2/5 bg-primary/50 rounded-full animate-pulse mx-auto" />
+      </div>
     </div>
 
-    <!-- Empty state -->
-    <div
-      v-else-if="daySessions.length === 0"
-      class="flex flex-col items-center gap-2 py-12 text-muted-foreground/60"
-    >
-      <CalendarDays class="w-8 h-8" />
-      <p class="text-sm">No workouts on this day</p>
-    </div>
+    <!-- Right: sessions list -->
+    <div class="flex-1 min-w-0 space-y-4">
+      <!-- Date label + stats row -->
+      <div class="flex items-baseline justify-between gap-2 min-h-[1.5rem]">
+        <span class="font-semibold text-base">{{ selectedDateLabel }}</span>
+        <div v-if="daySessions.length > 0" class="flex gap-3 text-xs text-muted-foreground">
+          <span class="flex items-center gap-1"><Layers class="w-3.5 h-3.5" />{{ dayStats.exercises }}</span>
+          <span class="flex items-center gap-1"><Flame class="w-3.5 h-3.5" />{{ dayStats.sets }} sets</span>
+          <span v-if="dayStats.durationMs > 0" class="flex items-center gap-1"><Clock class="w-3.5 h-3.5" />{{ formatMs(dayStats.durationMs) }}</span>
+        </div>
+      </div>
 
-    <!-- Session cards -->
-    <div v-else class="space-y-3">
-      <button
-        v-for="session in daySessions"
-        :key="session.id"
-        class="w-full text-left group"
-        @click="openSession(session)"
+      <!-- Skeletons -->
+      <div v-if="dayLoading" class="space-y-3">
+        <Skeleton v-for="i in 2" :key="i" class="h-24 w-full rounded-2xl" />
+      </div>
+
+      <!-- Empty state -->
+      <div
+        v-else-if="daySessions.length === 0"
+        class="flex flex-col items-center gap-2 py-12 text-muted-foreground/60"
       >
-        <div
-          class="rounded-2xl border bg-card overflow-hidden shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150"
-        >
-          <div class="px-4 py-4">
-            <!-- Top row: name + chevron -->
-            <div class="flex items-start justify-between gap-2">
-              <div class="min-w-0">
-                <p class="font-semibold text-base leading-tight truncate">
-                  {{ session.workout_name || $t("workoutHistory.unnamedWorkout") }}
-                </p>
-                <p class="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                  <Clock class="w-3 h-3 shrink-0" />
-                  {{ formatTime(session.started_at) }}
-                  <template v-if="session.ended_at">
-                    <span class="opacity-40">·</span>
-                    {{ formatDuration(session.started_at, session.ended_at) }}
-                  </template>
-                </p>
-              </div>
-              <ChevronRight
-                class="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground shrink-0 mt-0.5 transition-colors"
-              />
-            </div>
+        <CalendarDays class="w-8 h-8" />
+        <p class="text-sm">No workouts on this day</p>
+      </div>
 
-            <!-- Stats pills -->
-            <div class="flex gap-2 mt-3 flex-wrap">
-              <span
-                class="inline-flex items-center gap-1 text-xs font-medium bg-muted px-2.5 py-1 rounded-full"
-              >
-                <Layers class="w-3 h-3 text-muted-foreground" />
-                {{ session.exercise_count }}
-                {{ $t("workoutHistory.exercises") }}
-              </span>
-              <span
-                class="inline-flex items-center gap-1 text-xs font-medium bg-muted px-2.5 py-1 rounded-full"
-              >
-                <Flame class="w-3 h-3 text-muted-foreground" />
-                {{ session.sets_completed }} {{ $t("workoutHistory.sets") }}
-              </span>
-              <span
-                v-if="session.ended_at"
-                class="inline-flex items-center gap-1 text-xs font-medium bg-muted px-2.5 py-1 rounded-full"
-              >
-                <Clock class="w-3 h-3 text-muted-foreground" />
-                {{ formatDuration(session.started_at, session.ended_at) }}
-              </span>
+      <!-- Session cards -->
+      <div v-else class="space-y-3">
+        <button
+          v-for="session in daySessions"
+          :key="session.id"
+          class="w-full text-left group"
+          @click="openSession(session)"
+        >
+          <div
+            class="rounded-2xl border bg-card overflow-hidden shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150"
+          >
+            <div class="px-4 py-4">
+              <!-- Top row: name + chevron -->
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="font-semibold text-base leading-tight truncate">
+                    {{ session.workout_name || $t("workoutHistory.unnamedWorkout") }}
+                  </p>
+                  <p class="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                    <Clock class="w-3 h-3 shrink-0" />
+                    {{ formatTime(session.started_at) }}
+                    <template v-if="session.ended_at">
+                      <span class="opacity-40">·</span>
+                      {{ formatDuration(session.started_at, session.ended_at) }}
+                    </template>
+                  </p>
+                </div>
+                <ChevronRight
+                  class="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground shrink-0 mt-0.5 transition-colors"
+                />
+              </div>
+
+              <!-- Stats pills -->
+              <div class="flex gap-2 mt-3 flex-wrap">
+                <span
+                  class="inline-flex items-center gap-1 text-xs font-medium bg-muted px-2.5 py-1 rounded-full"
+                >
+                  <Layers class="w-3 h-3 text-muted-foreground" />
+                  {{ session.exercise_count }}
+                  {{ $t("workoutHistory.exercises") }}
+                </span>
+                <span
+                  class="inline-flex items-center gap-1 text-xs font-medium bg-muted px-2.5 py-1 rounded-full"
+                >
+                  <Flame class="w-3 h-3 text-muted-foreground" />
+                  {{ session.sets_completed }} {{ $t("workoutHistory.sets") }}
+                </span>
+                <span
+                  v-if="session.ended_at"
+                  class="inline-flex items-center gap-1 text-xs font-medium bg-muted px-2.5 py-1 rounded-full"
+                >
+                  <Clock class="w-3 h-3 text-muted-foreground" />
+                  {{ formatDuration(session.started_at, session.ended_at) }}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </button>
+        </button>
+      </div>
     </div>
 
     <!-- Detail sheet -->
     <Sheet :open="drawerOpen" @update:open="(v: boolean) => (drawerOpen = v)">
+      <!-- Delete confirmation dialog — inside Sheet so it teleports above the sheet overlay -->
+      <Dialog v-model:open="deleteDialogOpen">
+        <DialogContent class="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{{ $t("workoutHistory.deleteConfirmTitle") }}</DialogTitle>
+            <DialogDescription>{{ $t("workoutHistory.deleteConfirmDescription") }}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter class="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" :disabled="isDeleting" @click="deleteDialogOpen = false">
+              {{ $t("cancel") }}
+            </Button>
+            <Button variant="destructive" :disabled="isDeleting" @click="handleDelete">
+              {{ isDeleting ? $t("deleting") : $t("delete") }}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <SheetContent class="sm:max-w-md flex flex-col gap-0 p-0">
         <SheetHeader class="px-6 pt-6 pb-4 border-b shrink-0">
           <SheetTitle class="leading-tight">
@@ -325,7 +372,20 @@ const completedExercises = computed(() => {
             </div>
           </div>
         </div>
+
+        <div class="px-6 py-4 border-t shrink-0">
+          <Button
+            variant="ghost"
+            class="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+            :disabled="isDeleting"
+            @click="deleteDialogOpen = true"
+          >
+            <Trash2 class="size-4 mr-2" />
+            {{ $t("workoutHistory.deleteRecord") }}
+          </Button>
+        </div>
       </SheetContent>
     </Sheet>
-  </div>
+    </div><!-- end flex lg:flex-row -->
+  </div><!-- end pb-10 -->
 </template>

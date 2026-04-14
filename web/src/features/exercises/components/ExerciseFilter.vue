@@ -60,19 +60,19 @@ const handleClear = () => {
 
 <template>
   <div class="flex flex-col gap-4 p-4 border rounded-lg bg-card">
-    <div class="flex flex-col sm:flex-row gap-4">
-      <div class="flex-1">
+    <div class="flex flex-col gap-4">
+      <div>
         <Input v-model="searchInput" :placeholder="$t('exercises.filter.searchPlaceholder')"
           @keyup.enter="handleSearch" />
       </div>
 
-      <div class="flex-1">
+      <div>
         <MultiSelectTags v-model="selectedMuscleGroups" :options="muscleGroupOptions"
-          :placeholder="$t('exercises.filter.muscleGroupPlaceholder')" />
+          :placeholder="$t('exercises.filter.muscleGroupPlaceholder')" :list-mode="true" />
       </div>
-      <div class="flex-1">
+      <div>
         <MultiSelectTags v-model="selectedEquipment" :options="equipmentOptions"
-          :placeholder="$t('exercises.filter.equipmentPlaceholder')" />
+          :placeholder="$t('exercises.filter.equipmentPlaceholder')" :list-mode="true" />
       </div>
     </div>
 

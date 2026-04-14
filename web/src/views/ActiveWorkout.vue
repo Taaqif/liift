@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { useElapsedTimer, formatElapsed } from "@/composables/useElapsedTimer";
 import { useRouter } from "vue-router";
 import { useActiveWorkoutSession } from "@/features/workout-session/composables/useActiveWorkoutSession";
 import { useUpdateWorkoutSession } from "@/features/workout-session/composables/useUpdateWorkoutSession";
@@ -54,7 +55,6 @@ const restExerciseId = ref<number | null>(null);
 const restSetIdx = ref<number | null>(null);
 const restLabel = ref<string>("");
 let restTimerId: ReturnType<typeof setInterval> | null = null;
-let elapsedTimerId: ReturnType<typeof setInterval> | null = null;
 
 watch(
   session,
@@ -133,43 +133,67 @@ async function save(): Promise<void> {
 }
 
 const defaultRestSeconds = 60;
+const REST_TIMER_KEY = "liift:restTimer";
 
 // Donut timer: r=8 in a 20×20 viewBox, stroke-width=3 leaves a visible hole
 const REST_CIRC = 2 * Math.PI * 8; // ≈ 50.265
 
+function clearRestTimerStorage() {
+  localStorage.removeItem(REST_TIMER_KEY);
+}
+
+function tickRestTimer() {
+  const stored = localStorage.getItem(REST_TIMER_KEY);
+  if (!stored) { restRemaining.value = null; return; }
+  try {
+    const { startedAt, durationSeconds } = JSON.parse(stored) as { startedAt: string; durationSeconds: number };
+    const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+    const remaining = durationSeconds - elapsed;
+    if (remaining <= 0) {
+      clearRestTimerStorage();
+      if (restTimerId) { clearInterval(restTimerId); restTimerId = null; }
+      restRemaining.value = null;
+    } else {
+      restRemaining.value = remaining;
+    }
+  } catch {
+    clearRestTimerStorage();
+    restRemaining.value = null;
+  }
+}
+
 function startRestTimer(ex: WorkoutSessionExercise, setIdx: number) {
   const restSeconds = ex.rest_timer > 0 ? ex.rest_timer : defaultRestSeconds;
-  restRemaining.value = restSeconds;
   restTotal.value = restSeconds;
   restLabel.value = ex.exercise?.name ?? "";
-  if (restTimerId) clearInterval(restTimerId);
-  restTimerId = setInterval(() => {
-    if (restRemaining.value === null) return;
-    restRemaining.value -= 1;
-    if (restRemaining.value <= 0 && restTimerId) {
-      clearInterval(restTimerId);
-      restTimerId = null;
-      restRemaining.value = null;
-    }
-  }, 1000);
 
   // Point to the target set — the one we're resting *for*
   const exs = localSession.value?.exercises ?? [];
   const exIdx = exs.findIndex((e) => e.id === ex.id);
+  let targetExId: number | null = null;
+  let targetSetIdx: number | null = null;
   if (setIdx < ex.sets.length - 1) {
     // Next set in the same exercise
-    restExerciseId.value = ex.id;
-    restSetIdx.value = setIdx + 1;
+    targetExId = ex.id;
+    targetSetIdx = setIdx + 1;
   } else if (exIdx >= 0 && exIdx < exs.length - 1) {
     // Last set of this exercise — rest is for the first set of the next exercise
     const nextExercise = exs[exIdx + 1];
-    restExerciseId.value = nextExercise?.id ?? null;
-    restSetIdx.value = 0;
-  } else {
-    // Last set of the last exercise — nothing upcoming
-    restExerciseId.value = null;
-    restSetIdx.value = null;
+    targetExId = nextExercise?.id ?? null;
+    targetSetIdx = 0;
   }
+  restExerciseId.value = targetExId;
+  restSetIdx.value = targetSetIdx;
+
+  localStorage.setItem(REST_TIMER_KEY, JSON.stringify({
+    startedAt: new Date().toISOString(),
+    durationSeconds: restSeconds,
+    restExerciseId: targetExId,
+    restSetIdx: targetSetIdx,
+  }));
+  if (restTimerId) clearInterval(restTimerId);
+  tickRestTimer();
+  restTimerId = setInterval(tickRestTimer, 1000);
 }
 
 async function setCompleted(
@@ -203,6 +227,7 @@ async function setCompleted(
     restRemaining.value = null;
     restExerciseId.value = null;
     restSetIdx.value = null;
+    clearRestTimerStorage();
   }
 
   const viewedExIndex = activeExIndex.value;
@@ -350,30 +375,7 @@ function adjustRestTimer(ex: WorkoutSessionExercise, delta: number) {
   save();
 }
 
-const elapsedSeconds = ref(0);
-watch(
-  () => localSession.value?.started_at,
-  (startedAt) => {
-    if (elapsedTimerId) clearInterval(elapsedTimerId);
-    elapsedTimerId = null;
-    if (!startedAt) return;
-    const start = new Date(startedAt).getTime();
-    const tick = () => {
-      elapsedSeconds.value = Math.floor((Date.now() - start) / 1000);
-    };
-    tick();
-    elapsedTimerId = setInterval(tick, 1000);
-  },
-  { immediate: true },
-);
-
-function formatElapsed(sec: number): string {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
+const { elapsedSeconds } = useElapsedTimer(() => localSession.value?.started_at);
 
 // ── Unified finish dialog ─────────────────────────────────
 const showFinishDialog = ref(false);
@@ -431,9 +433,39 @@ watch(
   { immediate: true },
 );
 
+function onVisibilityChange() {
+  if (document.visibilityState === "visible") tickRestTimer();
+}
+
+onMounted(() => {
+  // Restore rest timer if one was running before the tab went away
+  const stored = localStorage.getItem(REST_TIMER_KEY);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored) as {
+        startedAt: string;
+        durationSeconds: number;
+        restExerciseId?: number | null;
+        restSetIdx?: number | null;
+      };
+      restTotal.value = parsed.durationSeconds;
+      restExerciseId.value = parsed.restExerciseId ?? null;
+      restSetIdx.value = parsed.restSetIdx ?? null;
+      tickRestTimer();
+      if (restRemaining.value !== null) {
+        if (restTimerId) clearInterval(restTimerId);
+        restTimerId = setInterval(tickRestTimer, 1000);
+      }
+    } catch {
+      clearRestTimerStorage();
+    }
+  }
+  document.addEventListener("visibilitychange", onVisibilityChange);
+});
+
 onUnmounted(() => {
   if (restTimerId) clearInterval(restTimerId);
-  if (elapsedTimerId) clearInterval(elapsedTimerId);
+  document.removeEventListener("visibilitychange", onVisibilityChange);
 });
 
 const logDrawerOpen = ref(false);

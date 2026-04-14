@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { VueQueryDevtools } from "@tanstack/vue-query-devtools";
 import {
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/lib/auth/composables/useAuth";
 import { useActiveWorkoutSession } from "@/features/workout-session/composables/useActiveWorkoutSession";
+import { useElapsedTimer, formatElapsed } from "@/composables/useElapsedTimer";
 import { Dumbbell, Timer } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout, initAuth } = useAuth();
@@ -28,35 +29,7 @@ const router = useRouter();
 const mobileMenuOpen = ref(false);
 const { session: activeSession } = useActiveWorkoutSession();
 
-// Live elapsed timer for the active workout pill
-const elapsedSeconds = ref(0);
-let elapsedTimerId: ReturnType<typeof setInterval> | null = null;
-
-function tickElapsed() {
-  if (!activeSession.value?.started_at) { elapsedSeconds.value = 0; return; }
-  elapsedSeconds.value = Math.floor((Date.now() - new Date(activeSession.value.started_at).getTime()) / 1000);
-}
-
-function formatElapsed(s: number): string {
-  const m = Math.floor(s / 60);
-  const h = Math.floor(m / 60);
-  if (h > 0) return `${h}h ${(m % 60)}m`;
-  return `${m}m`;
-}
-
-// Start/stop timer based on active session
-import { watch } from "vue";
-watch(activeSession, (s) => {
-  if (s) {
-    tickElapsed();
-    if (!elapsedTimerId) elapsedTimerId = setInterval(tickElapsed, 10000);
-  } else {
-    if (elapsedTimerId) { clearInterval(elapsedTimerId); elapsedTimerId = null; }
-    elapsedSeconds.value = 0;
-  }
-}, { immediate: true });
-
-onUnmounted(() => { if (elapsedTimerId) clearInterval(elapsedTimerId); });
+const { elapsedSeconds } = useElapsedTimer(() => activeSession.value?.started_at);
 
 const activeSetsCompleted = computed(() => {
   if (!activeSession.value) return 0;

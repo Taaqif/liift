@@ -48,7 +48,7 @@ function totalWorkoutSlots(plan: WorkoutPlan): number {
       <p class="text-muted-foreground">{{ $t("workoutPlans.noPlans") }}</p>
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <Card
         v-for="plan in plans"
         :key="plan.id"
@@ -56,50 +56,44 @@ function totalWorkoutSlots(plan: WorkoutPlan): number {
         :class="{ 'ring-2 ring-green-500/50': plan.id === activePlanId }"
       >
         <CardContent>
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex gap-4 flex-1 items-center">
-              <div class="shrink-0 w-16 h-16 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
-                <CalendarDays class="w-8 h-8 text-muted-foreground" />
-              </div>
-              <div class="flex-1 flex flex-col gap-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <CardTitle class="line-clamp-1">{{ plan.name }}</CardTitle>
-                  <span
-                    v-if="plan.id === activePlanId"
-                    class="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30 shrink-0"
-                  >
-                    {{ $t("workoutPlans.progress.activeBadge") }}
-                  </span>
-                </div>
-                <CardDescription v-if="plan.description" class="line-clamp-2">
-                  {{ plan.description }}
-                </CardDescription>
-                <p class="text-sm text-muted-foreground">
-                  {{ $t("workoutPlans.weeksDays", { weeks: plan.numberOfWeeks, days: plan.daysPerWeek }) }}
-                  · {{ $t("workoutPlans.workoutSlots", { count: totalWorkoutSlots(plan) }) }}
-                </p>
-              </div>
+          <div class="flex gap-3 items-center">
+            <div class="shrink-0 w-12 h-12 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
+              <CalendarDays class="w-6 h-6 text-muted-foreground" />
             </div>
-            <div class="flex flex-col items-end gap-1 shrink-0">
-              <div class="flex items-center gap-1">
-                <Button variant="ghost" size="sm" @click="emits('view', plan)">
-                  {{ $t("workoutPlans.detail.view") }}
-                </Button>
-                <Button variant="outline" size="sm" @click="emits('edit', plan)">
-                  {{ $t("edit") }}
-                </Button>
+            <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+              <div class="flex items-center gap-2 min-w-0">
+                <CardTitle class="truncate">{{ plan.name }}</CardTitle>
+                <span
+                  v-if="plan.id === activePlanId"
+                  class="text-xs px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30 shrink-0"
+                >
+                  {{ $t("workoutPlans.progress.activeBadge") }}
+                </span>
               </div>
-              <Button
-                v-if="plan.id !== activePlanId"
-                size="sm"
-                variant="secondary"
-                :disabled="isStarting || !!activePlanId"
-                @click="emits('start', plan)"
-              >
-                <Play class="w-3 h-3 mr-1" />
-                {{ $t("workoutPlans.progress.start") }}
-              </Button>
+              <p class="text-xs text-muted-foreground">
+                {{ $t("workoutPlans.weeksDays", { weeks: plan.numberOfWeeks, days: plan.daysPerWeek }) }}
+                · {{ $t("workoutPlans.workoutSlots", { count: totalWorkoutSlots(plan) }) }}
+              </p>
             </div>
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t">
+            <Button variant="ghost" size="sm" @click="emits('view', plan)">
+              {{ $t("workoutPlans.detail.view") }}
+            </Button>
+            <div class="flex-1" />
+            <Button variant="outline" size="sm" @click="emits('edit', plan)">
+              {{ $t("edit") }}
+            </Button>
+            <Button
+              v-if="plan.id !== activePlanId"
+              size="sm"
+              variant="secondary"
+              :disabled="isStarting || !!activePlanId"
+              @click="emits('start', plan)"
+            >
+              <Play class="w-3 h-3 mr-1" />
+              {{ $t("workoutPlans.progress.start") }}
+            </Button>
           </div>
         </CardContent>
       </Card>

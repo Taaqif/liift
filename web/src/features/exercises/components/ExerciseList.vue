@@ -175,72 +175,49 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
     </div>
 
     <!-- Default card list -->
-    <div v-else class="space-y-4">
+    <div v-else class="space-y-3">
       <Card v-for="exercise in exercises" :key="exercise.id" class="gap-2">
         <CardContent>
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex gap-4 flex-1 items-center">
-              <div
-                class="shrink-0 w-20 h-20 rounded-lg border overflow-hidden bg-muted flex items-center justify-center"
-              >
-                <img
-                  v-if="getImageUrlForExercise(exercise)"
-                  :src="getImageUrlForExercise(exercise)"
-                  :alt="exercise.name"
-                  class="w-full h-full object-cover"
-                />
-                <Dumbbell v-else class="w-10 h-10 text-muted-foreground" />
-              </div>
-              <div class="flex-1 gap-2 flex flex-col">
-                <CardTitle>{{ exercise.name }}</CardTitle>
-                <CardDescription v-if="exercise.description">
-                  {{ exercise.description }}
-                </CardDescription>
-                <div class="flex flex-col gap-1 text-sm">
-                  <div v-if="exercise.primary_muscle_groups.length > 0">
-                    <span class="font-medium text-muted-foreground">{{
-                      $t("exercises.primaryLabel")
-                    }}</span>
-                    <span class="ml-2">
-                      {{ formatMuscleGroups(exercise.primary_muscle_groups) }}
-                    </span>
-                  </div>
-                  <div v-if="exercise.secondary_muscle_groups.length > 0">
-                    <span class="font-medium text-muted-foreground">{{
-                      $t("exercises.secondaryLabel")
-                    }}</span>
-                    <span class="ml-2">
-                      {{ formatMuscleGroups(exercise.secondary_muscle_groups) }}
-                    </span>
-                  </div>
-                  <div v-if="exercise.equipment.length > 0">
-                    <span class="font-medium text-muted-foreground">{{
-                      $t("exercises.equipmentLabel")
-                    }}</span>
-                    <span class="ml-2">
-                      {{ formatEquipment(exercise.equipment) }}
-                    </span>
-                  </div>
-                </div>
+          <div class="flex gap-3 items-center">
+            <div
+              class="shrink-0 w-14 h-14 rounded-lg border overflow-hidden bg-muted flex items-center justify-center"
+            >
+              <img
+                v-if="getImageUrlForExercise(exercise)"
+                :src="getImageUrlForExercise(exercise)"
+                :alt="exercise.name"
+                class="w-full h-full object-cover"
+              />
+              <Dumbbell v-else class="w-7 h-7 text-muted-foreground" />
+            </div>
+            <div class="flex-1 min-w-0 flex flex-col gap-1">
+              <CardTitle class="truncate">{{ exercise.name }}</CardTitle>
+              <div class="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                <span v-if="exercise.primary_muscle_groups.length > 0" class="truncate">
+                  {{ formatMuscleGroups(exercise.primary_muscle_groups) }}
+                </span>
+                <span v-if="exercise.equipment.length > 0" class="truncate">
+                  {{ formatEquipment(exercise.equipment) }}
+                </span>
               </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                class="size-8"
-                @click="openLogs(exercise)"
-              >
-                <History class="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                @click="handleEdit(exercise)"
-              >
-                {{ $t("edit") }}
-              </Button>
-            </div>
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t justify-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              class="size-8"
+              @click="openLogs(exercise)"
+            >
+              <History class="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              @click="handleEdit(exercise)"
+            >
+              {{ $t("edit") }}
+            </Button>
           </div>
         </CardContent>
       </Card>

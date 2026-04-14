@@ -155,6 +155,38 @@ func (r *WorkoutSessionRepository) Start(ctx context.Context, userID uint, worko
 	return r.GetByID(ctx, session.ID, userID)
 }
 
+func (r *WorkoutSessionRepository) StartBlank(ctx context.Context, userID uint, name string) (*models.WorkoutSession, error) {
+	var active models.WorkoutSession
+	err := r.DB().WithContext(ctx).Where("user_id = ? AND ended_at IS NULL", userID).First(&active).Error
+	if err == nil {
+		return nil, ErrActiveSessionExists
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	workout := &models.Workout{
+		Name:      name,
+		IsLibrary: false,
+		IsManual:  true,
+	}
+	if err := r.DB().WithContext(ctx).Create(workout).Error; err != nil {
+		return nil, err
+	}
+
+	now := time.Now().UTC()
+	session := &models.WorkoutSession{
+		UserID:    userID,
+		WorkoutID: workout.ID,
+		StartedAt: now,
+	}
+	if err := r.DB().WithContext(ctx).Create(session).Error; err != nil {
+		return nil, err
+	}
+
+	return r.GetByID(ctx, session.ID, userID)
+}
+
 func (r *WorkoutSessionRepository) StartDay(ctx context.Context, userID, planProgressID uint, workoutIDs []uint) (*models.WorkoutSession, error) {
 	var active models.WorkoutSession
 	err := r.DB().WithContext(ctx).Where("user_id = ? AND ended_at IS NULL", userID).First(&active).Error
@@ -786,4 +818,15 @@ func (r *WorkoutSessionRepository) End(ctx context.Context, id, userID uint) (*m
 	}
 	s.EndedAt = &now
 	return r.GetByID(ctx, s.ID, userID)
+}
+
+func (r *WorkoutSessionRepository) DeleteByID(ctx context.Context, id, userID uint) error {
+	result := r.DB().WithContext(ctx).Where("id = ? AND user_id = ?", id, userID).Delete(&models.WorkoutSession{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

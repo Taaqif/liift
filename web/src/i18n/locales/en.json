@@ -73,6 +73,10 @@
     "titleLower": "workouts",
     "subtitle": "A record of all your completed workouts",
     "noHistory": "No completed workouts yet. Finish a workout to see it here.",
+    "deleted": "Workout record deleted",
+    "deleteRecord": "Delete record",
+    "deleteConfirmTitle": "Delete this workout?",
+    "deleteConfirmDescription": "This will permanently delete this workout record. This cannot be undone.",
     "unnamedWorkout": "Unnamed Workout",
     "unknownExercise": "Unknown Exercise",
     "exercises": "exercises",
@@ -209,6 +213,7 @@
     "create": "Create Workout",
     "update": "Update Workout",
     "createNew": "Create New Workout",
+    "quickStart": "Quick Start",
     "createDescription": "Create a new workout plan with exercises and sets.",
     "editTitle": "Edit Workout",
     "editDescription": "Update the workout details or delete it.",
@@ -317,6 +322,7 @@
     "title": "Workout Plans",
     "titleLower": "@.lower:{'workoutPlans.title'}",
     "subtitle": "Schedule workouts over weeks and days",
+    "create": "Create Plan",
     "createNew": "Create New Plan",
     "createDescription": "Define a plan with configurable weeks and days. Mark days as rest or assign one or more workouts.",
     "editTitle": "Edit Plan",
@@ -355,6 +361,9 @@
     "unsavedChangesDescription": "You have unsaved changes. Are you sure you want to close?",
     "keepEditing": "Keep editing",
     "discardChanges": "Discard changes",
+    "unsavedChanges": {
+      "confirmLeave": "You have unsaved changes. Leave anyway?"
+    },
     "adHocWorkout": {
       "create": "Create new workout",
       "title": "Create new workout",

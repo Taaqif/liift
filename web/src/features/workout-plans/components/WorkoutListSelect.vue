@@ -1,18 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { VueDraggable } from "vue-draggable-plus";
 import { useWorkouts } from "@/features/workouts/composables/useWorkouts";
 import type { Workout } from "@/features/workouts/types";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { GripVertical, X, ChevronDown } from "lucide-vue-next";
+import { GripVertical, X, ChevronDown, Plus } from "lucide-vue-next";
 import InlineWorkoutEditor from "./InlineWorkoutEditor.vue";
+import WorkoutPickerSheet from "./WorkoutPickerSheet.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -31,7 +25,7 @@ const emits = defineEmits<{
 }>();
 
 const { workouts, loading } = useWorkouts({ limit: 500, includeAll: true });
-const selectedIdToAdd = ref<string | undefined>(undefined);
+const pickerOpen = ref(false);
 const expandedId = ref<number | null>(null);
 
 const ids = computed(() => props.modelValue ?? []);
@@ -42,28 +36,16 @@ const workoutById = computed(() => {
   return map;
 });
 
-const options = computed(() =>
-  workouts.value
-    .filter((w) => w.is_library !== false && !ids.value.includes(w.id))
-    .map((w) => ({ value: w.id.toString(), label: w.name }))
-    .sort((a, b) => a.label.localeCompare(b.label)),
-);
-
 const orderedItems = computed(() =>
   ids.value
     .map((id) => workoutById.value.get(id))
     .filter((w): w is Workout => !!w),
 );
 
-watch(selectedIdToAdd, (val) => {
-  if (val) {
-    const id = parseInt(val, 10);
-    if (!Number.isNaN(id) && !ids.value.includes(id)) {
-      emits("update:modelValue", [...ids.value, id]);
-    }
-    selectedIdToAdd.value = undefined;
-  }
-});
+function handlePickerAdd(newIds: number[]) {
+  const toAdd = newIds.filter((id) => !ids.value.includes(id));
+  if (toAdd.length > 0) emits("update:modelValue", [...ids.value, ...toAdd]);
+}
 
 function removeAt(index: number) {
   const id = ids.value[index];
@@ -90,18 +72,7 @@ function onReorder(event: { oldIndex?: number; newIndex?: number }) {
 <template>
   <div class="space-y-2" :class="props.class">
     <p
-      v-if="
-        !loading &&
-        workouts.length > 0 &&
-        options.length === 0 &&
-        ids.length > 0
-      "
-      class="text-xs text-muted-foreground"
-    >
-      {{ $t("workoutPlans.allWorkoutsAdded") }}
-    </p>
-    <p
-      v-else-if="!loading && workouts.length === 0"
+      v-if="!loading && workouts.length === 0"
       class="text-xs text-muted-foreground"
     >
       {{ $t("workoutPlans.noWorkoutsYet") }}
@@ -175,19 +146,21 @@ function onReorder(event: { oldIndex?: number; newIndex?: number }) {
         />
       </div>
     </VueDraggable>
-    <Select
-      v-model="selectedIdToAdd"
-      :disabled="loading || options.length === 0"
+    <Button
+      type="button"
+      variant="outline"
+      class="w-full"
+      :disabled="loading || workouts.length === 0"
+      @click="pickerOpen = true"
     >
-      <SelectTrigger class="w-full">
-        <SelectValue :placeholder="placeholder" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem v-for="opt in options" :key="opt.value" :value="opt.value">
-          {{ opt.label }}
-        </SelectItem>
-      </SelectContent>
-    </Select>
+      <Plus class="w-4 h-4 mr-2" />
+      {{ placeholder }}
+    </Button>
+    <WorkoutPickerSheet
+      :open="pickerOpen"
+      @update:open="pickerOpen = $event"
+      @add="handlePickerAdd"
+    />
   </div>
 </template>
 

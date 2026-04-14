@@ -92,37 +92,43 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
       <p>{{ $t("exercises.errorLoading", { message: error.message }) }}</p>
     </div>
 
-    <div class="mb-6">
-      <ExerciseFilter :model-value="filter" @update:model-value="handleFilter" />
-    </div>
+    <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
+      <!-- Filter: top on mobile, left sidebar on desktop -->
+      <div class="lg:w-72 lg:shrink-0">
+        <ExerciseFilter :model-value="filter" @update:model-value="handleFilter" />
+      </div>
 
-    <ExerciseList :exercises="exercises" :loading="loading" @edit="handleEditExercise" />
+      <!-- List + pagination -->
+      <div class="flex-1 min-w-0">
+        <ExerciseList :exercises="exercises" :loading="loading" @edit="handleEditExercise" />
 
-    <div v-if="!loading && total > 0" class="mt-8 flex flex-col gap-2 items-center justify-between">
-      <Pagination v-slot="{ page }" v-model:page="currentPage" :items-per-page="limit" :total="total"
-        :default-page="currentPage">
-        <PaginationContent v-slot="{ items }">
-          <PaginationPrevious />
+        <div v-if="!loading && total > 0" class="mt-8 flex flex-col gap-2 items-center justify-between">
+          <Pagination v-slot="{ page }" v-model:page="currentPage" :items-per-page="limit" :total="total"
+            :default-page="currentPage">
+            <PaginationContent v-slot="{ items }">
+              <PaginationPrevious />
 
-          <template v-for="(item, index) in items" :key="index">
-            <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
-              {{ item.value }}
-            </PaginationItem>
-            <PaginationEllipsis v-else :key="item.type" />
-          </template>
+              <template v-for="(item, index) in items" :key="index">
+                <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
+                  {{ item.value }}
+                </PaginationItem>
+                <PaginationEllipsis v-else :key="item.type" />
+              </template>
 
-          <PaginationNext />
-        </PaginationContent>
-      </Pagination>
-      <div class="text-sm text-muted-foreground">
-        {{
-          $t("pagination.showingFromToOfTotal", {
-            from: offset + 1,
-            to: Math.min(offset + limit, total),
-            total: total,
-          })
-        }}
-        {{ $t("exercises.titleLower") }}
+              <PaginationNext />
+            </PaginationContent>
+          </Pagination>
+          <div class="text-sm text-muted-foreground">
+            {{
+              $t("pagination.showingFromToOfTotal", {
+                from: offset + 1,
+                to: Math.min(offset + limit, total),
+                total: total,
+              })
+            }}
+            {{ $t("exercises.titleLower") }}
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -71,7 +71,7 @@ const {
   error: deleteError,
 } = useDeleteWorkoutPlan();
 
-const { handleSubmit, resetForm, meta, values, setFieldValue, errors } =
+const { handleSubmit, resetForm, meta, values, setFieldValue, errors, submitCount } =
   useForm<WorkoutPlanFormValues>({
     validationSchema: toTypedSchema(workoutPlanFormSchema),
     initialValues: {
@@ -368,6 +368,7 @@ onBeforeRouteLeave(() => {
                     </span>
                     <p
                       v-if="
+                        submitCount > 0 &&
                         errors[
                           `weeks[${selectedWeek}].days[${dayIndex}].workoutIds`
                         ]

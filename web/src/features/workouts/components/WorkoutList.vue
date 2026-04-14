@@ -58,47 +58,43 @@ const getTotalSets = (workout: Workout): number =>
       <p class="text-muted-foreground">{{ $t("workouts.noWorkouts") }}</p>
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <Card v-for="workout in workouts" :key="workout.id" class="gap-2">
         <CardContent>
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex gap-4 flex-1 items-center">
-              <div class="shrink-0 w-16 h-16 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
-                <Dumbbell class="w-8 h-8 text-muted-foreground" />
-              </div>
-              <div class="flex-1 flex flex-col gap-1">
-                <CardTitle class="line-clamp-1">{{ workout.name }}</CardTitle>
-                <CardDescription v-if="workout.description" class="line-clamp-2">
-                  {{ workout.description }}
-                </CardDescription>
-                <p class="text-sm text-muted-foreground">
-                  {{ getExerciseCount(workout) }} {{ $t("workouts.exercises") }}
-                  · {{ getTotalSets(workout) }} {{ $t("workouts.sets") }}
-                </p>
-              </div>
+          <div class="flex gap-3 items-center">
+            <div class="shrink-0 w-12 h-12 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
+              <Dumbbell class="w-6 h-6 text-muted-foreground" />
             </div>
-            <div class="flex items-center gap-1 shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                class="size-8"
-                @click="openHistory(workout)"
-              >
-                <History class="size-4" />
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                :disabled="startingWorkoutId != null"
-                @click="emits('start', workout)"
-              >
-                <Play class="w-4 h-4 mr-1" />
-                {{ $t("workoutSession.startWorkout") }}
-              </Button>
-              <Button variant="outline" size="sm" @click="emits('edit', workout)">
-                {{ $t("edit") }}
-              </Button>
+            <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+              <CardTitle class="truncate">{{ workout.name }}</CardTitle>
+              <p class="text-xs text-muted-foreground">
+                {{ getExerciseCount(workout) }} {{ $t("workouts.exercises") }}
+                · {{ getTotalSets(workout) }} {{ $t("workouts.sets") }}
+              </p>
             </div>
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t">
+            <Button
+              variant="ghost"
+              size="icon"
+              class="size-8 shrink-0"
+              @click="openHistory(workout)"
+            >
+              <History class="size-4" />
+            </Button>
+            <div class="flex-1" />
+            <Button variant="outline" size="sm" @click="emits('edit', workout)">
+              {{ $t("edit") }}
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              :disabled="startingWorkoutId != null"
+              @click="emits('start', workout)"
+            >
+              <Play class="w-3.5 h-3.5 mr-1" />
+              {{ $t("workoutSession.startWorkout") }}
+            </Button>
           </div>
         </CardContent>
       </Card>

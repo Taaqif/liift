@@ -73,21 +73,21 @@ const handleClear = () => {
       <Input v-model="searchInput" :placeholder="$t('workouts.filter.searchPlaceholder')"
         @keyup.enter="handleSearch" />
     </div>
-    <div class="flex flex-col sm:flex-row gap-4">
-      <div class="flex-1">
+    <div class="flex flex-col gap-4">
+      <div>
         <ExerciseFeatureMultiSelect v-model="selectedExerciseFeatures"
-          :placeholder="$t('workouts.filter.exerciseTypePlaceholder')" />
+          :placeholder="$t('workouts.filter.exerciseTypePlaceholder')" :list-mode="true" />
       </div>
-      <div class="flex-1">
+      <div>
         <MuscleGroupMultiSelect v-model="selectedMuscleGroups"
-          :placeholder="$t('workouts.filter.muscleGroupPlaceholder')" />
+          :placeholder="$t('workouts.filter.muscleGroupPlaceholder')" :list-mode="true" />
       </div>
-      <div class="flex-1">
+      <div>
         <EquipmentMultiSelect v-model="selectedEquipment"
-          :placeholder="$t('workouts.filter.equipmentPlaceholder')" />
+          :placeholder="$t('workouts.filter.equipmentPlaceholder')" :list-mode="true" />
       </div>
-      <div class="flex-1">
-        <ExerciseMultiSelect v-model="selectedExerciseIds" :placeholder="$t('workouts.filter.exercisePlaceholder')" />
+      <div>
+        <ExerciseMultiSelect v-model="selectedExerciseIds" :placeholder="$t('workouts.filter.exercisePlaceholder')" :list-mode="true" />
       </div>
     </div>
     <div class="flex gap-2">

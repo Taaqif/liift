@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { useQueryClient } from "@tanstack/vue-query";
 import { useWorkouts } from "@/features/workouts/composables/useWorkouts";
 import { useStartWorkout } from "@/features/workout-session/composables/useStartWorkout";
+import { useStartBlankWorkout } from "@/features/workout-session/composables/useStartBlankWorkout";
 import { useActiveWorkoutSession } from "@/features/workout-session/composables/useActiveWorkoutSession";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -35,6 +36,7 @@ const router = useRouter();
 const { t } = useI18n();
 const queryClient = useQueryClient();
 const { startWorkout } = useStartWorkout();
+const { startBlankWorkout, isPending: isStartingBlank } = useStartBlankWorkout();
 const { session: activeSession } = useActiveWorkoutSession();
 const startingWorkoutId = ref<number | null>(null);
 const showConflictDialog = ref(false);
@@ -137,52 +139,63 @@ const handleFilter = (newFilter: WorkoutFilterType) => {
           {{ $t("workouts.subtitle") }}
         </p>
       </div>
-      <Button @click="router.push({ name: 'workout-create' })">
-        {{ $t("workouts.createNew") }}
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" :disabled="isStartingBlank || !!activeSession" @click="startBlankWorkout()">
+          {{ $t("workouts.quickStart") }}
+        </Button>
+        <Button @click="router.push({ name: 'workout-create' })">
+          {{ $t("workouts.createNew") }}
+        </Button>
+      </div>
     </div>
 
     <div v-if="error" class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
       <p>{{ $t("workouts.errorLoading", { message: error.message }) }}</p>
     </div>
 
-    <div class="mb-6">
-      <WorkoutFilter :model-value="filter" @update:model-value="handleFilter" />
-    </div>
+    <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
+      <!-- Filter: top on mobile, left sidebar on desktop -->
+      <div class="lg:w-72 lg:shrink-0">
+        <WorkoutFilter :model-value="filter" @update:model-value="handleFilter" />
+      </div>
 
-    <WorkoutList
-      :workouts="workouts"
-      :loading="loading"
-      :starting-workout-id="startingWorkoutId"
-      @edit="handleEditWorkout"
-      @start="handleStartWorkout"
-    />
+      <!-- List + pagination -->
+      <div class="flex-1 min-w-0">
+        <WorkoutList
+          :workouts="workouts"
+          :loading="loading"
+          :starting-workout-id="startingWorkoutId"
+          @edit="handleEditWorkout"
+          @start="handleStartWorkout"
+        />
 
-    <div v-if="!loading && total > 0" class="mt-8 flex flex-col gap-2 items-center justify-between">
-      <Pagination v-slot="{ page }" v-model:page="currentPage" :items-per-page="limit" :total="total"
-        :default-page="currentPage">
-        <PaginationContent v-slot="{ items }">
-          <PaginationPrevious />
+        <div v-if="!loading && total > 0" class="mt-8 flex flex-col gap-2 items-center justify-between">
+          <Pagination v-slot="{ page }" v-model:page="currentPage" :items-per-page="limit" :total="total"
+            :default-page="currentPage">
+            <PaginationContent v-slot="{ items }">
+              <PaginationPrevious />
 
-          <template v-for="(item, index) in items" :key="index">
-            <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
-              {{ item.value }}
-            </PaginationItem>
-            <PaginationEllipsis v-else :key="item.type" />
-          </template>
+              <template v-for="(item, index) in items" :key="index">
+                <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
+                  {{ item.value }}
+                </PaginationItem>
+                <PaginationEllipsis v-else :key="item.type" />
+              </template>
 
-          <PaginationNext />
-        </PaginationContent>
-      </Pagination>
-      <div class="text-sm text-muted-foreground">
-        {{
-          $t("pagination.showingFromToOfTotal", {
-            from: offset + 1,
-            to: Math.min(offset + limit, total),
-            total: total,
-          })
-        }}
-        {{ $t("workouts.titleLower") }}
+              <PaginationNext />
+            </PaginationContent>
+          </Pagination>
+          <div class="text-sm text-muted-foreground">
+            {{
+              $t("pagination.showingFromToOfTotal", {
+                from: offset + 1,
+                to: Math.min(offset + limit, total),
+                total: total,
+              })
+            }}
+            {{ $t("workouts.titleLower") }}
+          </div>
+        </div>
       </div>
     </div>
   </div>

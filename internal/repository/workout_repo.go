@@ -58,6 +58,7 @@ func (r *WorkoutRepository) List(
 	var total int64
 
 	db := r.DB().WithContext(ctx).Model(&models.Workout{})
+	db = db.Where("is_manual = false")
 	if !includeAll {
 		db = db.Where("is_library = true")
 	}

@@ -11,9 +11,13 @@ const props = withDefaults(
     modelValue: string[];
     placeholder?: string;
     class?: string;
+    listMode?: boolean;
+    single?: boolean;
   }>(),
   {
     placeholder: undefined,
+    listMode: false,
+    single: false,
   },
 );
 
@@ -47,6 +51,8 @@ function onUpdate(value: string[]) {
     :placeholder="placeholder"
     :disabled="loading"
     :class="props.class"
+    :list-mode="props.listMode"
+    :single="props.single"
     @update:model-value="onUpdate"
   />
 </template>

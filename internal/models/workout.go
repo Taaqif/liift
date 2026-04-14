@@ -10,6 +10,7 @@ type Workout struct {
 	Name        string            `gorm:"type:varchar(255);not null" json:"name"`
 	Description string            `gorm:"type:text" json:"description"`
 	IsLibrary   bool              `gorm:"not null;default:true" json:"is_library"`
+	IsManual    bool              `gorm:"not null;default:false" json:"is_manual"`
 	Exercises   []WorkoutExercise `gorm:"foreignKey:WorkoutID;constraint:OnDelete:CASCADE" json:"exercises"`
 }
 

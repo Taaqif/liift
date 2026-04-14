@@ -215,6 +215,26 @@ type UpdateWorkoutSessionExerciseRequest struct {
 	Sets              []UpdateWorkoutSessionSetRequest `json:"sets"`
 }
 
+func (h *WorkoutSessionHandler) StartBlank(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{Error: "authorization_header_missing"})
+	}
+
+	name := time.Now().Format("January 2, 2006")
+
+	session, err := h.repo.StartBlank(c.Request().Context(), userID, name)
+	if err != nil {
+		if err == repository.ErrActiveSessionExists {
+			return c.JSON(http.StatusConflict, types.ErrorResponse{Error: "active_session_exists"})
+		}
+		c.Logger().Errorf("Failed to start blank session: %v", err)
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_start_session"})
+	}
+
+	return c.JSON(http.StatusCreated, mapSessionToResponse(session))
+}
+
 func (h *WorkoutSessionHandler) StartWorkout(c echo.Context) error {
 	workoutID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -535,14 +555,37 @@ func (h *WorkoutSessionHandler) GetActivityDates(c echo.Context) error {
 	})
 }
 
+func (h *WorkoutSessionHandler) DeleteSession(c echo.Context) error {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "invalid_session_id"})
+	}
+	userID := middleware.GetUserID(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{Error: "authorization_header_missing"})
+	}
+
+	if err := h.repo.DeleteByID(c.Request().Context(), uint(id), userID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.JSON(http.StatusNotFound, types.ErrorResponse{Error: "session_not_found"})
+		}
+		c.Logger().Errorf("Failed to delete session %d: %v", id, err)
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_delete_session"})
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
 func RegisterWorkoutSessionRoutes(api *echo.Group, handler *WorkoutSessionHandler) {
 	api.POST("/workouts/:id/start", handler.StartWorkout)
+	api.POST("/workout-sessions/blank", handler.StartBlank)
 	api.GET("/workout-sessions", handler.ListSessions)
 	api.GET("/workout-sessions/active", handler.GetActive)
 	api.GET("/workout-sessions/activity", handler.GetActivityDates)
 	api.POST("/workout-sessions/:id/exercises", handler.AddExercise)
 	api.POST("/workout-sessions/:id/end", handler.EndSession)
 	api.POST("/workout-sessions/:id/cancel", handler.CancelSession)
+	api.DELETE("/workout-sessions/:id", handler.DeleteSession)
 	api.GET("/workout-sessions/:id", handler.GetSession)
 	api.PATCH("/workout-sessions/:id", handler.UpdateSession)
 }
