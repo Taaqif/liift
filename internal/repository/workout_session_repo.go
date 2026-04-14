@@ -790,6 +790,39 @@ func (r *WorkoutSessionRepository) ListActivityDates(ctx context.Context, userID
 	return dates, nil
 }
 
+type WeeklyFeatureStat struct {
+	FeatureName string  `json:"feature_name"`
+	Total       float64 `json:"total"`
+}
+
+// WeeklyFeatureStats returns the summed value per feature name for all completed sets
+// in sessions that started within [from, to) for the given user.
+func (r *WorkoutSessionRepository) WeeklyFeatureStats(ctx context.Context, userID uint, from, to time.Time) ([]WeeklyFeatureStat, error) {
+	var rows []WeeklyFeatureStat
+	err := r.DB().WithContext(ctx).Raw(`
+		SELECT wssv.feature_name, SUM(wssv.value) AS total
+		FROM workout_session_set_values wssv
+		JOIN workout_session_sets wss
+			ON wss.id = wssv.workout_session_set_id
+			AND wss.deleted_at IS NULL
+			AND wss.completed_at IS NOT NULL
+		JOIN workout_session_exercises wse
+			ON wse.id = wss.workout_session_exercise_id
+			AND wse.deleted_at IS NULL
+		JOIN workout_sessions ws
+			ON ws.id = wse.workout_session_id
+			AND ws.deleted_at IS NULL
+			AND ws.ended_at IS NOT NULL
+		WHERE ws.user_id = ?
+		  AND ws.started_at >= ?
+		  AND ws.started_at < ?
+		  AND wssv.deleted_at IS NULL
+		  AND wssv.value != 0
+		GROUP BY wssv.feature_name
+	`, userID, from, to).Scan(&rows).Error
+	return rows, err
+}
+
 func (r *WorkoutSessionRepository) Cancel(ctx context.Context, id, userID uint) (*models.WorkoutSession, error) {
 	var s models.WorkoutSession
 	err := r.DB().WithContext(ctx).Where("id = ? AND user_id = ? AND ended_at IS NULL", id, userID).First(&s).Error

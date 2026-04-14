@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import type { WorkoutPlan } from "@/features/workout-plans/types";
-import Card from "@/components/ui/card/Card.vue";
-import CardTitle from "@/components/ui/card/CardTitle.vue";
-import CardDescription from "@/components/ui/card/CardDescription.vue";
-import CardContent from "@/components/ui/card/CardContent.vue";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Play } from "lucide-vue-next";
+import { Target, Play, Pencil, Eye, CheckCircle2 } from "lucide-vue-next";
 
 const props = defineProps<{
   plans: WorkoutPlan[];
@@ -29,74 +25,88 @@ function totalWorkoutSlots(plan: WorkoutPlan): number {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card v-for="i in 4" :key="i" class="gap-2">
-        <CardContent>
-          <div class="flex gap-4 items-center">
-            <div class="shrink-0 w-16 h-16 rounded-lg bg-muted animate-pulse" />
-            <div class="flex-1 space-y-2">
-              <div class="h-5 w-36 bg-muted animate-pulse rounded" />
-              <div class="h-4 w-24 bg-muted animate-pulse rounded" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+  <!-- Loading -->
+  <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div v-for="i in 4" :key="i" class="rounded-2xl border bg-card p-5 space-y-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-muted animate-pulse shrink-0" />
+        <div class="space-y-2 flex-1">
+          <div class="h-4 w-32 bg-muted animate-pulse rounded" />
+          <div class="h-3 w-20 bg-muted animate-pulse rounded" />
+        </div>
+      </div>
+      <div class="h-px bg-muted" />
+      <div class="h-8 bg-muted animate-pulse rounded-lg" />
     </div>
+  </div>
 
-    <div v-else-if="plans.length === 0" class="text-center py-12">
-      <p class="text-muted-foreground">{{ $t("workoutPlans.noPlans") }}</p>
-    </div>
+  <!-- Empty -->
+  <div v-else-if="plans.length === 0" class="flex flex-col items-center gap-3 py-20 text-center text-muted-foreground/50">
+    <CalendarDays class="w-8 h-8" />
+    <p class="text-sm">{{ $t("workoutPlans.noPlans") }}</p>
+  </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <Card
-        v-for="plan in plans"
-        :key="plan.id"
-        class="gap-2"
-        :class="{ 'ring-2 ring-green-500/50': plan.id === activePlanId }"
-      >
-        <CardContent>
-          <div class="flex gap-3 items-center">
-            <div class="shrink-0 w-12 h-12 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
-              <CalendarDays class="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div class="flex-1 min-w-0 flex flex-col gap-0.5">
-              <div class="flex items-center gap-2 min-w-0">
-                <CardTitle class="truncate">{{ plan.name }}</CardTitle>
-                <span
-                  v-if="plan.id === activePlanId"
-                  class="text-xs px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30 shrink-0"
-                >
-                  {{ $t("workoutPlans.progress.activeBadge") }}
-                </span>
-              </div>
-              <p class="text-xs text-muted-foreground">
-                {{ $t("workoutPlans.weeksDays", { weeks: plan.numberOfWeeks, days: plan.daysPerWeek }) }}
-                · {{ $t("workoutPlans.workoutSlots", { count: totalWorkoutSlots(plan) }) }}
-              </p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 mt-3 pt-3 border-t">
-            <Button variant="ghost" size="sm" @click="emits('view', plan)">
-              {{ $t("workoutPlans.detail.view") }}
-            </Button>
-            <div class="flex-1" />
-            <Button variant="outline" size="sm" @click="emits('edit', plan)">
-              {{ $t("edit") }}
-            </Button>
-            <Button
-              v-if="plan.id !== activePlanId"
-              size="sm"
-              variant="secondary"
-              :disabled="isStarting || !!activePlanId"
-              @click="emits('start', plan)"
+  <!-- Plan grid -->
+  <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div
+      v-for="plan in plans"
+      :key="plan.id"
+      class="rounded-2xl border bg-card p-5 flex flex-col gap-4 transition-all hover:shadow-sm"
+      :class="plan.id === activePlanId ? 'border-violet-500/30 bg-violet-500/[0.02]' : ''"
+    >
+      <!-- Top: icon + name + badge -->
+      <div class="flex items-start gap-3">
+        <div
+          class="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+          :class="plan.id === activePlanId ? 'bg-violet-500/15' : 'bg-muted'"
+        >
+          <Target
+            class="w-5 h-5"
+            :class="plan.id === activePlanId ? 'text-violet-500' : 'text-muted-foreground'"
+          />
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="font-semibold text-sm leading-tight truncate">{{ plan.name }}</p>
+            <span
+              v-if="plan.id === activePlanId"
+              class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/25 shrink-0 font-medium"
             >
-              <Play class="w-3 h-3 mr-1" />
-              {{ $t("workoutPlans.progress.start") }}
-            </Button>
+              <CheckCircle2 class="w-3 h-3" />
+              {{ $t("workoutPlans.progress.activeBadge") }}
+            </span>
           </div>
-        </CardContent>
-      </Card>
+          <div class="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+            <span>{{ $t("workoutPlans.weeksDays", { weeks: plan.numberOfWeeks, days: plan.daysPerWeek }) }}</span>
+            <span class="opacity-40">·</span>
+            <span>{{ $t("workoutPlans.workoutSlots", { count: totalWorkoutSlots(plan) }) }}</span>
+          </div>
+          <p v-if="plan.description" class="text-xs text-muted-foreground mt-1 line-clamp-2">{{ plan.description }}</p>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 pt-1 border-t border-border/60 mt-auto">
+        <Button variant="ghost" size="sm" class="gap-1.5 text-muted-foreground" @click="emits('view', plan)">
+          <Eye class="w-3.5 h-3.5" />
+          {{ $t("workoutPlans.detail.view") }}
+        </Button>
+        <Button variant="ghost" size="sm" class="gap-1.5 text-muted-foreground" @click="emits('edit', plan)">
+          <Pencil class="w-3.5 h-3.5" />
+          {{ $t("edit") }}
+        </Button>
+        <div class="flex-1" />
+        <Button
+          v-if="plan.id !== activePlanId"
+          size="sm"
+          :disabled="isStarting || !!activePlanId"
+          class="gap-1.5"
+          @click="emits('start', plan)"
+        >
+          <Play class="w-3 h-3 fill-current" />
+          {{ $t("workoutPlans.progress.start") }}
+        </Button>
+      </div>
     </div>
   </div>
 </template>

@@ -361,7 +361,7 @@ function formatValue(name: string, value: number): string {
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                   <button
-                    v-if="!isCurrentPosition(dayIndex) && !isDayPast(dayIndex)"
+                    v-if="!isCurrentPosition(dayIndex)"
                     class="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
                     :disabled="isUpdating || !!activeDaySession"
                     @click.stop="handleJumpToDay(currentViewWeek, dayIndex)"

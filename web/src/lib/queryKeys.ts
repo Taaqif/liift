@@ -89,6 +89,8 @@ export const workoutSessionKeys = {
     ] as const,
   activityDates: (year: number, month: number) =>
     [...workoutSessionBase, "activity", year, month] as const,
+  weeklyStats: (from: string, to: string) =>
+    [...workoutSessionBase, "weekly-stats", from, to] as const,
   active: () => [...workoutSessionBase, "active"] as const,
   detail: (id: number) => [...workoutSessionBase, id] as const,
 } as const;

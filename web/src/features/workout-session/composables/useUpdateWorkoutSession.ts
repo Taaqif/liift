@@ -1,8 +1,6 @@
 import type { MaybeRefOrGetter } from "vue";
 import { toValue } from "vue";
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
-import { toast } from "vue-sonner";
-import { useI18n } from "vue-i18n";
 import { apiClient } from "@/lib/api";
 import type {
   WorkoutSession,
@@ -22,7 +20,6 @@ async function updateWorkoutSession(
 
 export function useUpdateWorkoutSession(sessionId: MaybeRefOrGetter<number>) {
   const queryClient = useQueryClient();
-  const { t } = useI18n();
 
   const mutation = useMutation({
     mutationFn: (payload: UpdateWorkoutSessionPayload) =>
@@ -30,7 +27,6 @@ export function useUpdateWorkoutSession(sessionId: MaybeRefOrGetter<number>) {
     onSuccess: (data) => {
       queryClient.setQueryData(workoutSessionKeys.detail(data.id), data);
       queryClient.setQueryData(workoutSessionKeys.active(), data);
-      toast.success(t("workoutSession.toasts.updated"));
     },
   });
 

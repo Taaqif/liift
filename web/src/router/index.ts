@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import CommingSoon from "../views/ComingSoon.vue";
 import { useAuth } from "@/lib/auth/composables/useAuth";
 
 const router = createRouter({
@@ -20,7 +19,7 @@ const router = createRouter({
     {
       path: "/",
       name: "home",
-      component: CommingSoon,
+      component: () => import("../views/Home.vue"),
       meta: { requiresAuth: true },
     },
     {

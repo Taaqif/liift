@@ -567,6 +567,43 @@ func (h *WorkoutSessionHandler) GetActivityDates(c echo.Context) error {
 	})
 }
 
+func (h *WorkoutSessionHandler) GetWeeklyStats(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, types.ErrorResponse{Error: "authorization_header_missing"})
+	}
+
+	// Default to current week Mon–Sun; accept ?from= and ?to= overrides.
+	now := time.Now().UTC()
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	from := now.AddDate(0, 0, -(weekday - 1)).Truncate(24 * time.Hour)
+	to := from.AddDate(0, 0, 7)
+
+	if fs := c.QueryParam("from"); fs != "" {
+		if parsed, err := time.Parse("2006-01-02", fs); err == nil {
+			from = parsed
+		}
+	}
+	if ts := c.QueryParam("to"); ts != "" {
+		if parsed, err := time.Parse("2006-01-02", ts); err == nil {
+			to = parsed.AddDate(0, 0, 1) // inclusive
+		}
+	}
+
+	stats, err := h.repo.WeeklyFeatureStats(c.Request().Context(), userID, from, to)
+	if err != nil {
+		c.Logger().Errorf("Failed to get weekly feature stats: %v", err)
+		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_fetch_stats"})
+	}
+	if stats == nil {
+		stats = []repository.WeeklyFeatureStat{}
+	}
+	return c.JSON(http.StatusOK, stats)
+}
+
 func (h *WorkoutSessionHandler) DeleteSession(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -594,6 +631,7 @@ func RegisterWorkoutSessionRoutes(api *echo.Group, handler *WorkoutSessionHandle
 	api.GET("/workout-sessions", handler.ListSessions)
 	api.GET("/workout-sessions/active", handler.GetActive)
 	api.GET("/workout-sessions/activity", handler.GetActivityDates)
+	api.GET("/workout-sessions/weekly-stats", handler.GetWeeklyStats)
 	api.POST("/workout-sessions/:id/exercises", handler.AddExercise)
 	api.POST("/workout-sessions/:id/end", handler.EndSession)
 	api.POST("/workout-sessions/:id/cancel", handler.CancelSession)

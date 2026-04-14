@@ -7,7 +7,7 @@ import CardTitle from "@/components/ui/card/CardTitle.vue";
 import CardDescription from "@/components/ui/card/CardDescription.vue";
 import CardContent from "@/components/ui/card/CardContent.vue";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, History, Check } from "lucide-vue-next";
+import { BookOpen, History, Check } from "lucide-vue-next";
 import { getImageUrl, revokeImageUrl } from "@/lib/api";
 import ExerciseLogDrawer from "@/features/exercises/components/ExerciseLogDrawer.vue";
 
@@ -159,7 +159,7 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
             :alt="exercise.name"
             class="w-full h-full object-cover"
           />
-          <Dumbbell v-else class="w-5 h-5 text-muted-foreground" />
+          <BookOpen v-else class="w-5 h-5 text-muted-foreground" />
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium truncate">{{ exercise.name }}</p>
@@ -197,7 +197,7 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
                 :alt="exercise.name"
                 class="w-full h-full object-cover"
               />
-              <Dumbbell v-else class="w-7 h-7 text-muted-foreground" />
+              <BookOpen v-else class="w-7 h-7 text-muted-foreground" />
             </div>
             <div class="flex-1 min-w-0 flex flex-col gap-1">
               <CardTitle class="truncate">{{ exercise.name }}</CardTitle>

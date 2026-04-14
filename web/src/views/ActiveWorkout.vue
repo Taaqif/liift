@@ -562,7 +562,7 @@ watch(
     );
     activeExIndex.value = firstIncomplete >= 0 ? firstIncomplete : 0;
   },
-  { once: true },
+  { once: true, immediate: true },
 );
 
 const exercises = computed(() => localSession.value?.exercises ?? []);

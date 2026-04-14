@@ -4,10 +4,12 @@ import { useWorkoutPlans } from "@/features/workout-plans/composables/useWorkout
 import { useActivePlanProgress } from "@/features/workout-plans/composables/useActivePlanProgress";
 import { useStartPlan } from "@/features/workout-plans/composables/useStartPlan";
 import WorkoutPlanList from "@/features/workout-plans/components/WorkoutPlanList.vue";
+import ActivePlanCard from "@/features/workout-plans/components/ActivePlanCard.vue";
 import type { WorkoutPlan } from "@/features/workout-plans/types";
 import { Button } from "@/components/ui/button";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
+import { Plus } from "lucide-vue-next";
 
 const router = useRouter();
 const { t } = useI18n();
@@ -39,43 +41,25 @@ async function handleStartPlan(plan: WorkoutPlan) {
 </script>
 
 <template>
-  <div>
-    <div class="mb-8 flex items-center justify-between">
+  <div class="pb-12 space-y-8">
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold mb-2">{{ $t("workoutPlans.title") }}</h1>
-        <p class="text-muted-foreground">
-          {{ $t("workoutPlans.subtitle") }}
-        </p>
+        <h1 class="text-3xl font-bold tracking-tight">{{ $t("workoutPlans.title") }}</h1>
+        <p class="text-muted-foreground mt-1">{{ $t("workoutPlans.subtitle") }}</p>
       </div>
-      <Button @click="router.push({ name: 'workout-plan-create' })">
+      <Button class="gap-1.5 shrink-0" @click="router.push({ name: 'workout-plan-create' })">
+        <Plus class="w-4 h-4" />
         {{ $t("workoutPlans.createNew") }}
       </Button>
     </div>
 
     <!-- Active plan banner -->
-    <div
-      v-if="progress"
-      class="mb-6 p-4 rounded-lg border border-green-500/30 bg-green-500/10 flex items-center justify-between gap-4"
-    >
-      <div>
-        <p class="font-medium text-green-700 dark:text-green-400">
-          {{ $t("workoutPlans.progress.activeBanner.title") }}
-        </p>
-        <p class="text-sm text-muted-foreground">
-          {{ progress.plan.name }} —
-          {{ $t("workoutPlans.progress.activeBanner.position", {
-            week: progress.current_week + 1,
-            day: progress.current_day + 1,
-          }) }}
-        </p>
-      </div>
-      <Button @click="router.push({ name: 'active-plan' })">
-        {{ $t("workoutPlans.progress.activeBanner.view") }}
-      </Button>
-    </div>
+    <ActivePlanCard v-if="progress" :progress="progress" />
 
-    <div v-if="error" class="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
-      <p>{{ $t("workoutPlans.errorLoading", { message: error?.message }) }}</p>
+    <!-- Error -->
+    <div v-if="error" class="p-4 rounded-xl bg-destructive/10 text-destructive text-sm">
+      {{ $t("workoutPlans.errorLoading", { message: error?.message }) }}
     </div>
 
     <WorkoutPlanList
