@@ -43,8 +43,8 @@ export const exerciseKeys = {
       params?.equipment?.sort().join(",") ?? "",
     ] as const,
   detail: (id: number) => [...baseKeys.exercises, "detail", id] as const,
-  logs: (id: number, limit?: number, offset?: number) =>
-    [...baseKeys.exercises, "logs", id, limit ?? 20, offset ?? 0] as const,
+  logs: (id: number, limit?: number, offset?: number, from?: string, to?: string) =>
+    [...baseKeys.exercises, "logs", id, limit ?? 20, offset ?? 0, from ?? null, to ?? null] as const,
 } as const;
 
 export const workoutKeys = {
@@ -76,7 +76,7 @@ const workoutSessionBase = ["workout-sessions"] as const;
 
 export const workoutSessionKeys = {
   all: workoutSessionBase,
-  list: (params?: { limit?: number; offset?: number; workoutId?: number; date?: string }) =>
+  list: (params?: { limit?: number; offset?: number; workoutId?: number; date?: string; from?: string; to?: string }) =>
     [
       ...workoutSessionBase,
       "list",
@@ -84,6 +84,8 @@ export const workoutSessionKeys = {
       params?.offset ?? 0,
       params?.workoutId ?? null,
       params?.date ?? null,
+      params?.from ?? null,
+      params?.to ?? null,
     ] as const,
   activityDates: (year: number, month: number) =>
     [...workoutSessionBase, "activity", year, month] as const,

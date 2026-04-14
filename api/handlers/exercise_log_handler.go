@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"liift/api/middleware"
 	"liift/api/types"
@@ -73,7 +74,19 @@ func (h *ExerciseLogHandler) GetLogs(c echo.Context) error {
 		limit = 100
 	}
 
-	entries, total, err := h.sessionRepo.GetExerciseLogs(c.Request().Context(), uint(exerciseID), userID, limit, offset)
+	var from, to *time.Time
+	if fs := c.QueryParam("from"); fs != "" {
+		if parsed, err := time.Parse("2006-01-02", fs); err == nil {
+			from = &parsed
+		}
+	}
+	if ts := c.QueryParam("to"); ts != "" {
+		if parsed, err := time.Parse("2006-01-02", ts); err == nil {
+			to = &parsed
+		}
+	}
+
+	entries, total, err := h.sessionRepo.GetExerciseLogs(c.Request().Context(), uint(exerciseID), userID, from, to, limit, offset)
 	if err != nil {
 		c.Logger().Errorf("Failed to get exercise logs for exercise %d: %v", exerciseID, err)
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_fetch_logs"})

@@ -25,12 +25,16 @@ export function useWorkoutSessions(
   offset: MaybeRefOrGetter<number> = 0,
   workoutId: MaybeRefOrGetter<number | null> = null,
   date: MaybeRefOrGetter<string | null> = null,
+  from: MaybeRefOrGetter<string | null> = null,
+  to: MaybeRefOrGetter<string | null> = null,
 ) {
   const params = computed(() => ({
     limit: toValue(limit),
     offset: toValue(offset),
     workoutId: toValue(workoutId),
     date: toValue(date),
+    from: toValue(from),
+    to: toValue(to),
   }));
 
   const { data, isLoading, error } = useQuery({
@@ -40,6 +44,8 @@ export function useWorkoutSessions(
         offset: params.value.offset,
         workoutId: params.value.workoutId ?? undefined,
         date: params.value.date ?? undefined,
+        from: params.value.from ?? undefined,
+        to: params.value.to ?? undefined,
       }),
     ),
     queryFn: () => {
@@ -47,9 +53,13 @@ export function useWorkoutSessions(
       const o = toValue(offset);
       const wid = toValue(workoutId);
       const d = toValue(date);
+      const f = toValue(from);
+      const t = toValue(to);
       const qs = new URLSearchParams({ limit: String(l), offset: String(o) });
       if (wid) qs.set("workout_id", String(wid));
       if (d) qs.set("date", d);
+      if (f) qs.set("from", f);
+      if (t) qs.set("to", t);
       return apiClient.get<WorkoutSessionsResponse>(`/workout-sessions?${qs}`);
     },
     staleTime: 0,

@@ -534,11 +534,25 @@ type ExerciseLogEntry struct {
 	Sets        []ExerciseLogSet `json:"sets"`
 }
 
-func (r *WorkoutSessionRepository) GetExerciseLogs(ctx context.Context, exerciseID uint, userID uint, limit, offset int) ([]ExerciseLogEntry, int64, error) {
+func (r *WorkoutSessionRepository) GetExerciseLogs(ctx context.Context, exerciseID uint, userID uint, from, to *time.Time, limit, offset int) ([]ExerciseLogEntry, int64, error) {
+	dateFilter := ""
+	var dateArgs []interface{}
+	if from != nil {
+		dayStart := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+		dateFilter += " AND ws.started_at >= ?"
+		dateArgs = append(dateArgs, dayStart)
+	}
+	if to != nil {
+		dayEnd := time.Date(to.Year(), to.Month(), to.Day()+1, 0, 0, 0, 0, time.UTC)
+		dateFilter += " AND ws.started_at < ?"
+		dateArgs = append(dateArgs, dayEnd)
+	}
+
 	type countResult struct {
 		Count int64
 	}
 	var cr countResult
+	countArgs := append([]interface{}{exerciseID, exerciseID, userID}, dateArgs...)
 	if err := r.DB().WithContext(ctx).Raw(`
 		SELECT COUNT(DISTINCT ws.id) as count
 		FROM workout_sessions ws
@@ -548,8 +562,8 @@ func (r *WorkoutSessionRepository) GetExerciseLogs(ctx context.Context, exercise
 		WHERE (we.exercise_id = ? OR wse.exercise_id = ?)
 		AND wss.completed_at IS NOT NULL
 		AND ws.deleted_at IS NULL
-		AND ws.user_id = ?
-	`, exerciseID, exerciseID, userID).Scan(&cr).Error; err != nil {
+		AND ws.user_id = ?`+dateFilter+`
+	`, countArgs...).Scan(&cr).Error; err != nil {
 		return nil, 0, err
 	}
 	if cr.Count == 0 {
@@ -562,6 +576,8 @@ func (r *WorkoutSessionRepository) GetExerciseLogs(ctx context.Context, exercise
 		WorkoutName string
 	}
 	var metas []sessionMeta
+	metaArgs := append([]interface{}{exerciseID, exerciseID, userID}, dateArgs...)
+	metaArgs = append(metaArgs, limit, offset)
 	if err := r.DB().WithContext(ctx).Raw(`
 		SELECT DISTINCT ws.id, ws.started_at, COALESCE(w.name, '') as workout_name
 		FROM workout_sessions ws
@@ -572,10 +588,10 @@ func (r *WorkoutSessionRepository) GetExerciseLogs(ctx context.Context, exercise
 		WHERE (we.exercise_id = ? OR wse.exercise_id = ?)
 		AND wss.completed_at IS NOT NULL
 		AND ws.deleted_at IS NULL
-		AND ws.user_id = ?
+		AND ws.user_id = ?`+dateFilter+`
 		ORDER BY ws.started_at DESC
 		LIMIT ? OFFSET ?
-	`, exerciseID, exerciseID, userID, limit, offset).Scan(&metas).Error; err != nil {
+	`, metaArgs...).Scan(&metas).Error; err != nil {
 		return nil, 0, err
 	}
 	if len(metas) == 0 {
@@ -669,7 +685,7 @@ type WorkoutSessionSummary struct {
 	SetsCompleted int        `json:"sets_completed"`
 }
 
-func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint, workoutID *uint, date *time.Time, limit, offset int) ([]WorkoutSessionSummary, int64, error) {
+func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint, workoutID *uint, date *time.Time, from, to *time.Time, limit, offset int) ([]WorkoutSessionSummary, int64, error) {
 	db := r.DB().WithContext(ctx).Model(&models.WorkoutSession{}).
 		Where("user_id = ? AND ended_at IS NOT NULL AND deleted_at IS NULL", userID)
 	if workoutID != nil {
@@ -679,6 +695,14 @@ func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint
 		dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 		dayEnd := dayStart.AddDate(0, 0, 1)
 		db = db.Where("started_at >= ? AND started_at < ?", dayStart, dayEnd)
+	}
+	if from != nil {
+		dayStart := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+		db = db.Where("started_at >= ?", dayStart)
+	}
+	if to != nil {
+		dayEnd := time.Date(to.Year(), to.Month(), to.Day()+1, 0, 0, 0, 0, time.UTC)
+		db = db.Where("started_at < ?", dayEnd)
 	}
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
@@ -699,6 +723,16 @@ func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint
 		dayEnd := dayStart.AddDate(0, 0, 1)
 		extraFilters += " AND ws.started_at >= ? AND ws.started_at < ?"
 		args = append(args, dayStart, dayEnd)
+	}
+	if from != nil {
+		dayStart := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+		extraFilters += " AND ws.started_at >= ?"
+		args = append(args, dayStart)
+	}
+	if to != nil {
+		dayEnd := time.Date(to.Year(), to.Month(), to.Day()+1, 0, 0, 0, 0, time.UTC)
+		extraFilters += " AND ws.started_at < ?"
+		args = append(args, dayEnd)
 	}
 	args = append(args, limit, offset)
 

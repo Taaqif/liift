@@ -26,10 +26,16 @@ const emit = defineEmits<{
 
 const limit = 10;
 const offset = ref(0);
+const fromDate = ref<string>("");
+const toDate = ref<string>("");
 
 const queryClient = useQueryClient();
 
-watch(() => props.exerciseId, () => { offset.value = 0; });
+watch(() => props.exerciseId, () => {
+  offset.value = 0;
+  fromDate.value = "";
+  toDate.value = "";
+});
 
 watch(() => props.open, (open) => {
   if (open && props.exerciseId) {
@@ -37,10 +43,14 @@ watch(() => props.open, (open) => {
   }
 });
 
+watch([fromDate, toDate], () => { offset.value = 0; });
+
 const { entries, total, loading } = useExerciseLogs(
   computed(() => props.exerciseId),
   limit,
   offset,
+  computed(() => fromDate.value || null),
+  computed(() => toDate.value || null),
 );
 
 const currentPage = computed(() => Math.floor(offset.value / limit) + 1);
@@ -90,6 +100,36 @@ function formatValue(featureName: string, value: number): string {
         <SheetTitle>{{ exerciseName ?? $t("exercises.logs.title") }}</SheetTitle>
         <SheetDescription>{{ $t("exercises.logs.description") }}</SheetDescription>
       </SheetHeader>
+
+      <div class="px-6 pb-3 flex items-center gap-2">
+        <div class="flex-1 flex flex-col gap-0.5">
+          <label class="text-xs text-muted-foreground">{{ $t("filters.from") }}</label>
+          <input
+            v-model="fromDate"
+            type="date"
+            :max="toDate || undefined"
+            class="h-8 w-full rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <div class="flex-1 flex flex-col gap-0.5">
+          <label class="text-xs text-muted-foreground">{{ $t("filters.to") }}</label>
+          <input
+            v-model="toDate"
+            type="date"
+            :min="fromDate || undefined"
+            class="h-8 w-full rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <Button
+          v-if="fromDate || toDate"
+          variant="ghost"
+          size="sm"
+          class="mt-4 px-2 text-muted-foreground hover:text-foreground"
+          @click="fromDate = ''; toDate = ''"
+        >
+          {{ $t("filters.clear") }}
+        </Button>
+      </div>
 
       <div class="flex-1 overflow-y-auto px-6 py-4 min-h-0">
         <div v-if="loading" class="space-y-4">

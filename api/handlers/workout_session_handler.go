@@ -497,7 +497,19 @@ func (h *WorkoutSessionHandler) ListSessions(c echo.Context) error {
 		}
 	}
 
-	sessions, total, err := h.repo.ListByUserID(c.Request().Context(), userID, workoutID, date, limit, offset)
+	var from, to *time.Time
+	if fs := c.QueryParam("from"); fs != "" {
+		if parsed, err := time.Parse("2006-01-02", fs); err == nil {
+			from = &parsed
+		}
+	}
+	if ts := c.QueryParam("to"); ts != "" {
+		if parsed, err := time.Parse("2006-01-02", ts); err == nil {
+			to = &parsed
+		}
+	}
+
+	sessions, total, err := h.repo.ListByUserID(c.Request().Context(), userID, workoutID, date, from, to, limit, offset)
 	if err != nil {
 		c.Logger().Errorf("Failed to list workout sessions: %v", err)
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_fetch_sessions"})

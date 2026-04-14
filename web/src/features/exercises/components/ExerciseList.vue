@@ -125,7 +125,9 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
         <Card v-for="i in 5" :key="i">
           <CardContent>
             <div class="flex gap-4 items-center">
-              <div class="shrink-0 w-20 h-20 rounded-lg bg-muted animate-pulse" />
+              <div
+                class="shrink-0 w-20 h-20 rounded-lg bg-muted animate-pulse"
+              />
               <div class="flex-1 space-y-2">
                 <div class="h-5 w-48 bg-muted animate-pulse rounded" />
                 <div class="h-4 w-full bg-muted animate-pulse rounded" />
@@ -148,7 +150,9 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
         class="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
         @click="emits('select', exercise)"
       >
-        <div class="shrink-0 w-10 h-10 rounded-md border overflow-hidden bg-muted flex items-center justify-center">
+        <div
+          class="shrink-0 w-10 h-10 rounded-md border overflow-hidden bg-muted flex items-center justify-center"
+        >
           <img
             v-if="getImageUrlForExercise(exercise)"
             :src="getImageUrlForExercise(exercise)"
@@ -159,15 +163,20 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium truncate">{{ exercise.name }}</p>
-          <p v-if="exercise.primary_muscle_groups.length > 0" class="text-xs text-muted-foreground truncate">
+          <p
+            v-if="exercise.primary_muscle_groups.length > 0"
+            class="text-xs text-muted-foreground truncate"
+          >
             {{ formatMuscleGroups(exercise.primary_muscle_groups) }}
           </p>
         </div>
         <div
           class="shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
-          :class="selectedIds?.has(exercise.id)
-            ? 'bg-primary border-primary text-primary-foreground'
-            : 'border-muted-foreground/40'"
+          :class="
+            selectedIds?.has(exercise.id)
+              ? 'bg-primary border-primary text-primary-foreground'
+              : 'border-muted-foreground/40'
+          "
         >
           <Check v-if="selectedIds?.has(exercise.id)" class="w-3.5 h-3.5" />
         </div>
@@ -193,7 +202,10 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
             <div class="flex-1 min-w-0 flex flex-col gap-1">
               <CardTitle class="truncate">{{ exercise.name }}</CardTitle>
               <div class="flex flex-col gap-0.5 text-xs text-muted-foreground">
-                <span v-if="exercise.primary_muscle_groups.length > 0" class="truncate">
+                <span
+                  v-if="exercise.primary_muscle_groups.length > 0"
+                  class="truncate"
+                >
                   {{ formatMuscleGroups(exercise.primary_muscle_groups) }}
                 </span>
                 <span v-if="exercise.equipment.length > 0" class="truncate">
@@ -201,33 +213,29 @@ const getImageUrlForExercise = (exercise: Exercise): string | undefined => {
                 </span>
               </div>
             </div>
-          </div>
-          <div class="flex items-center gap-2 mt-3 pt-3 border-t justify-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              class="size-8"
-              @click="openLogs(exercise)"
-            >
-              <History class="size-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="handleEdit(exercise)"
-            >
-              {{ $t("edit") }}
-            </Button>
+            <div class="flex items-center gap-2 justify-end">
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-8"
+                @click="openLogs(exercise)"
+              >
+                <History class="size-4" />
+              </Button>
+              <Button variant="outline" size="sm" @click="handleEdit(exercise)">
+                {{ $t("edit") }}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
     </div>
   </div>
 
-<ExerciseLogDrawer
-  v-if="!selectable"
-  v-model:open="logDrawerOpen"
-  :exercise-id="selectedExercise?.id ?? null"
-  :exercise-name="selectedExercise?.name"
-/>
+  <ExerciseLogDrawer
+    v-if="!selectable"
+    v-model:open="logDrawerOpen"
+    :exercise-id="selectedExercise?.id ?? null"
+    :exercise-name="selectedExercise?.name"
+  />
 </template>

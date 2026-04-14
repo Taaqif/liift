@@ -59,6 +59,11 @@
   "search": "Search",
   "selectPlaceholder": "Select...",
   "clear": "Clear",
+  "filters": {
+    "from": "From",
+    "to": "To",
+    "clear": "Clear"
+  },
   "commingSoon": "Coming Soon",
   "featureUnderConstruction": "This feature is under construction",
   "nav": {
