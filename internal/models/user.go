@@ -7,9 +7,15 @@ import (
 
 type User struct {
 	BaseModel
-	Username string `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
-	Password string `gorm:"type:varchar(255);not null" json:"-"` // Don't expose password in JSON
-	Email    string `gorm:"type:varchar(255);uniqueIndex" json:"email"`
+	Username           string   `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
+	Password           string   `gorm:"type:varchar(255);not null" json:"-"`
+	Email              *string  `gorm:"type:varchar(255);uniqueIndex" json:"email"`
+	Name               string   `gorm:"type:varchar(255)" json:"name"`
+	DateOfBirth        string   `gorm:"type:varchar(10)" json:"date_of_birth"`
+	Gender             string   `gorm:"type:varchar(20)" json:"gender"`
+	WeightKg           *float64 `json:"weight_kg"`
+	HeightCm           *float64 `json:"height_cm"`
+	OnboardingComplete bool     `gorm:"default:false" json:"onboarding_complete"`
 }
 
 func (User) TableName() string {

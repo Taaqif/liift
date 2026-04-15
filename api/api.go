@@ -59,4 +59,7 @@ func RegisterHandlers(e *echo.Echo, db *gorm.DB, jwtSecret []byte) {
 
 	workoutPlanProgressHandler := handlers.NewWorkoutPlanProgressHandler(workoutPlanProgressRepo, workoutPlanRepo, workoutSessionRepo)
 	handlers.RegisterWorkoutPlanProgressRoutes(protected, workoutPlanProgressHandler)
+
+	profileHandler := handlers.NewProfileHandler(db)
+	handlers.RegisterProfileRoutes(protected, profileHandler)
 }

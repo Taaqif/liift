@@ -257,8 +257,8 @@ onBeforeRouteLeave(() => {
       <button class="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1" @click="router.push({ name: 'workout-plans' })">
         ← {{ $t("nav.workoutPlans") }}
       </button>
-      <h1 class="text-3xl font-bold">{{ title }}</h1>
-      <p class="text-muted-foreground">{{ description }}</p>
+      <h1 class="text-3xl font-bold tracking-tight">{{ title }}</h1>
+      <p class="text-muted-foreground mt-1">{{ description }}</p>
     </div>
 
     <div

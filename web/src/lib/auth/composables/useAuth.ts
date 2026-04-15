@@ -50,7 +50,11 @@ export function useAuth() {
       apiClient.setToken(response.token);
 
       queryClient.setQueryData<User | null>(authKeys.user(), response.user);
-      router.push("/");
+      if (!response.user.onboarding_complete) {
+        router.push("/onboarding");
+      } else {
+        router.push("/");
+      }
     },
     onError: (err) => {
       console.error(err);
@@ -65,7 +69,7 @@ export function useAuth() {
       apiClient.setToken(response.token);
 
       queryClient.setQueryData<User | null>(authKeys.user(), response.user);
-      router.push("/");
+      router.push("/onboarding");
     },
     onError: (err) => {
       console.error(err);

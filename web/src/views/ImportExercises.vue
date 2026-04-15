@@ -294,7 +294,7 @@ async function runImport() {
         >
           {{ step === "review" ? "← Back to selection" : "← Exercises" }}
         </button>
-        <h1 class="text-3xl font-bold">
+        <h1 class="text-3xl font-bold tracking-tight">
           {{ step === "select" ? "Import Exercises" : "Review Import" }}
         </h1>
         <p class="text-muted-foreground mt-1">
@@ -344,7 +344,7 @@ async function runImport() {
         {{ loadError }}
       </div>
       <template v-else>
-        <div class="flex gap-6 items-start">
+        <div class="flex flex-col md:flex-row gap-6 items-start">
           <!-- Sidebar filters -->
           <aside class="w-48 shrink-0 hidden md:flex flex-col gap-5">
             <Input v-model="searchQuery" placeholder="Search…" />

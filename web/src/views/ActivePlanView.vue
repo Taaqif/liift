@@ -217,7 +217,7 @@ function formatValue(name: string, value: number): string {
     <!-- Header -->
     <div class="mb-8">
       <button
-        class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+        class="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1"
         @click="router.push({ name: 'workout-plans' })"
       >
         ← {{ $t("nav.workoutPlans") }}

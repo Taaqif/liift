@@ -75,8 +75,8 @@ const handleFilter = (newFilter: ExerciseFilterType) => {
   <div>
     <div class="mb-8 flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold mb-2">{{ $t("exercises.title") }}</h1>
-        <p class="text-muted-foreground">
+        <h1 class="text-3xl font-bold tracking-tight">{{ $t("exercises.title") }}</h1>
+        <p class="text-muted-foreground mt-1">
           {{ $t("exercises.subtitle") }}
         </p>
       </div>

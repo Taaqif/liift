@@ -10,6 +10,7 @@ const baseKeys = {
   workouts: ["workouts"] as const,
   workoutPlans: ["workout-plans"] as const,
   workoutPlanProgress: ["workout-plan-progress"] as const,
+  profile: ["profile"] as const,
 } as const;
 
 export const authKeys = {
@@ -112,6 +113,11 @@ export const workoutPlanProgressKeys = {
   active: () => [...baseKeys.workoutPlanProgress, "active"] as const,
 } as const;
 
+export const profileKeys = {
+  all: baseKeys.profile,
+  me: () => [...baseKeys.profile, "me"] as const,
+} as const;
+
 export const queryKeys = {
   auth: authKeys,
   reference: referenceKeys,
@@ -120,4 +126,5 @@ export const queryKeys = {
   workoutSessions: workoutSessionKeys,
   workoutPlans: workoutPlanKeys,
   workoutPlanProgress: workoutPlanProgressKeys,
+  profile: profileKeys,
 } as const;

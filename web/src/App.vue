@@ -128,6 +128,7 @@ const navLinks = [
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem @click="router.push('/profile')">Profile</DropdownMenuItem>
               <DropdownMenuItem @click="logout">{{ $t("auth.logOut") }}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -172,8 +173,13 @@ const navLinks = [
         <div class="mt-auto border-t px-6 py-4">
           <template v-if="isAuthenticated && user">
             <p class="text-sm font-medium">{{ user.username }}</p>
-            <p v-if="user.email" class="text-xs text-muted-foreground mb-3">{{ user.email }}</p>
-            <Button variant="outline" class="w-full" @click="handleLogout">{{ $t("auth.logOut") }}</Button>
+            <p v-if="user.email" class="text-xs text-muted-foreground mb-2">{{ user.email }}</p>
+            <div class="flex flex-col gap-2 mt-3">
+              <Button variant="outline" class="w-full" as-child @click="closeMobileMenu">
+                <router-link to="/profile">Profile</router-link>
+              </Button>
+              <Button variant="ghost" class="w-full" @click="handleLogout">{{ $t("auth.logOut") }}</Button>
+            </div>
           </template>
           <template v-else>
             <div class="flex flex-col gap-2">

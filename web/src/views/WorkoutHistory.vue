@@ -181,10 +181,10 @@ const completedExercises = computed(() => {
     <!-- Header -->
     <div class="mb-8 flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold mb-2">
+        <h1 class="text-3xl font-bold tracking-tight">
           {{ $t("workoutHistory.title") }}
         </h1>
-        <p class="text-muted-foreground">{{ $t("workoutHistory.subtitle") }}</p>
+        <p class="text-muted-foreground mt-1">{{ $t("workoutHistory.subtitle") }}</p>
       </div>
     </div>
 

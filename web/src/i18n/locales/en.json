@@ -429,5 +429,41 @@
       }
     }
   },
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "profile": {
+    "title": "Profile",
+    "editTitle": "Edit Profile",
+    "editDescription": "Update your personal details.",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "dateOfBirth": "Date of birth",
+    "gender": "Gender",
+    "weight": "Weight (kg)",
+    "weightPlaceholder": "e.g. 75",
+    "height": "Height (cm)",
+    "heightPlaceholder": "e.g. 178",
+    "personalInfo": "Personal info",
+    "measurements": "Measurements",
+    "completeProfile": "Complete your profile",
+    "noDetails": "No profile details yet.",
+    "toasts": {
+      "updated": "Profile updated"
+    },
+    "validation": {
+      "nameRequired": "Name is required"
+    }
+  },
+  "onboarding": {
+    "step1Title": "What's your name?",
+    "step1Subtitle": "This is how we'll greet you in the app.",
+    "step2Title": "A bit about you",
+    "step2Subtitle": "Helps personalise your experience. All optional.",
+    "step3Title": "Your measurements",
+    "step3Subtitle": "Used for tracking progress over time. Optional.",
+    "stepOf": "Step {step} of {total}",
+    "skipSetup": "Skip setup",
+    "continue": "Continue",
+    "finish": "Finish setup",
+    "saving": "Saving..."
+  }
 }

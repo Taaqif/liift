@@ -13,6 +13,7 @@ export type User = {
   id: number;
   username: string;
   email?: string;
+  onboarding_complete?: boolean;
 };
 
 export type AuthResponse = {

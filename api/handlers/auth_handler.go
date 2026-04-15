@@ -83,15 +83,23 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	}
 
 	var existingUser models.User
-	if err := h.db.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
+	query := h.db.Where("username = ?", req.Username)
+	if req.Email != "" {
+		query = query.Or("email = ?", req.Email)
+	}
+	if err := query.First(&existingUser).Error; err == nil {
 		return c.JSON(http.StatusConflict, types.ErrorResponse{
 			Error: "user_already_exists",
 		})
 	}
 
+	var emailPtr *string
+	if req.Email != "" {
+		emailPtr = &req.Email
+	}
 	user := models.User{
 		Username: req.Username,
-		Email:    req.Email,
+		Email:    emailPtr,
 	}
 
 	if err := user.SetPassword(req.Password); err != nil {
