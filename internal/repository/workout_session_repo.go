@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"liift/internal/models"
@@ -687,7 +688,8 @@ type WorkoutSessionSummary struct {
 
 func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint, workoutID *uint, date *time.Time, from, to *time.Time, limit, offset int) ([]WorkoutSessionSummary, int64, error) {
 	db := r.DB().WithContext(ctx).Model(&models.WorkoutSession{}).
-		Where("user_id = ? AND ended_at IS NOT NULL AND deleted_at IS NULL", userID)
+		Where("user_id = ? AND ended_at IS NOT NULL AND deleted_at IS NULL", userID).
+		Where("workout_id NOT IN (SELECT id FROM workouts WHERE deleted_at IS NULL AND is_library = false AND is_manual = false)")
 	if workoutID != nil {
 		db = db.Where("workout_id = ?", *workoutID)
 	}
@@ -750,7 +752,8 @@ func (r *WorkoutSessionRepository) ListByUserID(ctx context.Context, userID uint
 		LEFT JOIN workouts w ON w.id = ws.workout_id AND w.deleted_at IS NULL
 		LEFT JOIN workout_session_exercises wse ON wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
 		LEFT JOIN workout_session_sets wss ON wss.workout_session_exercise_id = wse.id AND wss.deleted_at IS NULL
-		WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL AND ws.deleted_at IS NULL`+extraFilters+`
+		WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL AND ws.deleted_at IS NULL
+		AND (w.id IS NULL OR w.is_library = true OR w.is_manual = true)`+extraFilters+`
 		GROUP BY ws.id, w.name, ws.workout_id, ws.started_at, ws.ended_at
 		ORDER BY ws.started_at DESC
 		LIMIT ? OFFSET ?
@@ -885,6 +888,61 @@ func (r *WorkoutSessionRepository) End(ctx context.Context, id, userID uint) (*m
 	}
 	s.EndedAt = &now
 	return r.GetByID(ctx, s.ID, userID)
+}
+
+// WeeklyExercises holds the exercise names used during a given ISO week.
+type WeeklyExercises struct {
+	ISOWeek string   // e.g. "2024-W03"
+	Names   []string // distinct exercise names
+}
+
+// GetRecentExercisesByWeek returns exercise names used in completed sessions
+// in the past weeksBack weeks, grouped by ISO week (most-recent first).
+func (r *WorkoutSessionRepository) GetRecentExercisesByWeek(ctx context.Context, userID uint, weeksBack int) ([]WeeklyExercises, error) {
+	cutoff := time.Now().UTC().AddDate(0, 0, -weeksBack*7)
+
+	type row struct {
+		Name      string
+		StartedAt time.Time
+	}
+	var rows []row
+	if err := r.DB().WithContext(ctx).Raw(`
+		SELECT DISTINCT e.name, ws.started_at
+		FROM workout_sessions ws
+		JOIN workout_session_exercises wse ON wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
+		LEFT JOIN workout_exercises we ON we.id = wse.workout_exercise_id AND we.deleted_at IS NULL
+		JOIN exercises e ON e.id = COALESCE(we.exercise_id, wse.exercise_id) AND e.deleted_at IS NULL
+		WHERE ws.user_id = ?
+		  AND ws.ended_at IS NOT NULL
+		  AND ws.deleted_at IS NULL
+		  AND ws.started_at >= ?
+		ORDER BY ws.started_at DESC
+	`, userID, cutoff).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	// Group by ISO week in Go to avoid SQL dialect differences
+	weekMap := make(map[string]map[string]struct{})
+	weekOrder := []string{}
+	for _, r := range rows {
+		year, week := r.StartedAt.UTC().ISOWeek()
+		key := fmt.Sprintf("%d-W%02d", year, week)
+		if _, ok := weekMap[key]; !ok {
+			weekMap[key] = make(map[string]struct{})
+			weekOrder = append(weekOrder, key)
+		}
+		weekMap[key][r.Name] = struct{}{}
+	}
+
+	result := make([]WeeklyExercises, 0, len(weekOrder))
+	for _, w := range weekOrder {
+		names := make([]string, 0, len(weekMap[w]))
+		for n := range weekMap[w] {
+			names = append(names, n)
+		}
+		result = append(result, WeeklyExercises{ISOWeek: w, Names: names})
+	}
+	return result, nil
 }
 
 func (r *WorkoutSessionRepository) DeleteByID(ctx context.Context, id, userID uint) error {

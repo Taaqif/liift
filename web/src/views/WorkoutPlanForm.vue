@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, watch, ref } from "vue";
+import { computed, watch, ref, onMounted } from "vue";
 import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
+import { toast } from "vue-sonner";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { useI18n } from "vue-i18n";
@@ -14,7 +15,6 @@ import type {
   PlanDay,
   PlanWeek,
 } from "@/features/workout-plans/types";
-import type { Workout } from "@/features/workouts/types";
 import {
   workoutPlanFormSchema,
   createEmptyPlan,
@@ -42,6 +42,9 @@ import {
 import { ArrowLeft, Plus } from "lucide-vue-next";
 import WorkoutListSelect from "@/features/workout-plans/components/WorkoutListSelect.vue";
 import InlineWorkoutCreator from "@/features/workout-plans/components/InlineWorkoutCreator.vue";
+import { useAIFormState } from "@/features/ai-chat/composables/useAIFormState";
+import { apiClient } from "@/lib/api";
+import type { Workout } from "@/features/workouts/types";
 
 const route = useRoute();
 const router = useRouter();
@@ -205,6 +208,68 @@ const isPending = computed(
 );
 const showDeleteDialog = ref(false);
 
+// AI plan pre-fill — exercises are already resolved by ArtifactPanel before navigation
+const { takeAIPlan } = useAIFormState();
+const aiLoading = ref(false);
+
+onMounted(async () => {
+  const aiPlan = takeAIPlan();
+  if (!aiPlan) return;
+
+  aiLoading.value = true;
+  try {
+    // Collect unique workouts by name
+    const uniqueWorkouts = new Map<string, { description?: string; exercises: any[] }>();
+    for (const week of aiPlan.weeks) {
+      for (const day of week.days) {
+        if (!day.is_rest && day.workout_name && day.exercises?.length) {
+          if (!uniqueWorkouts.has(day.workout_name)) {
+            uniqueWorkouts.set(day.workout_name, {
+              description: day.workout_description,
+              exercises: day.exercises,
+            });
+          }
+        }
+      }
+    }
+
+    // Create workouts — exercises already resolved, just POST them
+    const workoutIdMap = new Map<string, number>();
+    for (const [name, data] of uniqueWorkouts) {
+      const created = await apiClient.post<Workout>("/workouts", {
+        name,
+        description: data.description,
+        is_library: false,
+        exercises: data.exercises,
+      });
+      workoutIdMap.set(name, created.id);
+    }
+
+    const daysPerWeek = Math.max(...aiPlan.weeks.map((w) => w.days.length), 1);
+    const weeks = aiPlan.weeks.map((week) => ({
+      days: week.days.map((day) => ({
+        workoutIds: day.is_rest || !day.workout_name ? [] : [workoutIdMap.get(day.workout_name)!],
+        description: day.note ?? "",
+      })),
+    }));
+
+    resetForm({
+      values: {
+        name: aiPlan.name,
+        description: aiPlan.description ?? "",
+        numberOfWeeks: aiPlan.weeks.length,
+        daysPerWeek,
+        weeks,
+      },
+    });
+    scheduleWeeks.value = weeks;
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : "Failed to load AI plan");
+  } finally {
+    aiLoading.value = false;
+  }
+});
+
 // Inline workout creation per day
 const creatorTarget = ref<{ weekIndex: number; dayIndex: number } | null>(null);
 
@@ -262,7 +327,7 @@ onBeforeRouteLeave(() => {
     </div>
 
     <div
-      v-if="isEditMode && planLoading"
+      v-if="(isEditMode && planLoading) || aiLoading"
       class="flex items-center justify-center py-24"
     >
       <div class="text-muted-foreground">{{ $t("loading") }}</div>

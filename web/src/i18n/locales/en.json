@@ -71,7 +71,9 @@
     "workouts": "Workouts",
     "workoutPlans": "Workout Plans",
     "exercises": "Exercises",
-    "workoutHistory": "History"
+    "workoutHistory": "History",
+    "coach": "Coach",
+    "settings": "Settings"
   },
   "workoutHistory": {
     "title": "Workout History",

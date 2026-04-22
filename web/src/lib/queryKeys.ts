@@ -11,6 +11,8 @@ const baseKeys = {
   workoutPlans: ["workout-plans"] as const,
   workoutPlanProgress: ["workout-plan-progress"] as const,
   profile: ["profile"] as const,
+  chatSessions: ["chat-sessions"] as const,
+  aiSettings: ["ai-settings"] as const,
 } as const;
 
 export const authKeys = {
@@ -118,6 +120,18 @@ export const profileKeys = {
   me: () => [...baseKeys.profile, "me"] as const,
 } as const;
 
+export const chatSessionKeys = {
+  all: baseKeys.chatSessions,
+  list: () => [...baseKeys.chatSessions, "list"] as const,
+  detail: (slug: string) => [...baseKeys.chatSessions, "detail", slug] as const,
+} as const;
+
+export const aiSettingsKeys = {
+  all: baseKeys.aiSettings,
+  settings: () => [...baseKeys.aiSettings, "settings"] as const,
+  providers: () => [...baseKeys.aiSettings, "providers"] as const,
+} as const;
+
 export const queryKeys = {
   auth: authKeys,
   reference: referenceKeys,
@@ -127,4 +141,6 @@ export const queryKeys = {
   workoutPlans: workoutPlanKeys,
   workoutPlanProgress: workoutPlanProgressKeys,
   profile: profileKeys,
+  chatSessions: chatSessionKeys,
+  aiSettings: aiSettingsKeys,
 } as const;

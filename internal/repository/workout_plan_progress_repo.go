@@ -116,6 +116,9 @@ func (r *WorkoutPlanProgressRepository) AdvanceDay(ctx context.Context, id uint)
 			startDay = progress.CurrentDay + 1
 		}
 		for d := startDay; d < len(schedule[w].Days); d++ {
+			if len(schedule[w].Days[d].WorkoutIDs) == 0 {
+				continue // skip rest days
+			}
 			return r.DB().WithContext(ctx).
 				Model(&models.WorkoutPlanProgress{}).
 				Where("id = ?", id).

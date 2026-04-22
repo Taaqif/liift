@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
+
 func RegisterHandlers(e *echo.Echo, db *gorm.DB, jwtSecret []byte) {
 	apiGroup := e.Group("/api")
 
@@ -62,4 +63,12 @@ func RegisterHandlers(e *echo.Echo, db *gorm.DB, jwtSecret []byte) {
 
 	profileHandler := handlers.NewProfileHandler(db)
 	handlers.RegisterProfileRoutes(protected, profileHandler)
+
+	aiSettingsRepo := repository.NewAISettingsRepository(db)
+	aiSettingsHandler := handlers.NewAISettingsHandler(aiSettingsRepo)
+	handlers.RegisterAISettingsRoutes(protected, aiSettingsHandler)
+
+	chatRepo := repository.NewChatRepository(db)
+	chatHandler := handlers.NewChatHandler(chatRepo, aiSettingsRepo, exerciseRepo, workoutRepo, workoutSessionRepo)
+	handlers.RegisterChatRoutes(protected, chatHandler)
 }

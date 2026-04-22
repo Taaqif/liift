@@ -124,6 +124,24 @@ const router = createRouter({
       component: () => import("../views/ProfileEdit.vue"),
       meta: { requiresAuth: true },
     },
+    {
+      path: "/coach",
+      name: "coach",
+      component: () => import("../views/Chat.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/coach/:slug",
+      name: "coach-session",
+      component: () => import("../views/Chat.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/settings",
+      name: "settings",
+      component: () => import("../views/Settings.vue"),
+      meta: { requiresAuth: true },
+    },
   ],
 });
 

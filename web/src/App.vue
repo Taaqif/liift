@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { VueQueryDevtools } from "@tanstack/vue-query-devtools";
 import {
@@ -41,8 +41,21 @@ const activeTotalSets = computed(() => {
   return activeSession.value.exercises.flatMap((e) => e.sets).length;
 });
 
+function updateVH() {
+  const h = window.visualViewport?.height ?? window.innerHeight;
+  document.documentElement.style.setProperty("--vh", `${h}px`);
+}
+
 onMounted(() => {
   initAuth();
+  updateVH();
+  window.visualViewport?.addEventListener("resize", updateVH);
+  window.visualViewport?.addEventListener("scroll", updateVH);
+});
+
+onUnmounted(() => {
+  window.visualViewport?.removeEventListener("resize", updateVH);
+  window.visualViewport?.removeEventListener("scroll", updateVH);
 });
 
 function closeMobileMenu() {
@@ -61,6 +74,8 @@ const navLinks = [
   { to: "/workout-plans/active", labelKey: "workoutPlans.progress.title" },
   { to: "/exercises", labelKey: "nav.exercises" },
   { to: "/workout-history", labelKey: "nav.workoutHistory" },
+  { to: "/coach", labelKey: "nav.coach" },
+  { to: "/settings", labelKey: "nav.settings" },
 ];
 </script>
 

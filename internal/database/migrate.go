@@ -1,6 +1,8 @@
 package database
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 
 	"liift/internal/models"
@@ -29,6 +31,9 @@ func Migrate(db *gorm.DB) error {
 		&models.WorkoutSessionSet{},
 		&models.WorkoutSessionSetValue{},
 		&models.WorkoutPlanProgress{},
+		&models.AISettings{},
+		&models.ChatSession{},
+		&models.ChatMessage{},
 	)
 	if err != nil {
 		return err
@@ -38,6 +43,9 @@ func Migrate(db *gorm.DB) error {
 		return err
 	}
 	if err := workoutSessionExerciseAdHocColumns(db); err != nil {
+		return err
+	}
+	if err := backfillChatSessionSlugs(db); err != nil {
 		return err
 	}
 
@@ -69,6 +77,31 @@ func workoutSessionExerciseAdHocColumns(db *gorm.DB) error {
 			return err
 		}
 		log.Printf("Added rest_timer to workout_session_exercises")
+	}
+	return nil
+}
+
+func backfillChatSessionSlugs(db *gorm.DB) error {
+	var sessions []models.ChatSession
+	if err := db.Where("slug = ''").Find(&sessions).Error; err != nil {
+		return err
+	}
+	for _, s := range sessions {
+		b := make([]byte, 6)
+		rand.Read(b)
+		slug := hex.EncodeToString(b)
+		if err := db.Model(&s).Update("slug", slug).Error; err != nil {
+			return err
+		}
+	}
+	if len(sessions) > 0 {
+		log.Printf("Backfilled slugs for %d chat sessions", len(sessions))
+	}
+	// Ensure unique index exists
+	if !db.Migrator().HasIndex(&models.ChatSession{}, "idx_chat_sessions_slug") {
+		if err := db.Exec("CREATE UNIQUE INDEX idx_chat_sessions_slug ON chat_sessions(slug)").Error; err != nil {
+			log.Printf("Could not create unique index on chat_sessions.slug (may already exist): %v", err)
+		}
 	}
 	return nil
 }

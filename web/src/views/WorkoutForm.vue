@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref, unref } from "vue";
+import { computed, watch, ref, unref, onMounted } from "vue";
 import { generateId } from "@/lib/utils";
 import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 import { useForm, useFieldArray } from "vee-validate";
@@ -41,6 +41,7 @@ import { VueDraggable } from "vue-draggable-plus";
 import WorkoutExerciseItem from "@/features/workouts/components/WorkoutExerciseItem.vue";
 import ExercisePickerSheet from "@/features/exercises/components/ExercisePickerSheet.vue";
 import type { Exercise } from "@/features/exercises/types";
+import { useAIFormState } from "@/features/ai-chat/composables/useAIFormState";
 
 const route = useRoute();
 const router = useRouter();
@@ -143,8 +144,34 @@ const populateForm = (w: Workout) => {
   });
 };
 
-// Wait for both workout and allExercises before populating so getExerciseFeatures works
 const formPopulated = ref(false);
+const { takeAIWorkout } = useAIFormState();
+
+// AI pre-fill: apply immediately on mount since exercises are pre-resolved
+onMounted(() => {
+  const aiWorkout = takeAIWorkout();
+  if (aiWorkout?.exercises?.length) {
+    resetForm({
+      values: {
+        name: aiWorkout.name,
+        description: aiWorkout.description || "",
+        exercises: aiWorkout.exercises.map((ex) => ({
+          exercise_id: ex.exercise_id,
+          rest_timer: ex.rest_timer ?? 60,
+          note: ex.note || "",
+          order: ex.order,
+          sets: ex.sets.map((set) => ({
+            order: set.order,
+            features: set.features.map((f) => ({ feature_name: f.feature_name, value: f.value ?? null })),
+          })),
+        })),
+      },
+    });
+    formPopulated.value = true;
+  }
+});
+
+// Wait for both workout and allExercises before populating so getExerciseFeatures works
 watch([workout, allExercises], ([w]) => {
   if (w && allExercises.value.length > 0 && !formPopulated.value) {
     populateForm(w);
