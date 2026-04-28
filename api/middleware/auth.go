@@ -66,7 +66,23 @@ func RequireAuth(secret []byte) echo.MiddlewareFunc {
 
 			c.Set("user", &user)
 			c.Set("user_id", userID)
+			c.Set("role", user.Role)
 
+			return next(c)
+		}
+	}
+}
+
+// RequireAdmin returns a middleware that enforces admin role after RequireAuth.
+func RequireAdmin() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			role, _ := c.Get("role").(string)
+			if role != "admin" {
+				return c.JSON(http.StatusForbidden, types.ErrorResponse{
+					Error: "admin_required",
+				})
+			}
 			return next(c)
 		}
 	}
@@ -82,4 +98,10 @@ func GetUser(c echo.Context) *models.User {
 func GetUserID(c echo.Context) uint {
 	userID, _ := c.Get("user_id").(uint)
 	return userID
+}
+
+// GetRole retrieves the authenticated user's role from the Echo context.
+func GetRole(c echo.Context) string {
+	role, _ := c.Get("role").(string)
+	return role
 }

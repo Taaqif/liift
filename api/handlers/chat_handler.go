@@ -231,7 +231,7 @@ func (h *ChatHandler) SendMessage(c echo.Context) error {
 	sessionID := session.ID
 
 	// Get AI settings
-	settings, _, err := h.settingsRepo.GetByUserID(ctx, userID)
+	settings, _, err := h.settingsRepo.Get(ctx)
 	if err != nil || settings.APIKey == "" && settings.Provider != "ollama" {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "ai_not_configured"})
 	}

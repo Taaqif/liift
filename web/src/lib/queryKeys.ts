@@ -132,6 +132,13 @@ export const aiSettingsKeys = {
   providers: () => [...baseKeys.aiSettings, "providers"] as const,
 } as const;
 
+const userManagementBase = ["users"] as const;
+
+export const userKeys = {
+  all: userManagementBase,
+  list: () => [...userManagementBase, "list"] as const,
+} as const;
+
 export const queryKeys = {
   auth: authKeys,
   reference: referenceKeys,
@@ -143,4 +150,5 @@ export const queryKeys = {
   profile: profileKeys,
   chatSessions: chatSessionKeys,
   aiSettings: aiSettingsKeys,
+  users: userKeys,
 } as const;

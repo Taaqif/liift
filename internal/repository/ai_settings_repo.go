@@ -17,13 +17,12 @@ func NewAISettingsRepository(db *gorm.DB) *AISettingsRepository {
 	return &AISettingsRepository{BaseRepository: BaseRepository{db: db}}
 }
 
-func (r *AISettingsRepository) GetByUserID(ctx context.Context, userID uint) (*models.AISettings, bool, error) {
+func (r *AISettingsRepository) Get(ctx context.Context) (*models.AISettings, bool, error) {
 	var s models.AISettings
-	err := r.DB().WithContext(ctx).Where("user_id = ?", userID).First(&s).Error
+	err := r.DB().WithContext(ctx).First(&s).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return &models.AISettings{
-				UserID:   userID,
 				Provider: "openai",
 				APIKey:   "",
 				AIModel:  "",
@@ -36,7 +35,7 @@ func (r *AISettingsRepository) GetByUserID(ctx context.Context, userID uint) (*m
 
 func (r *AISettingsRepository) Upsert(ctx context.Context, s *models.AISettings) error {
 	existing := &models.AISettings{}
-	err := r.DB().WithContext(ctx).Where("user_id = ?", s.UserID).First(existing).Error
+	err := r.DB().WithContext(ctx).First(existing).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return r.DB().WithContext(ctx).Create(s).Error

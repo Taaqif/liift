@@ -162,7 +162,7 @@ onMounted(() => {
           order: ex.order,
           sets: ex.sets.map((set) => ({
             order: set.order,
-            features: set.features.map((f) => ({ feature_name: f.feature_name, value: f.value ?? null })),
+            features: set.features.map((f) => ({ feature_name: f.feature_name, value: f.value ?? 0 })),
           })),
         })),
       },

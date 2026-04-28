@@ -64,6 +64,9 @@ func RegisterHandlers(e *echo.Echo, db *gorm.DB, jwtSecret []byte) {
 	profileHandler := handlers.NewProfileHandler(db)
 	handlers.RegisterProfileRoutes(protected, profileHandler)
 
+	userManagementHandler := handlers.NewUserManagementHandler(db)
+	handlers.RegisterUserManagementRoutes(protected, userManagementHandler)
+
 	aiSettingsRepo := repository.NewAISettingsRepository(db)
 	aiSettingsHandler := handlers.NewAISettingsHandler(aiSettingsRepo)
 	handlers.RegisterAISettingsRoutes(protected, aiSettingsHandler)

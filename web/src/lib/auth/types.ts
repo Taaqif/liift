@@ -14,6 +14,7 @@ export type User = {
   username: string;
   email?: string;
   onboarding_complete?: boolean;
+  role?: string;
 };
 
 export type AuthResponse = {

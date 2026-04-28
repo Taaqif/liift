@@ -58,8 +58,7 @@ func mapSettingsToResponse(s *models.AISettings, isConfigured bool) AISettingsRe
 }
 
 func (h *AISettingsHandler) GetSettings(c echo.Context) error {
-	userID := middleware.GetUserID(c)
-	s, isConfigured, err := h.repo.GetByUserID(c.Request().Context(), userID)
+	s, isConfigured, err := h.repo.Get(c.Request().Context())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_fetch_settings"})
 	}
@@ -67,8 +66,6 @@ func (h *AISettingsHandler) GetSettings(c echo.Context) error {
 }
 
 func (h *AISettingsHandler) UpdateSettings(c echo.Context) error {
-	userID := middleware.GetUserID(c)
-
 	var req UpdateAISettingsRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "invalid_request_body"})
@@ -79,13 +76,12 @@ func (h *AISettingsHandler) UpdateSettings(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, types.ErrorResponse{Error: "invalid_provider"})
 	}
 
-	existing, _, err := h.repo.GetByUserID(c.Request().Context(), userID)
+	existing, _, err := h.repo.Get(c.Request().Context())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_fetch_settings"})
 	}
 
 	s := &models.AISettings{
-		UserID:        userID,
 		Provider:      req.Provider,
 		APIKey:        req.APIKey,
 		AIModel:       req.AIModel,
@@ -95,13 +91,12 @@ func (h *AISettingsHandler) UpdateSettings(c echo.Context) error {
 	if s.Provider == "" {
 		s.Provider = existing.Provider
 	}
-	// If apiKey is empty in request, preserve existing key (upsert repo handles this)
 
 	if err := h.repo.Upsert(c.Request().Context(), s); err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{Error: "failed_to_save_settings"})
 	}
 
-	updated, _, _ := h.repo.GetByUserID(c.Request().Context(), userID)
+	updated, _, _ := h.repo.Get(c.Request().Context())
 	return c.JSON(http.StatusOK, mapSettingsToResponse(updated, true))
 }
 
@@ -159,6 +154,6 @@ func (h *AISettingsHandler) GetProviders(c echo.Context) error {
 
 func RegisterAISettingsRoutes(api *echo.Group, handler *AISettingsHandler) {
 	api.GET("/ai/settings", handler.GetSettings)
-	api.PUT("/ai/settings", handler.UpdateSettings)
+	api.PUT("/ai/settings", handler.UpdateSettings, middleware.RequireAdmin())
 	api.GET("/ai/providers", handler.GetProviders)
 }

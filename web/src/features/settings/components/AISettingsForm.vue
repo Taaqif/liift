@@ -4,6 +4,8 @@ import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const props = withDefaults(defineProps<{ readOnly?: boolean }>(), { readOnly: false });
 import {
   Select,
   SelectContent,
@@ -64,7 +66,12 @@ async function save() {
 </script>
 
 <template>
-  <form class="space-y-6" @submit.prevent="save">
+  <div v-if="props.readOnly" class="rounded-md border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+    AI settings are managed by an administrator.
+    <span v-if="settings?.isConfigured"> Provider: <strong>{{ settings.provider }}</strong>, Model: <strong>{{ settings.model || "default" }}</strong>.</span>
+    <span v-else> No AI provider has been configured yet.</span>
+  </div>
+  <form v-else class="space-y-6" @submit.prevent="save">
     <!-- Provider -->
     <div class="space-y-2">
       <Label>Provider</Label>
@@ -134,3 +141,4 @@ async function save() {
     </Button>
   </form>
 </template>
+

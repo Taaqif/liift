@@ -1,20 +1,36 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { BrainCircuitIcon } from "lucide-vue-next";
+import { ref, computed } from "vue";
+import { BrainCircuitIcon, UsersIcon } from "lucide-vue-next";
 import AISettingsForm from "@/features/settings/components/AISettingsForm.vue";
+import UserManagement from "@/features/settings/components/UserManagement.vue";
+import { useAuth } from "@/lib/auth/composables/useAuth";
 
-type SettingsSection = "ai";
+type SettingsSection = "ai" | "users";
 
+const { isAdmin } = useAuth();
 const activeSection = ref<SettingsSection>("ai");
 
-const sections: { id: SettingsSection; label: string; icon: typeof BrainCircuitIcon; description: string }[] = [
+type SectionDef = { id: SettingsSection; label: string; icon: typeof BrainCircuitIcon; description: string; adminOnly?: boolean };
+
+const allSections: SectionDef[] = [
   {
     id: "ai",
     label: "AI Provider",
     icon: BrainCircuitIcon,
-    description: "Configure your AI provider and model for the Coach feature.",
+    description: "Configure the AI provider and model used by the Coach feature.",
+  },
+  {
+    id: "users",
+    label: "Users",
+    icon: UsersIcon,
+    description: "Manage user accounts and roles.",
+    adminOnly: true,
   },
 ];
+
+const sections = computed(() =>
+  allSections.filter((s) => !s.adminOnly || isAdmin.value),
+);
 </script>
 
 <template>
@@ -72,7 +88,8 @@ const sections: { id: SettingsSection; label: string; icon: typeof BrainCircuitI
               <h2 class="text-base font-semibold">{{ s.label }}</h2>
               <p class="text-sm text-muted-foreground mt-0.5">{{ s.description }}</p>
             </div>
-            <AISettingsForm v-if="s.id === 'ai'" />
+            <AISettingsForm v-if="s.id === 'ai'" :read-only="!isAdmin" />
+            <UserManagement v-if="s.id === 'users'" />
           </div>
         </template>
       </div>

@@ -16,6 +16,7 @@ type User struct {
 	WeightKg           *float64 `json:"weight_kg"`
 	HeightCm           *float64 `json:"height_cm"`
 	OnboardingComplete bool     `gorm:"default:false" json:"onboarding_complete"`
+	Role               string   `gorm:"type:varchar(20);not null;default:'user'" json:"role"`
 }
 
 func (User) TableName() string {

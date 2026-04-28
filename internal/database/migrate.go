@@ -48,6 +48,12 @@ func Migrate(db *gorm.DB) error {
 	if err := backfillChatSessionSlugs(db); err != nil {
 		return err
 	}
+	if err := migrateAISettingsGlobal(db); err != nil {
+		return err
+	}
+	if err := backfillUserRoles(db); err != nil {
+		return err
+	}
 
 	log.Println("Database migrations completed successfully")
 	return nil
@@ -103,6 +109,39 @@ func backfillChatSessionSlugs(db *gorm.DB) error {
 			log.Printf("Could not create unique index on chat_sessions.slug (may already exist): %v", err)
 		}
 	}
+	return nil
+}
+
+// migrateAISettingsGlobal drops the user_id column from ai_settings if it still exists.
+func migrateAISettingsGlobal(db *gorm.DB) error {
+	m := &models.AISettings{}
+	if db.Migrator().HasColumn(m, "UserID") {
+		// Keep only the first record (lowest ID) and delete the rest before dropping the column
+		if err := db.Exec("DELETE FROM ai_settings WHERE id NOT IN (SELECT MIN(id) FROM ai_settings)").Error; err != nil {
+			log.Printf("Could not deduplicate ai_settings (may already be clean): %v", err)
+		}
+		if err := db.Migrator().DropColumn(m, "UserID"); err != nil {
+			log.Printf("Could not drop user_id from ai_settings (may already be done): %v", err)
+		} else {
+			log.Println("Dropped user_id column from ai_settings — settings are now global")
+		}
+	}
+	return nil
+}
+
+// backfillUserRoles sets role='admin' for the first user if no admins exist.
+func backfillUserRoles(db *gorm.DB) error {
+	var adminCount int64
+	db.Model(&models.User{}).Where("role = ?", "admin").Count(&adminCount)
+	if adminCount > 0 {
+		return nil
+	}
+	// Make the first registered user (lowest ID) the admin
+	if err := db.Exec("UPDATE users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM users)").Error; err != nil {
+		log.Printf("Could not backfill admin role: %v", err)
+		return err
+	}
+	log.Println("Backfilled admin role for first user")
 	return nil
 }
 

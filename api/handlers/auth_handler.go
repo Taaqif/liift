@@ -61,7 +61,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
-	token, err := h.generateToken(user.ID, user.Username)
+	token, err := h.generateToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
 			Error: "token_generation_failed",
@@ -97,9 +97,18 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	if req.Email != "" {
 		emailPtr = &req.Email
 	}
+	// First registered user becomes admin
+	var userCount int64
+	h.db.Model(&models.User{}).Count(&userCount)
+	role := "user"
+	if userCount == 0 {
+		role = "admin"
+	}
+
 	user := models.User{
 		Username: req.Username,
 		Email:    emailPtr,
+		Role:     role,
 	}
 
 	if err := user.SetPassword(req.Password); err != nil {
@@ -114,7 +123,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		})
 	}
 
-	token, err := h.generateToken(user.ID, user.Username)
+	token, err := h.generateToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, types.ErrorResponse{
 			Error: "token_generation_failed",
@@ -127,10 +136,11 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	})
 }
 
-func (h *AuthHandler) generateToken(userID uint, username string) (string, error) {
+func (h *AuthHandler) generateToken(userID uint, username string, role string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":  userID,
 		"username": username,
+		"role":     role,
 		"exp":      time.Now().Add(time.Hour * 24 * 7).Unix(),
 		"iat":      time.Now().Unix(),
 	}

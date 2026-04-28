@@ -26,6 +26,7 @@ async function fetchUser(): Promise<User | null> {
   return {
     id: payload.user_id,
     username: payload.username,
+    role: payload.role,
   };
 }
 
@@ -49,7 +50,11 @@ export function useAuth() {
     onSuccess: (response) => {
       apiClient.setToken(response.token);
 
-      queryClient.setQueryData<User | null>(authKeys.user(), response.user);
+      const payload = decodeJWT(response.token);
+      queryClient.setQueryData<User | null>(authKeys.user(), {
+        ...response.user,
+        role: payload?.role,
+      });
       if (!response.user.onboarding_complete) {
         router.push("/onboarding");
       } else {
@@ -68,7 +73,11 @@ export function useAuth() {
     onSuccess: (response) => {
       apiClient.setToken(response.token);
 
-      queryClient.setQueryData<User | null>(authKeys.user(), response.user);
+      const payload = decodeJWT(response.token);
+      queryClient.setQueryData<User | null>(authKeys.user(), {
+        ...response.user,
+        role: payload?.role,
+      });
       router.push("/onboarding");
     },
     onError: (err) => {
@@ -99,6 +108,8 @@ export function useAuth() {
     return !!user.value;
   });
 
+  const isAdmin = computed(() => user.value?.role === "admin");
+
   const loading = computed(() => {
     return loginMutation.isPending.value || registerMutation.isPending.value;
   });
@@ -107,6 +118,7 @@ export function useAuth() {
     user: computed(() => user.value),
     loading,
     isAuthenticated,
+    isAdmin,
     login,
     register,
     logout,
